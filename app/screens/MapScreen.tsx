@@ -228,10 +228,13 @@ export default function MapScreen() {
             anchor={{ x: 0.5, y: 0.5 }}
             tracksViewChanges={false}
           >
-            <View style={[
-              styles.fireMarkerContainer,
-              { backgroundColor: getFireColor(fire.brightness) }
-            ]} />
+            <View style={styles.fireMarkerContainer}>
+              <Ionicons
+                name="flame"
+                size={24}
+                color={getFireColor(fire.brightness)}
+              />
+            </View>
           </Marker>
         ))}
       </MapView>
@@ -563,13 +566,10 @@ const styles = StyleSheet.create({
   fabSecondary: {
     backgroundColor: colors.secondary,
   },
-  // Fire Marker (Heat Map style - color set dynamically)
+  // Fire Marker (Heat Map style - color set dynamically via Ionicons)
   fireMarkerContainer: {
-    width: 8,
-    height: 8,
-    backgroundColor: 'red', // Default, overridden by inline style
-    borderWidth: 0,
-    borderRadius: 4, // Slightly rounded for better visibility
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   // Wind Card
   windCard: {
