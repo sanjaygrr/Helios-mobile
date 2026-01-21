@@ -124,6 +124,7 @@ export default function MapScreen() {
 
       // Fetch Fire Data (National - Chile)
       fetchFireData().then(data => {
+        console.log('Fire data loaded:', data.length, 'fires');
         setFireData(data);
       });
 
@@ -211,7 +212,7 @@ export default function MapScreen() {
             />
             <View style={styles.markerOuter}>
               <View style={styles.markerInner}>
-                <Ionicons name="navigate" size={16} color={colors.white} />
+                <Ionicons name="navigate" size={20} color={colors.white} />
               </View>
             </View>
           </View>
@@ -331,7 +332,7 @@ export default function MapScreen() {
 
 
       {/* Layer Toggles (Left Side) */}
-      < View style={styles.layersContainer} >
+      <View style={styles.layersContainer}>
         <TouchableOpacity
           style={[styles.layerButton, showFires && styles.layerButtonActive]}
           onPress={() => setShowFires(!showFires)}
@@ -344,10 +345,10 @@ export default function MapScreen() {
         >
           <Ionicons name="speedometer" size={20} color={showWind ? colors.white : colors.primary} />
         </TouchableOpacity>
-      </View >
+      </View>
 
       {/* Floating Action Buttons */}
-      < View style={styles.fabContainer} >
+      <View style={styles.fabContainer}>
         <TouchableOpacity
           style={[styles.fab, styles.fabSecondary]}
           onPress={toggleTracking}
@@ -366,8 +367,8 @@ export default function MapScreen() {
         >
           <Ionicons name="locate" size={24} color={colors.white} />
         </TouchableOpacity>
-      </View >
-    </View >
+      </View>
+    </View>
   );
 }
 
@@ -433,32 +434,32 @@ const styles = StyleSheet.create({
   },
   // Marker styles
   markerContainer: {
-    width: 50,
-    height: 50,
+    width: 80,
+    height: 80,
     alignItems: 'center',
     justifyContent: 'center',
   },
   markerPulse: {
     position: 'absolute',
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: colors.primary,
     opacity: 0.3,
   },
   markerOuter: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: colors.white,
     alignItems: 'center',
     justifyContent: 'center',
     ...shadows.md,
   },
   markerInner: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
