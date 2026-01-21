@@ -1,0 +1,56 @@
+  {
+    "expo": {
+      "name": "Helios",
+      "slug": "helios-mobile",
+      "version": "1.0.0",
+      "orientation": "portrait",
+      "icon": "./assets/icon.png",
+      "userInterfaceStyle": "light",
+      "splash": {
+        "image": "./assets/splash.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#AA2B1D"
+      },
+      "assetBundlePatterns": [
+        "**/*"
+      ],
+      "ios": {
+        "supportsTablet": true,
+        "bundleIdentifier": "com.helios.firecommand",
+        "infoPlist": {
+          "NSLocationWhenInUseUsageDescription": "Helios necesita acceso a tu ubicacion para rastrear la posicion de tu unidad.",
+          "NSLocationAlwaysAndWhenInUseUsageDescription": "Helios necesita acceso a tu ubicacion para rastrear la posicion de tu unidad en tiempo real."
+        }
+      },
+      "android": {
+        "adaptiveIcon": {
+          "foregroundImage": "./assets/adaptive-icon.png",
+          "backgroundColor": "#AA2B1D"
+        },
+        "package": "com.helios.firecommand",
+        "permissions": [
+          "ACCESS_COARSE_LOCATION",
+          "ACCESS_FINE_LOCATION",
+          "ACCESS_BACKGROUND_LOCATION"
+        ]
+      },
+      "web": {
+        "favicon": "./assets/favicon.png",
+        "bundler": "metro"
+      },
+      "plugins": [
+        [
+          "expo-location",
+          {
+            "locationAlwaysAndWhenInUsePermission": "Helios necesita acceso a tu ubicacion para rastrear tu unidad.",
+            "isAndroidBackgroundLocationEnabled": true
+          }
+        ]
+      ],
+      "extra": {
+        "eas": {
+          "projectId": "afbecfb1-e655-4ec8-a5c1-224ea570b0a7"
+        }
+      }
+    }
+  }
