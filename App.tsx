@@ -9,8 +9,14 @@ import { StyleSheet } from 'react-native';
 import LoginScreen from './app/screens/LoginScreen';
 import MapScreen from './app/screens/MapScreen';
 import UnitScreen from './app/screens/UnitScreen';
+import ManageUsersScreen from './app/screens/ManageUsersScreen';
+import ManageUnitsScreen from './app/screens/ManageUnitsScreen'; // Assumption
+import ManageCompaniesScreen from './app/screens/ManageCompaniesScreen';
+import IncidentsScreen from './app/screens/IncidentsScreen';
+import TrackingHistoryScreen from './app/screens/TrackingHistoryScreen';
 import CustomDrawer from './app/components/CustomDrawer';
 import CustomHeader from './app/components/CustomHeader';
+import TrackingService from './app/components/TrackingService';
 import { colors } from './app/theme/colors';
 
 const Stack = createStackNavigator();
@@ -55,24 +61,59 @@ function MainDrawer() {
           title: 'Mi Unidad',
         }}
       />
+      <Drawer.Screen
+        name="Usuarios"
+        component={ManageUsersScreen}
+        options={{ title: 'Gestión Usuarios' }}
+      />
+      <Drawer.Screen
+        name="Compania"
+        component={ManageCompaniesScreen}
+        options={{ title: 'Compañías' }}
+      />
+      <Drawer.Screen // Hidden from auto-menu but accessible if validated
+        name="Emergencias"
+        component={IncidentsScreen}
+        options={{ title: 'Emergencias' }}
+      />
+      <Drawer.Screen // Hidden from auto-menu but accessible if validated
+        name="TrackingHistory"
+        component={TrackingHistoryScreen}
+        options={{ title: 'Historial de Ruta' }}
+      />
     </Drawer.Navigator>
+  );
+}
+
+import { AuthProvider, useAuth } from './app/context/AuthContext';
+
+// ... (previous imports)
+
+function AppContent() {
+  // Can use useAuth here to conditionally render Stack vs Login if desired, 
+  // but existing structure uses Stack navigation. We will stick to that.
+  return (
+    <NavigationContainer>
+      <StatusBar style="light" />
+      <Stack.Navigator
+        screenOptions={{
+          headerShown: false,
+        }}
+      >
+        <Stack.Screen name="Login" component={LoginScreen} />
+        <Stack.Screen name="Main" component={MainDrawer} />
+      </Stack.Navigator>
+    </NavigationContainer>
   );
 }
 
 export default function App() {
   return (
     <GestureHandlerRootView style={styles.container}>
-      <NavigationContainer>
-        <StatusBar style="light" />
-        <Stack.Navigator
-          screenOptions={{
-            headerShown: false,
-          }}
-        >
-          <Stack.Screen name="Login" component={LoginScreen} />
-          <Stack.Screen name="Main" component={MainDrawer} />
-        </Stack.Navigator>
-      </NavigationContainer>
+      <AuthProvider>
+        <TrackingService />
+        <AppContent />
+      </AuthProvider>
     </GestureHandlerRootView>
   );
 }

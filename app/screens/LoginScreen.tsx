@@ -12,9 +12,11 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius, shadows, typography } from '../theme/colors';
-import { login } from '../services/api';
 
-export default function LoginScreen({ navigation }: { navigation: any }) {
+import { useAuth } from '../context/AuthContext';
+
+export default function LoginScreen({ navigation }: any) {
+  const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -31,15 +33,17 @@ export default function LoginScreen({ navigation }: { navigation: any }) {
     setError('');
 
     try {
-      // await login(email, password);
-      // Simular delay de login
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await login(email, password);
+      // Navigation is handled by App.tsx based on user state usually, 
+      // but here we can force navigation or let the state change trigger rerender
+      // If App.tsx is not reacting to auth state yet, we might need manual navigation.
+      // For now, let's keep manual navigation until App.tsx is refactored.
       navigation.reset({
         index: 0,
         routes: [{ name: 'Main' }],
       });
     } catch (err) {
-      setError('Credenciales invalidas. Intenta de nuevo.');
+      setError('Credenciales invalidas o error de conexion.');
       console.error(err);
     } finally {
       setIsLoading(false);

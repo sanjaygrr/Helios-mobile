@@ -20,21 +20,45 @@ interface CustomDrawerProps {
   descriptors: any;
 }
 
+import { useAuth } from '../context/AuthContext';
+
+// ... (previous imports)
+
 export default function CustomDrawer(props: CustomDrawerProps) {
   const { navigation } = props;
+  const { user, role, logout } = useAuth();
   const statusBarHeight = Platform.OS === 'ios' ? 44 : StatusBar.currentHeight || 24;
 
+  const getRoleLabel = (r: string | null) => {
+    switch (r) {
+      case 'SUPER_ADMIN': return 'Administrador Total';
+      case 'COMPANY_ADMIN': return 'Comandante';
+      case 'COMPANY_CHIEF': return 'Jefe de Compañía';
+      case 'FIREFIGHTER': return 'Bombero';
+      default: return 'Usuario';
+    }
+  };
+
   const menuItems = [
-    { name: 'Mapa', icon: 'map', label: 'Mapa en Vivo' },
-    { name: 'Unidad', icon: 'people', label: 'Mi Unidad' },
+    { name: 'Mapa', icon: 'map', label: 'Mapa en Vivo', roles: ['SUPER_ADMIN', 'COMPANY_ADMIN', 'COMPANY_CHIEF', 'FIREFIGHTER'] },
+    { name: 'Unidad', icon: 'car', label: 'Mi Unidad', roles: ['SUPER_ADMIN', 'COMPANY_ADMIN', 'COMPANY_CHIEF'] },
+    { name: 'Usuarios', icon: 'people', label: 'Gestión Usuarios', roles: ['SUPER_ADMIN', 'COMPANY_ADMIN'] },
+    { name: 'Compania', icon: 'business', label: 'Compañías', roles: ['SUPER_ADMIN', 'COMPANY_ADMIN'] },
+    { name: 'Emergencias', icon: 'flame', label: 'Emergencias', roles: ['SUPER_ADMIN', 'COMPANY_ADMIN', 'COMPANY_CHIEF'] },
+    { name: 'TrackingHistory', icon: 'trail-sign', label: 'Historial Ruta', roles: ['SUPER_ADMIN', 'COMPANY_ADMIN', 'COMPANY_CHIEF'] },
   ];
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await logout();
     navigation.reset({
       index: 0,
       routes: [{ name: 'Login' }],
     });
   };
+
+  const filteredItems = menuItems.filter(item =>
+    !item.roles || (role && item.roles.includes(role))
+  );
 
   return (
     <View style={[styles.container, { paddingTop: statusBarHeight }]}>
@@ -56,8 +80,8 @@ export default function CustomDrawer(props: CustomDrawerProps) {
             <Ionicons name="person" size={24} color={colors.white} />
           </View>
           <View style={styles.userDetails}>
-            <Text style={styles.userName}>Usuario Demo</Text>
-            <Text style={styles.userRole}>Team Leader</Text>
+            <Text style={styles.userName}>{user?.email?.split('@')[0] || 'Usuario'}</Text>
+            <Text style={styles.userRole}>{getRoleLabel(role)}</Text>
           </View>
         </View>
       </View>
@@ -66,7 +90,7 @@ export default function CustomDrawer(props: CustomDrawerProps) {
       <View style={styles.menuContainer}>
         <Text style={styles.menuSection}>NAVEGACION</Text>
 
-        {menuItems.map((item) => {
+        {filteredItems.map((item) => {
           const isActive = props.state.routeNames[props.state.index] === item.name;
 
           return (
