@@ -64,7 +64,7 @@ export default function LoginScreen({ navigation }: { navigation: any }) {
           <View style={styles.logoContainer}>
             <Ionicons name="flame" size={56} color={colors.accent} />
           </View>
-          <Text style={styles.logoText}>IGNIS</Text>
+          <Text style={styles.logoText}>HELIOS</Text>
           <Text style={styles.logoSubtext}>Fire Command System</Text>
         </View>
 

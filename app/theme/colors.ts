@@ -1,4 +1,4 @@
-// Ignis Color Palette
+// Helios Color Palette
 export const colors = {
   // Primary palette
   primary: '#AA2B1D',      // Rojo fuego oscuro
