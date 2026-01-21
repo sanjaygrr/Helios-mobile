@@ -1,6 +1,6 @@
 class WebSocketService {
     private socket: WebSocket | null = null;
-    private url: string = 'ws://localhost:8000/ws/tracking/'; // Replace with IP
+    private url: string = 'wss://backend-production-0413.up.railway.app/ws/tracking/';
 
     connect() {
         this.socket = new WebSocket(this.url);
