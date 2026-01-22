@@ -1,18 +1,19 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   StyleSheet,
   View,
   Text,
   TouchableOpacity,
-  Animated,
   ActivityIndicator,
+  Platform
 } from 'react-native';
-import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
+import MapView, { Marker, PROVIDER_DEFAULT, PROVIDER_GOOGLE, Region } from 'react-native-maps';
 import * as Location from 'expo-location';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import WebSocketService from '../services/websocket';
 import { fetchFireData, FirePoint } from '../services/nasa';
 import { fetchWeatherData, WeatherData } from '../services/weather';
+import { useAuth } from '../context/AuthContext';
 import { colors, spacing, borderRadius, shadows } from '../theme/colors';
 
 interface LocationData {
@@ -25,349 +26,361 @@ interface LocationData {
   timestamp: number;
 }
 
+interface OtherUser {
+  id: number;
+  latitude: number;
+  longitude: number;
+  role?: string;
+  email?: string;
+  assigned_incident?: {
+    id: number;
+    title: string;
+    incident_type: string;
+  } | null;
+  timestamp?: number;
+}
+
+// Optimized Fire Marker with delayed tracking update
+const FireMarker = React.memo(({ fire, color }: { fire: FirePoint; color: string }) => {
+  // Keep optimization for Fires because there are MANY
+  const [tracksViewChanges, setTracksViewChanges] = useState(true);
+
+  useEffect(() => {
+    if (tracksViewChanges) {
+      const timer = setTimeout(() => {
+        setTracksViewChanges(false);
+      }, 1000); // Increased timeout to be safe
+      return () => clearTimeout(timer);
+    }
+  }, [tracksViewChanges]);
+
+  return (
+    <Marker
+      coordinate={{ latitude: fire.latitude, longitude: fire.longitude }}
+      zIndex={1}
+      tracksViewChanges={tracksViewChanges}
+    >
+      <Ionicons name="flame" size={24} color={color} />
+    </Marker>
+  );
+});
+
+// Custom User Marker Wrapper
+const UserMarker = ({ coordinate, role, isSelf = false, onPress }: any) => {
+  // Icons need to always track view changes initially or they might be invisible on some Androids
+  const getIcon = () => {
+    // Jefe -> Fire Truck
+    if (role === 'COMPANY_CHIEF') {
+      return <MaterialCommunityIcons name="fire-truck" size={isSelf ? 28 : 24} color={colors.white} />;
+    }
+    // Comandante -> Hard Hat
+    if (role === 'SUPER_ADMIN' || role === 'COMPANY_ADMIN') {
+      return <MaterialCommunityIcons name="hard-hat" size={isSelf ? 28 : 24} color={colors.white} />;
+    }
+    // Firefighter -> Person with Helmet (account-hard-hat)
+    return <MaterialCommunityIcons name="account-hard-hat" size={isSelf ? 28 : 24} color={colors.white} />;
+  };
+
+  return (
+    <Marker
+      coordinate={coordinate}
+      zIndex={isSelf ? 999 : 990}
+      tracksViewChanges={true} // Always track for users to prevent invisible icons
+      onPress={onPress}
+    >
+      <View style={isSelf ? styles.myLocationMarker : styles.otherUserMarker}>
+        {getIcon()}
+      </View>
+    </Marker>
+  );
+};
+
 export default function MapScreen() {
+  const { user } = useAuth();
   const [location, setLocation] = useState<LocationData | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isTracking, setIsTracking] = useState(true);
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'connecting'>('connecting');
 
-  // New State for Fire & Weather
+  const [currentRegion, setCurrentRegion] = useState<Region | null>(null);
+  const [otherUsers, setOtherUsers] = useState<{ [key: number]: OtherUser }>({});
   const [fireData, setFireData] = useState<FirePoint[]>([]);
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
-  const [showFires, setShowFires] = useState(true);
-  const [showWind, setShowWind] = useState(true);
 
-  // Helper function to get color based on fire brightness (heat map)
-  const getFireColor = (brightness: number): string => {
-    // Typical brightness ranges: 300-400+ Kelvin
-    // Map to heat map colors: green → yellow → orange → red
-    if (brightness < 320) return '#00FF00'; // Green (low)
-    if (brightness < 340) return '#FFFF00'; // Yellow (medium-low)
-    if (brightness < 360) return '#FFA500'; // Orange (medium-high)
-    return '#FF0000'; // Red (high)
-  };
+  const [showFires, setShowFires] = useState(true);
+  const [selectedItem, setSelectedItem] = useState<OtherUser | null>(null);
 
   const mapRef = useRef<MapView>(null);
-  const pulseAnim = useRef(new Animated.Value(1)).current;
 
-  useEffect(() => {
-    // Pulse animation for location marker
-    const pulse = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1.3,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-      ])
+  // --- Helpers ---
+
+  const getFireColor = (brightness: number): string => {
+    if (brightness < 320) return '#00FF00';
+    if (brightness < 340) return '#FFFF00';
+    if (brightness < 360) return '#FFA500';
+    return '#FF0000';
+  };
+
+  const getUserLabel = (u: OtherUser) => {
+    if (u.role === 'COMPANY_CHIEF') return 'Jefe de Compañía';
+    if (u.role === 'SUPER_ADMIN' || u.role === 'COMPANY_ADMIN') return 'Comandante';
+    return `Usuario ${u.id}`;
+  };
+
+  const centerOnUser = () => {
+    if (location && mapRef.current) {
+      mapRef.current.animateToRegion({
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+        latitudeDelta: 0.05,
+        longitudeDelta: 0.05,
+      }, 500);
+    }
+  };
+
+  // --- Optimization: Filter Fire Data ---
+  const visibleFires = useMemo(() => {
+    if (!showFires || !currentRegion || !fireData.length) return [];
+
+    // Broad phase filter
+    const latDelta = currentRegion.latitudeDelta * 2;
+    const lngDelta = currentRegion.longitudeDelta * 2;
+    const minLat = currentRegion.latitude - latDelta;
+    const maxLat = currentRegion.latitude + latDelta;
+    const minLng = currentRegion.longitude - lngDelta;
+    const maxLng = currentRegion.longitude + lngDelta;
+
+    const inViewport = fireData.filter(f =>
+      f.latitude >= minLat && f.latitude <= maxLat &&
+      f.longitude >= minLng && f.longitude <= maxLng
     );
-    pulse.start();
 
-    return () => pulse.stop();
-  }, []);
+    // Sort closest 60
+    inViewport.sort((a, b) => {
+      const distA = Math.pow(a.latitude - currentRegion.latitude, 2) + Math.pow(a.longitude - currentRegion.longitude, 2);
+      const distB = Math.pow(b.latitude - currentRegion.latitude, 2) + Math.pow(b.longitude - currentRegion.longitude, 2);
+      return distA - distB;
+    });
+
+    return inViewport.slice(0, 60);
+  }, [fireData, currentRegion, showFires]);
+
+  // --- Effects ---
 
   useEffect(() => {
     let locationSubscription: Location.LocationSubscription | null = null;
 
-    (async () => {
+    const startTracking = async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        setErrorMsg('Permiso de ubicacion denegado');
+        setErrorMsg('Permiso de ubicación denegado');
         return;
       }
 
-      // Connect WebSocket
-      setConnectionStatus('connecting');
-      try {
-        WebSocketService.connect();
-        setConnectionStatus('connected');
-      } catch (error) {
-        setConnectionStatus('disconnected');
-      }
+      WebSocketService.connect();
 
-      // Start watching position
+      const unsubscribe = WebSocketService.subscribe((data: OtherUser) => {
+        if (data.id && data.id !== user?.id) {
+          setOtherUsers(prev => ({ ...prev, [data.id]: data }));
+        }
+      });
+
       locationSubscription = await Location.watchPositionAsync(
         {
-          accuracy: Location.Accuracy.High,
+          accuracy: Location.Accuracy.Balanced,
           timeInterval: 5000,
           distanceInterval: 10,
         },
         (loc) => {
           setLocation(loc as LocationData);
-          if (isTracking) {
+          if (isTracking && user) {
             WebSocketService.sendLocation(
               loc.coords.latitude,
-              loc.coords.longitude
+              loc.coords.longitude,
+              user.id,
+              user.role
             );
           }
         }
       );
-    })();
 
-    return () => {
-      if (locationSubscription) {
-        locationSubscription.remove();
-      }
+      return () => {
+        unsubscribe();
+      };
     };
 
-  }, [isTracking]);
+    startTracking();
 
-  // Fetch Fire & Weather Data when location changes (throttled in real app)
+    return () => {
+      if (locationSubscription) locationSubscription.remove();
+    };
+  }, [isTracking, user]);
+
   useEffect(() => {
     if (location) {
-      const { latitude, longitude } = location.coords;
+      if (fireData.length === 0) fetchFireData().then(setFireData);
+      if (!weatherData) fetchWeatherData(location.coords.latitude, location.coords.longitude).then(setWeatherData);
+    }
+  }, [location]);
 
-      // Fetch Fire Data (National - Chile)
-      fetchFireData().then(data => {
-        console.log('Fire data loaded:', data.length, 'fires');
-        setFireData(data);
-      });
-
-      // Fetch Weather Data
-      fetchWeatherData(latitude, longitude).then(data => {
-        setWeatherData(data);
+  useEffect(() => {
+    if (location && !currentRegion) {
+      setCurrentRegion({
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+        latitudeDelta: 0.1,
+        longitudeDelta: 0.1,
       });
     }
   }, [location]);
 
-  const centerOnLocation = () => {
-    if (location && mapRef.current) {
-      mapRef.current.animateToRegion({
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-        latitudeDelta: 0.01,
-        longitudeDelta: 0.01,
-      });
-    }
-  };
 
-  const toggleTracking = () => {
-    setIsTracking(!isTracking);
-  };
-
-  if (errorMsg) {
-    return (
-      <View style={styles.errorContainer}>
-        <Ionicons name="location-outline" size={64} color={colors.gray[400]} />
-        <Text style={styles.errorTitle}>Ubicacion no disponible</Text>
-        <Text style={styles.errorText}>{errorMsg}</Text>
-        <TouchableOpacity style={styles.retryButton}>
-          <Text style={styles.retryButtonText}>Reintentar</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
+  // --- Render ---
 
   if (!location) {
     return (
       <View style={styles.loadingContainer}>
-        <View style={styles.loadingContent}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Obteniendo ubicacion...</Text>
-          <Text style={styles.loadingSubtext}>
-            Asegurate de tener el GPS activado
-          </Text>
-        </View>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.loadingText}>Obteniendo ubicación...</Text>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      {/* Map */}
       <MapView
         ref={mapRef}
         style={styles.map}
-        provider={PROVIDER_DEFAULT}
+        provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : PROVIDER_DEFAULT}
         initialRegion={{
           latitude: location.coords.latitude,
           longitude: location.coords.longitude,
-          latitudeDelta: 0.02,
-          longitudeDelta: 0.02,
+          latitudeDelta: 0.1,
+          longitudeDelta: 0.1,
         }}
-        showsUserLocation={false}
-        showsMyLocationButton={false}
+        showsUserLocation={false} // Disable System Blue Dot
         showsCompass={true}
         mapType="hybrid"
+        onPress={() => setSelectedItem(null)}
+        onRegionChangeComplete={setCurrentRegion}
       >
-        {/* Custom Location Marker */}
-        <Marker
+        {/* Custom User Icon (NOW this is the only indicator of self) */}
+        <UserMarker
           coordinate={{
             latitude: location.coords.latitude,
             longitude: location.coords.longitude,
           }}
-          anchor={{ x: 0.5, y: 0.5 }}
-        >
-          <View style={styles.markerContainer}>
-            <Animated.View
-              style={[
-                styles.markerPulse,
-                { transform: [{ scale: pulseAnim }] },
-              ]}
-            />
-            <View style={styles.markerOuter}>
-              <View style={styles.markerInner}>
-                <Ionicons name="navigate" size={20} color={colors.white} />
-              </View>
-            </View>
-          </View>
-        </Marker>
+          role={user?.role}
+          isSelf={true}
+          onPress={() => setSelectedItem({
+            id: user?.id || 0,
+            latitude: location.coords.latitude,
+            longitude: location.coords.longitude,
+            role: user?.role,
+            email: user?.email,
+            // Self usually knows their assignment via Context or separate fetch, 
+            // but purely for map info we can leave undefined or fetch.
+          })}
+        />
 
-        {/* Fire Markers Overlay */}
-        {showFires && fireData.map((fire, index) => (
-          <Marker
-            key={`fire-${index}`}
-            coordinate={{
-              latitude: fire.latitude,
-              longitude: fire.longitude,
-            }}
-            anchor={{ x: 0.5, y: 0.5 }}
-            tracksViewChanges={false}
-          >
-            <View style={styles.fireMarkerContainer}>
-              <Ionicons
-                name="flame"
-                size={24}
-                color={getFireColor(fire.brightness)}
-              />
-            </View>
-          </Marker>
+        {/* Other Users */}
+        {Object.values(otherUsers).map((u) => (
+          <UserMarker
+            key={`user-${u.id}`}
+            coordinate={{ latitude: u.latitude, longitude: u.longitude }}
+            role={u.role}
+            isSelf={false}
+            onPress={() => setSelectedItem(u)}
+          />
         ))}
+
+        {/* Fires */}
+        {visibleFires.map((fire, index) => (
+          <FireMarker
+            key={`fire-${index}-${fire.latitude}`}
+            fire={fire}
+            color={getFireColor(fire.brightness)}
+          />
+        ))}
+
       </MapView>
 
-      {/* Status Card */}
+      {/* Status Indicators */}
       <View style={styles.statusCard}>
-        <View style={styles.statusRow}>
-          <View style={styles.statusItem}>
-            <View style={[
-              styles.statusDot,
-              {
-                backgroundColor: connectionStatus === 'connected' ? colors.success :
-                  connectionStatus === 'connecting' ? colors.warning : colors.danger
-              }
-            ]} />
-            <Text style={styles.statusLabel}>
-              {connectionStatus === 'connected' ? 'Conectado' :
-                connectionStatus === 'connecting' ? 'Conectando...' : 'Desconectado'}
-            </Text>
-          </View>
-          <View style={styles.statusDivider} />
-          <View style={styles.statusItem}>
-            <Ionicons
-              name={isTracking ? "radio" : "radio-outline"}
-              size={16}
-              color={isTracking ? colors.success : colors.gray[400]}
-            />
-            <Text style={styles.statusLabel}>
-              {isTracking ? 'Transmitiendo' : 'Pausado'}
-            </Text>
-          </View>
-        </View>
+        <View style={[styles.statusDot, { backgroundColor: isTracking ? colors.success : colors.danger }]} />
+        <Text style={styles.statusLabel}>{isTracking ? "Transmitiendo" : "Pausado"}</Text>
+        {showFires && (
+          <>
+            <View style={styles.statusDivider} />
+            <Text style={styles.statusLabel}>{visibleFires.length} Fuegos</Text>
+          </>
+        )}
       </View>
 
-      {/* Wind Overlay (Top Right) */}
-      {
-        showWind && weatherData && (
-          <View style={styles.windCard}>
-            <View style={styles.windHeader}>
-              <Ionicons name="speedometer-outline" size={16} color={colors.textLight} />
-              <Text style={styles.windTitle}>Viento</Text>
-            </View>
-            <View style={styles.windContent}>
-              <View style={[styles.windIconContainer, { transform: [{ rotate: `${weatherData.wind.deg}deg` }] }]}>
-                <Ionicons name="arrow-up" size={24} color={colors.primary} />
+      {/* Info Card (Dynamic) */}
+      {selectedItem && (
+        <View style={styles.infoCard}>
+          <View style={styles.infoHeader}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <View style={{ backgroundColor: colors.secondary, borderRadius: 20, padding: 4 }}>
+                <MaterialCommunityIcons name={
+                  selectedItem.role === 'COMPANY_CHIEF' ? 'fire-truck' :
+                    (selectedItem.role?.includes('ADMIN') ? 'hard-hat' : 'account-hard-hat')
+                } size={20} color="white" />
               </View>
               <View>
-                <Text style={styles.windValue}>{(weatherData.wind.speed * 3.6).toFixed(1)} km/h</Text>
-                <Text style={styles.windLabel}>Dirección</Text>
+                <Text style={styles.infoTitle}>
+                  {selectedItem.role === 'COMPANY_CHIEF' ? 'Jefe de Compañía' :
+                    selectedItem.role?.includes('ADMIN') ? 'Comandante' :
+                      'Voluntario'}
+                </Text>
+                <Text style={styles.infoSubtitle}>ID: {selectedItem.id}</Text>
               </View>
             </View>
+            <TouchableOpacity onPress={() => setSelectedItem(null)}>
+              <Ionicons name="close-circle" size={24} color={colors.textLight} />
+            </TouchableOpacity>
           </View>
-        )
-      }
 
-      {/* Info Card */}
-      <View style={styles.infoCard}>
-        <View style={styles.infoHeader}>
-          <Ionicons name="car" size={20} color={colors.primary} />
-          <Text style={styles.infoTitle}>Carro Forestal 1</Text>
-        </View>
-        <View style={styles.infoGrid}>
-          <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>Latitud</Text>
-            <Text style={styles.infoValue}>
-              {location.coords.latitude.toFixed(6)}
+          <View style={styles.infoGrid}>
+            {/* Contextual Info based on Role */}
+            {selectedItem.role === 'COMPANY_CHIEF' && (
+              <View style={styles.incidentRow}>
+                <Ionicons name="alert-circle" size={16} color={selectedItem.assigned_incident ? colors.danger : colors.gray[400]} />
+                <Text style={[styles.incidentText, !selectedItem.assigned_incident && { color: colors.gray[400] }]}>
+                  {selectedItem.assigned_incident
+                    ? `Mando: ${selectedItem.assigned_incident.title}`
+                    : 'Sin emergencia asignada'}
+                </Text>
+              </View>
+            )}
+
+            {/* Location Data */}
+            <Text style={styles.coordsText}>
+              Last seen: {selectedItem.latitude.toFixed(5)}, {selectedItem.longitude.toFixed(5)}
             </Text>
           </View>
-          <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>Longitud</Text>
-            <Text style={styles.infoValue}>
-              {location.coords.longitude.toFixed(6)}
-            </Text>
-          </View>
-          {location.coords.speed !== null && (
-            <View style={styles.infoItem}>
-              <Text style={styles.infoLabel}>Velocidad</Text>
-              <Text style={styles.infoValue}>
-                {(location.coords.speed * 3.6).toFixed(1)} km/h
-              </Text>
-            </View>
-          )}
-          {location.coords.accuracy !== null && (
-            <View style={styles.infoItem}>
-              <Text style={styles.infoLabel}>Precision</Text>
-              <Text style={styles.infoValue}>
-                {location.coords.accuracy.toFixed(0)} m
-              </Text>
-            </View>
-          )}
         </View>
-      </View>
+      )}
 
-
-
-      {/* Layer Toggles (Left Side) */}
-      <View style={styles.layersContainer}>
-        <TouchableOpacity
-          style={[styles.layerButton, showFires && styles.layerButtonActive]}
-          onPress={() => setShowFires(!showFires)}
-        >
-          <Ionicons name="flame" size={20} color={showFires ? colors.white : colors.danger} />
+      {/* Controls: Layers, Recenter, Tracking */}
+      <View style={styles.controlsContainer}>
+        {/* Toggle Fire */}
+        <TouchableOpacity style={[styles.fabSmall, showFires && styles.fabActive]} onPress={() => setShowFires(!showFires)}>
+          <Ionicons name="flame" size={20} color={showFires ? colors.white : colors.gray[600]} />
         </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.layerButton, showWind && styles.layerButtonActive]}
-          onPress={() => setShowWind(!showWind)}
-        >
-          <Ionicons name="speedometer" size={20} color={showWind ? colors.white : colors.primary} />
-        </TouchableOpacity>
-      </View>
 
-      {/* Floating Action Buttons */}
-      <View style={styles.fabContainer}>
-        <TouchableOpacity
-          style={[styles.fab, styles.fabSecondary]}
-          onPress={toggleTracking}
-          activeOpacity={0.8}
-        >
-          <Ionicons
-            name={isTracking ? "pause" : "play"}
-            size={24}
-            color={colors.white}
-          />
+        {/* Recenter Button (New!) */}
+        <TouchableOpacity style={styles.fabSmall} onPress={centerOnUser}>
+          <Ionicons name="locate" size={20} color={colors.text} />
         </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.fab, styles.fabPrimary]}
-          onPress={centerOnLocation}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="locate" size={24} color={colors.white} />
+
+        {/* Toggle Tracking */}
+        <TouchableOpacity style={[styles.fab, { backgroundColor: isTracking ? colors.secondary : colors.success }]} onPress={() => setIsTracking(!isTracking)}>
+          <Ionicons name={isTracking ? "pause" : "play"} size={28} color="white" />
         </TouchableOpacity>
       </View>
+
     </View>
   );
 }
@@ -382,257 +395,81 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: colors.background,
-    alignItems: 'center',
     justifyContent: 'center',
-  },
-  loadingContent: {
     alignItems: 'center',
-    padding: spacing.xl,
+    backgroundColor: colors.background,
   },
   loadingText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.text,
-    marginTop: spacing.lg,
-  },
-  loadingSubtext: {
-    fontSize: 14,
-    color: colors.textLight,
-    marginTop: spacing.sm,
-  },
-  errorContainer: {
-    flex: 1,
-    backgroundColor: colors.background,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.xl,
-  },
-  errorTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: colors.text,
-    marginTop: spacing.lg,
-  },
-  errorText: {
-    fontSize: 14,
-    color: colors.textLight,
-    marginTop: spacing.sm,
-    textAlign: 'center',
-  },
-  retryButton: {
-    marginTop: spacing.xl,
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-    borderRadius: borderRadius.lg,
-  },
-  retryButtonText: {
-    color: colors.white,
+    marginTop: spacing.md,
     fontSize: 16,
-    fontWeight: '600',
+    color: colors.text,
   },
-  // Marker styles
-  markerContainer: {
-    width: 80,
-    height: 80,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  markerPulse: {
-    position: 'absolute',
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+
+  // Markers
+  myLocationMarker: {
+    width: 44, height: 44, borderRadius: 22,
     backgroundColor: colors.primary,
-    opacity: 0.3,
+    borderWidth: 3, borderColor: 'white',
+    alignItems: 'center', justifyContent: 'center',
+    ...shadows.md
   },
-  markerOuter: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: colors.white,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...shadows.md,
+  otherUserMarker: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: colors.secondary, // Blueish typically
+    borderWidth: 2, borderColor: 'white',
+    alignItems: 'center', justifyContent: 'center',
+    ...shadows.sm
   },
-  markerInner: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  // Status Card
+
+  // Cards
   statusCard: {
-    position: 'absolute',
-    top: spacing.md,
-    left: spacing.md,
-    right: spacing.md,
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.lg,
-    padding: spacing.md,
-    ...shadows.md,
+    position: 'absolute', top: 50, left: 20,
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: 'white', padding: 10, borderRadius: 20,
+    ...shadows.md
   },
-  statusRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  statusItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  statusLabel: {
-    fontSize: 13,
-    color: colors.textLight,
-    fontWeight: '500',
-  },
-  statusDivider: {
-    width: 1,
-    height: 16,
-    backgroundColor: colors.gray[200],
-    marginHorizontal: spacing.lg,
-  },
-  // Info Card
+  statusDot: { width: 10, height: 10, borderRadius: 5 },
+  statusLabel: { fontSize: 12, fontWeight: 'bold', color: colors.text },
+  statusDivider: { width: 1, height: 16, backgroundColor: '#ddd', marginHorizontal: 5 },
+
   infoCard: {
-    position: 'absolute',
-    bottom: spacing.xl,
-    left: spacing.md,
-    right: 80,
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.lg,
-    padding: spacing.md,
-    ...shadows.lg,
+    position: 'absolute', bottom: 100, left: 20, right: 20,
+    backgroundColor: 'white', padding: 15, borderRadius: 15,
+    ...shadows.lg
   },
   infoHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginBottom: spacing.md,
-    paddingBottom: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.gray[100],
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10
   },
-  infoTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
+  infoTitle: { fontSize: 16, fontWeight: 'bold', color: colors.text },
+  infoSubtitle: { fontSize: 12, color: colors.textLight },
+  infoGrid: { marginTop: 5 },
+  incidentRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    marginVertical: 4,
+    backgroundColor: colors.gray[50], padding: 6, borderRadius: 6
   },
-  infoGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  incidentText: {
+    fontSize: 13, fontWeight: '600', color: colors.text
   },
-  infoItem: {
-    width: '50%',
-    marginBottom: spacing.sm,
-  },
-  infoLabel: {
-    fontSize: 11,
-    color: colors.textLight,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  infoValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.text,
-    marginTop: 2,
-  },
-  // FAB
-  fabContainer: {
-    position: 'absolute',
-    bottom: spacing.xl,
-    right: spacing.md,
-    gap: spacing.sm,
+  coordsText: { fontSize: 12, fontFamily: 'monospace', color: colors.gray[500], marginTop: 4 },
+
+  // FABs
+  controlsContainer: {
+    position: 'absolute', bottom: 30, right: 20,
+    alignItems: 'center', gap: 15
   },
   fab: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...shadows.lg,
+    width: 56, height: 56, borderRadius: 28,
+    alignItems: 'center', justifyContent: 'center',
+    ...shadows.lg
   },
-  fabPrimary: {
-    backgroundColor: colors.primary,
+  fabSmall: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: 'white',
+    alignItems: 'center', justifyContent: 'center',
+    ...shadows.md
   },
-  fabSecondary: {
-    backgroundColor: colors.secondary,
-  },
-  // Fire Marker (Heat Map style - color set dynamically via Ionicons)
-  fireMarkerContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  // Wind Card
-  windCard: {
-    position: 'absolute',
-    top: spacing.md,
-    right: spacing.md,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)', // Slightly transparent
-    borderRadius: borderRadius.lg,
-    padding: spacing.md,
-    ...shadows.md,
-    minWidth: 120,
-  },
-  windHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    marginBottom: spacing.xs,
-  },
-  windTitle: {
-    fontSize: 12,
-    color: colors.textLight,
-    fontWeight: '600',
-  },
-  windContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  windIconContainer: {
-    width: 32,
-    height: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.background,
-    borderRadius: 16,
-  },
-  windValue: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  windLabel: {
-    fontSize: 10,
-    color: colors.textLight,
-  },
-  // Layer Toggles
-  layersContainer: {
-    position: 'absolute',
-    left: spacing.md,
-    bottom: spacing.xl + 80, // Above FABs
-    gap: spacing.sm,
-  },
-  layerButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...shadows.md,
-  },
-  layerButtonActive: {
-    backgroundColor: colors.text, // Dark mode style for active
-  },
+  fabActive: {
+    backgroundColor: colors.primary
+  }
 });

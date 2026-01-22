@@ -1,14 +1,14 @@
 // Helios Color Palette
 export const colors = {
   // Primary palette
-  primary: '#AA2B1D',      // Rojo fuego oscuro
-  secondary: '#CC561E',    // Naranja rojizo
-  accent: '#EF8D32',       // Naranja brillante
-  highlight: '#BECA5C',    // Verde lima
+  primary: '#FF1E00',      // Rojo
+  secondary: '#59CE8F',    // Verde
+  accent: '#59CE8F',       // Verde
+  highlight: '#FF1E00',    // Rojo
 
   // Neutrals
   white: '#FFFFFF',
-  black: '#1A1A1A',
+  black: '#000000',
   gray: {
     50: '#F9FAFB',
     100: '#F3F4F6',
@@ -23,22 +23,22 @@ export const colors = {
   },
 
   // Semantic colors
-  success: '#10B981',
-  warning: '#F59E0B',
-  danger: '#EF4444',
-  info: '#3B82F6',
+  success: '#59CE8F',
+  warning: '#FF1E00',
+  danger: '#FF1E00',
+  info: '#59CE8F',
 
   // Background colors
-  background: '#FFF8F5',
-  backgroundDark: '#2D1810',
+  background: '#E8F9FD',
+  backgroundDark: '#000000',
   surface: '#FFFFFF',
-  surfaceDark: '#3D2820',
+  surfaceDark: '#1A1A1A',
 
   // Text colors
-  text: '#1A1A1A',
+  text: '#000000',
   textLight: '#6B7280',
   textOnPrimary: '#FFFFFF',
-  textOnAccent: '#1A1A1A',
+  textOnAccent: '#000000',
 };
 
 // Shadows

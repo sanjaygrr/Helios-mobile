@@ -1,5 +1,6 @@
 import axios from 'axios';
 
+// Production URL (Railway)
 const API_URL = 'https://backend-production-0413.up.railway.app/api';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -30,10 +31,8 @@ export const login = async (email, password) => {
 export const updatePosition = async (unitId, lat, lon) => {
     return api.post('/tracking/', {
         unit: unitId,
-        location: {
-            type: "Point",
-            coordinates: [lon, lat]
-        }
+        latitude: lat,
+        longitude: lon
     });
 };
 

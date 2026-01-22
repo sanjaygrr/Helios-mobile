@@ -1,7 +1,0 @@
-{
-    "name": "react-native-reanimated",
-    "version": "4.2.1",
-    "description": "Shim for react-native-reanimated",
-    "main": "index.js",
-    "types": "index.d.ts"
-}

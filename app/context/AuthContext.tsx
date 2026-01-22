@@ -51,7 +51,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             // Assuming API returns { token: '...', user: { ... } }
             // If API format is different, we adjust here.
             // Based on typical JWT Auth:
-            const { access, user } = response;
+            // The API response is wrapped in an axios object, so we need response.data
+            const { access, user } = response.data;
 
             // If backend only returns access token, we might need to decode it or fetch me endpoint.
             // For now, let's assume login returns user info or we modify backend to return it.
@@ -62,9 +63,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             // If apiLogin maps to Custom obtain_pair_view with user data, great.
             // If not, we fix it or fetch me.
 
-            setUser(user);
+            // Store data FIRST before updating state to prevent race conditions with child components
             await AsyncStorage.setItem('@Auth:token', access);
             await AsyncStorage.setItem('@Auth:user', JSON.stringify(user));
+
+            // Now update state, triggering re-renders
+            setUser(user);
 
         } catch (error) {
             throw error;

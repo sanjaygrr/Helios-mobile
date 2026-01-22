@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, shadows, spacing } from '../theme/colors';
+import { useMenu } from '../../App';
 
 interface CustomHeaderProps {
   navigation: any;
@@ -24,6 +25,7 @@ export default function CustomHeader({
   showBack = false,
 }: CustomHeaderProps) {
   const statusBarHeight = Platform.OS === 'ios' ? 44 : StatusBar.currentHeight || 24;
+  const { openMenu } = useMenu();
 
   return (
     <View style={[styles.container, { paddingTop: statusBarHeight }]}>
@@ -35,7 +37,7 @@ export default function CustomHeader({
           {showMenu && (
             <TouchableOpacity
               style={styles.menuButton}
-              onPress={() => navigation.openDrawer()}
+              onPress={openMenu}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
               <Ionicons name="menu" size={28} color={colors.white} />

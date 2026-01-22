@@ -20,24 +20,10 @@ interface TeamMember {
 }
 
 export default function UnitScreen() {
+  // Inicialmente NULO como pidió el usuario ("no debería haber nada de momento")
+  // Esto se poblará cuando "se hace el formulario -> se crea la unidad"
+  const [unitData, setUnitData] = useState<any>(null);
   const [status, setStatus] = useState<UnitStatus>('available');
-
-  // Mock data - esto vendria del backend
-  const unitData = {
-    name: 'BX-3',
-    type: 'Forestal',
-    members: 5,
-    vehicle: 'Mercedes-Benz Unimog',
-    capacity: '3000L',
-  };
-
-  const teamMembers: TeamMember[] = [
-    { id: '1', name: 'Carlos Mendez', role: 'Team Leader', isLeader: true },
-    { id: '2', name: 'Ana Rodriguez', role: 'Conductor', isLeader: false },
-    { id: '3', name: 'Pedro Silva', role: 'Bombero', isLeader: false },
-    { id: '4', name: 'Maria Lopez', role: 'Bombero', isLeader: false },
-    { id: '5', name: 'Juan Perez', role: 'Bombero', isLeader: false },
-  ];
 
   const getStatusConfig = (currentStatus: UnitStatus) => {
     const configs = {
@@ -90,8 +76,33 @@ export default function UnitScreen() {
     );
   };
 
+  // --- EMPTY STATE VIEW ---
+  if (!unitData) {
+    return (
+      <View style={styles.emptyContainer}>
+        <View style={styles.emptyIconContainer}>
+          <Ionicons name="shield-checkmark-outline" size={64} color={colors.textLight} />
+        </View>
+        <Text style={styles.emptyTitle}>Sin Asignación Activa</Text>
+        <Text style={styles.emptySubtitle}>
+          No tienes una unidad asignada en este momento.
+          {"\n"}
+          Cuando se despache una emergencia, verás los detalles aquí.
+        </Text>
+
+        {/* Botón simulación para demo (Opcional, puede ser removido prod) */}
+        {/* 
+              <TouchableOpacity onPress={() => setUnitData({ name: 'BX-3', type: 'Simulada' })} style={{ marginTop: 20 }}>
+                  <Text style={{ color: colors.primary }}>[DEV: Simular Asignación]</Text>
+              </TouchableOpacity> 
+              */}
+      </View>
+    );
+  }
+
   const statusConfig = getStatusConfig(status);
 
+  // --- ACTIVE UNIT VIEW ---
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       {/* Unit Header Card */}
@@ -117,14 +128,14 @@ export default function UnitScreen() {
           <View style={[styles.statIcon, { backgroundColor: 'rgba(170, 43, 29, 0.1)' }]}>
             <Ionicons name="people" size={20} color={colors.primary} />
           </View>
-          <Text style={styles.statValue}>{unitData.members}</Text>
+          <Text style={styles.statValue}>{unitData.members || 0}</Text>
           <Text style={styles.statLabel}>Miembros</Text>
         </View>
         <View style={styles.statCard}>
           <View style={[styles.statIcon, { backgroundColor: 'rgba(204, 86, 30, 0.1)' }]}>
             <Ionicons name="water" size={20} color={colors.secondary} />
           </View>
-          <Text style={styles.statValue}>{unitData.capacity}</Text>
+          <Text style={styles.statValue}>{unitData.capacity || 'N/A'}</Text>
           <Text style={styles.statLabel}>Capacidad</Text>
         </View>
         <View style={styles.statCard}>
@@ -143,7 +154,7 @@ export default function UnitScreen() {
           <Text style={styles.sectionTitle}>Vehiculo</Text>
         </View>
         <View style={styles.vehicleInfo}>
-          <Text style={styles.vehicleName}>{unitData.vehicle}</Text>
+          <Text style={styles.vehicleName}>{unitData.vehicle || 'Sin Vehículo'}</Text>
           <View style={styles.vehicleDetails}>
             <View style={styles.vehicleDetail}>
               <Ionicons name="water-outline" size={16} color={colors.textLight} />
@@ -155,35 +166,6 @@ export default function UnitScreen() {
             </View>
           </View>
         </View>
-      </View>
-
-      {/* Team Members */}
-      <View style={styles.sectionCard}>
-        <View style={styles.sectionHeader}>
-          <Ionicons name="people" size={20} color={colors.primary} />
-          <Text style={styles.sectionTitle}>Equipo</Text>
-          <Text style={styles.memberCount}>{teamMembers.length} miembros</Text>
-        </View>
-        {teamMembers.map((member) => (
-          <View key={member.id} style={styles.memberRow}>
-            <View style={[styles.memberAvatar, member.isLeader && styles.memberAvatarLeader]}>
-              <Ionicons
-                name={member.isLeader ? 'star' : 'person'}
-                size={16}
-                color={member.isLeader ? colors.accent : colors.white}
-              />
-            </View>
-            <View style={styles.memberInfo}>
-              <Text style={styles.memberName}>{member.name}</Text>
-              <Text style={styles.memberRole}>{member.role}</Text>
-            </View>
-            {member.isLeader && (
-              <View style={styles.leaderBadge}>
-                <Text style={styles.leaderBadgeText}>Lider</Text>
-              </View>
-            )}
-          </View>
-        ))}
       </View>
 
       {/* Status Actions */}
@@ -300,6 +282,34 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  // Empty State Styles
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.xl,
+    backgroundColor: colors.background,
+  },
+  emptyIconContainer: {
+    width: 120, height: 120,
+    borderRadius: 60,
+    backgroundColor: colors.gray[100],
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: spacing.lg,
+  },
+  emptyTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: colors.text,
+    marginBottom: spacing.md,
+    textAlign: 'center',
+  },
+  emptySubtitle: {
+    fontSize: 16,
+    color: colors.textLight,
+    textAlign: 'center',
+    lineHeight: 24,
   },
   // Header Card
   headerCard: {

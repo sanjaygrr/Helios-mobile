@@ -7,9 +7,22 @@ import api from '../services/api';
 import ModalSelector from '../components/ModalSelector';
 import { useAuth } from '../context/AuthContext';
 
+
+const getIncidentColor = (type: string) => {
+    switch (type) {
+        case 'FORESTAL': return colors.success;
+        case 'ESTRUCTURAL': return colors.danger;
+        case 'RESCATE': return colors.warning;
+        case 'HAZMAT': return colors.secondary;
+        default: return colors.gray[500];
+    }
+};
+
 export default function IncidentsScreen() {
     const { user, role } = useAuth();
-    const [incidents, setIncidents] = useState([]);
+    const [incidents, setIncidents] = useState<any[]>([]);
+
+    // Incident Creation State
     const [isModalVisible, setModalVisible] = useState(false);
     const [newIncident, setNewIncident] = useState({
         title: '',
@@ -19,8 +32,20 @@ export default function IncidentsScreen() {
         longitude: 0
     });
     const [loadingLocation, setLoadingLocation] = useState(false);
+    const [showTypeSelector, setShowTypeSelector] = useState(false);
 
-    // Incident Types from Backend
+    // Dispatch State
+    const [isDispatchModalVisible, setDispatchModalVisible] = useState(false);
+    const [selectedIncidentForDispatch, setSelectedIncidentForDispatch] = useState<any>(null);
+    const [availableUnits, setAvailableUnits] = useState<any[]>([]);
+    const [selectedUnit, setSelectedUnit] = useState<any>(null);
+    const [loadingUnits, setLoadingUnits] = useState(false);
+
+    // Initial Assignment State
+    const [initialCrew, setInitialCrew] = useState('');
+    const [selectedInitialUnit, setSelectedInitialUnit] = useState<any>(null);
+
+    // Incident Types
     const incidentTypes = [
         { id: 'FORESTAL', label: 'Forestal' },
         { id: 'ESTRUCTURAL', label: 'Estructural' },
@@ -29,11 +54,15 @@ export default function IncidentsScreen() {
         { id: 'OTRO', label: 'Otro' },
     ];
 
-    const [showTypeSelector, setShowTypeSelector] = useState(false);
+    const getTypeLabel = () => {
+        const type = incidentTypes.find(t => t.id === newIncident.incident_type);
+        return type ? type.label : 'Seleccionar Tipo';
+    };
 
     useEffect(() => {
         fetchIncidents();
     }, []);
+
 
     const fetchIncidents = async () => {
         try {
@@ -44,9 +73,55 @@ export default function IncidentsScreen() {
         }
     };
 
+    // --- Dispatch Logic ---
+
+    const openDispatchModal = async (incident: any) => {
+        setSelectedIncidentForDispatch(incident);
+        setDispatchModalVisible(true);
+        setLoadingUnits(true);
+        try {
+            const res = await api.get('/units/available/');
+            setAvailableUnits(res.data);
+        } catch (error) {
+            Alert.alert("Error", "No se pudieron cargar las unidades");
+        } finally {
+            setLoadingUnits(false);
+        }
+    };
+
+    const handleDispatch = async () => {
+        if (!selectedUnit || !selectedIncidentForDispatch) return;
+
+        try {
+            await api.post('/assignments/', {
+                unit: selectedUnit.id,
+                incident: selectedIncidentForDispatch.id
+            });
+            Alert.alert("Éxito", `Unidad ${selectedUnit.name} despachada a ${selectedIncidentForDispatch.title}`);
+            setDispatchModalVisible(false);
+            setSelectedUnit(null);
+            // Optionally refresh incidents or units
+        } catch (error: any) {
+            Alert.alert("Error", error.response?.data?.error || "Error al despachar unidad");
+        }
+    };
+
+    // --- Create Incident Logic ---
+
+
+
     const handleOpenModal = async () => {
         setModalVisible(true);
         setLoadingLocation(true);
+        setLoadingUnits(true);
+
+        // Fetch Units for initial dispatch
+        try {
+            const res = await api.get('/units/available/');
+            setAvailableUnits(res.data);
+        } catch (e) { console.log("Error loading units", e); }
+        setLoadingUnits(false);
+
         try {
             let { status } = await Location.requestForegroundPermissionsAsync();
             if (status !== 'granted') {
@@ -76,62 +151,177 @@ export default function IncidentsScreen() {
         }
 
         try {
-            await api.post('/incidents/', newIncident);
+            // 1. Create Incident
+            // Append crew info to description if present
+            const finalDescription = initialCrew
+                ? `${newIncident.description}\n\nDotación Inicial: ${initialCrew}`
+                : newIncident.description;
+
+            const res = await api.post('/incidents/', {
+                ...newIncident,
+                description: finalDescription
+            });
+            const incidentId = res.data.id;
+
+            // 2. Dispatch Unit (if selected)
+            if (selectedInitialUnit) {
+                await api.post('/assignments/', {
+                    unit: selectedInitialUnit.id,
+                    incident: incidentId
+                });
+            }
+
+            // 3. Auto-Take Command (if Chief/Admin)
+            if (role === 'COMPANY_CHIEF' || role === 'SUPER_ADMIN') {
+                await api.post(`/incidents/${incidentId}/take_command/`);
+            }
+
             setModalVisible(false);
             fetchIncidents();
+            // Reset
             setNewIncident({ title: '', description: '', incident_type: 'OTRO', latitude: 0, longitude: 0 });
-            Alert.alert('Éxito', 'Emergencia reportada.');
+            setInitialCrew('');
+            setSelectedInitialUnit(null);
+
+            Alert.alert('Éxito', 'Emergencia reportada y recursos asignados.');
         } catch (error) {
-            Alert.alert('Error', 'No se pudo reportar la emergencia.');
+            console.error(error);
+            Alert.alert('Error', 'No se pudo reportar la emergencia completamente.');
         }
     };
 
-    const getTypeLabel = () => incidentTypes.find(t => t.id === newIncident.incident_type)?.label || 'Seleccionar Tipo';
+    // ... inside render Modal ... 
+    // Add UI fields:
+    /*
+        <TextInput ... description ... />
+        
+        <Text style={styles.label}>Asignación Inicial (Opcional):</Text>
+        
+        <TextInput 
+            style={styles.input}
+            placeholder="Dotación (ej: J. Pérez, M. González)"
+            value={initialCrew}
+            onChangeText={setInitialCrew}
+        />
 
-    const renderIncidentItem = ({ item }: { item: any }) => (
-        <View style={styles.card}>
-            <View style={[styles.iconBox, { backgroundColor: getIncidentColor(item.incident_type) }]}>
-                <Ionicons name="flame" size={24} color={colors.white} />
-            </View>
-            <View style={{ flex: 1, marginLeft: spacing.md }}>
-                <Text style={styles.title}>{item.title}</Text>
-                <Text style={styles.subtitle}>{item.incident_type} - {new Date(item.start_time).toLocaleString()}</Text>
-                {item.description ? <Text style={styles.desc} numberOfLines={2}>{item.description}</Text> : null}
-            </View>
-            <View style={styles.statusBadge}>
-                <View style={[styles.dot, { backgroundColor: item.is_active ? colors.success : colors.gray[400] }]} />
-            </View>
-        </View>
-    );
+        <TouchableOpacity style={styles.selectButton} onPress={() => setDispatchModalVisible(true) OR use local unit selector logic}> 
+           // Reuse dispatch modal logic OR build a simple dropdown here.
+           // Since dispatch logic exists, let's just make a simple selector here or re-use existing modal logic? 
+           // Existing dispatch modal is for specific incident. Here we are creating one. 
+           // Let's build a simple horizontal scroll or dropdown for Available Units.
+        </TouchableOpacity>
+        
+        <Text>Unidad: {selectedInitialUnit ? selectedInitialUnit.name : 'Ninguna'}</Text>
+        <FlatList horizontal data={availableUnits} ... />
+    */
 
-    const getIncidentColor = (type: string) => {
-        switch (type) {
-            case 'FORESTAL': return colors.success;
-            case 'ESTRUCTURAL': return colors.danger; // Red
-            case 'RESCATE': return colors.primary; // Blue
-            case 'HAZMAT': return colors.warning; // Orange
-            default: return colors.gray[500];
+    const handleTakeCommand = async (incidentId: number) => {
+        try {
+            await api.post(`/incidents/${incidentId}/take_command/`);
+            Alert.alert("Mando Asumido", "Ahora estás a cargo de esta emergencia.");
+            fetchIncidents();
+        } catch (error: any) {
+            Alert.alert("Error", error.response?.data?.error || "No se pudo asumir el mando.");
         }
     };
 
-    // ... inside component
-    const [status, setStatus] = useState('available');
-
-    const handleStatusChange = (newStatus: string) => {
-        const statusLabels: Record<string, string> = {
-            available: 'Disponible',
-            en_route: 'En Camino',
-            on_scene: 'En Escena',
-            returning: 'Regresando',
-        };
+    const handleCloseIncident = async (incidentId: number) => {
         Alert.alert(
-            'Cambiar Estado',
-            `Cambiar estado a "${statusLabels[newStatus]}"?`,
+            "Finalizar Emergencia",
+            "¿Estás seguro? Esto cerrará el proceso y liberará las unidades.",
             [
-                { text: 'Cancelar', style: 'cancel' },
-                { text: 'Confirmar', onPress: () => setStatus(newStatus) }
+                { text: "Cancelar", style: "cancel" },
+                {
+                    text: "Finalizar",
+                    style: "destructive",
+                    onPress: async () => {
+                        try {
+                            await api.post(`/incidents/${incidentId}/close_incident/`);
+                            Alert.alert("Finalizado", "Emergencia cerrada exitosamente.");
+                            fetchIncidents();
+                        } catch (error: any) {
+                            Alert.alert("Error", error.response?.data?.error || "No se pudo finalizar.");
+                        }
+                    }
+                }
             ]
         );
+    };
+
+    const renderIncidentItem = ({ item }: { item: any }) => {
+        const isMyCommand = item.commander === user?.id; // user.id from auth context
+
+        return (
+            <View style={styles.card}>
+                <View style={[styles.iconBox, { backgroundColor: getIncidentColor(item.incident_type) }]}>
+                    <Ionicons name="flame" size={24} color={colors.white} />
+                </View>
+                <View style={{ flex: 1, marginLeft: spacing.md }}>
+                    <Text style={styles.title}>{item.title}</Text>
+                    <Text style={styles.subtitle}>
+                        {item.incident_type} - {new Date(item.reported_at).toLocaleString()}
+                    </Text>
+
+                    {/* Commander Info */}
+                    {item.commander_name ? (
+                        <Text style={{ fontSize: 12, color: colors.primary, fontWeight: '600', marginTop: 4 }}>
+                            Comandante: {item.commander_name}
+                        </Text>
+                    ) : (
+                        <Text style={{ fontSize: 12, color: colors.gray[500], marginTop: 4 }}>Sin Comandante</Text>
+                    )}
+
+                    {item.description ? <Text style={styles.desc} numberOfLines={2}>{item.description}</Text> : null}
+
+                    {/* Action Buttons Row */}
+                    <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
+                        {/* Dispatch (Admin/Chief) */}
+                        {(role === 'SUPER_ADMIN' || role === 'COMPANY_CHIEF') && item.is_active && (
+                            <TouchableOpacity
+                                style={styles.dispatchButtonSmall}
+                                onPress={() => openDispatchModal(item)}
+                            >
+                                <Ionicons name="megaphone-outline" size={16} color={colors.primary} />
+                                <Text style={styles.dispatchButtonText}>Despachar</Text>
+                            </TouchableOpacity>
+                        )}
+
+                        {/* Take Command (Chief only, if empty) */}
+                        {(role === 'COMPANY_CHIEF' || role === 'SUPER_ADMIN') && !item.commander && item.is_active && (
+                            <TouchableOpacity
+                                style={[styles.dispatchButtonSmall, { backgroundColor: colors.secondary }]}
+                                onPress={() => handleTakeCommand(item.id)}
+                            >
+                                <Ionicons name="flag" size={16} color="white" />
+                                <Text style={[styles.dispatchButtonText, { color: 'white' }]}>Tomar Mando</Text>
+                            </TouchableOpacity>
+                        )}
+
+                        {/* Close Incident (Commander only) */}
+                        {isMyCommand && item.is_active && (
+                            <TouchableOpacity
+                                style={[styles.dispatchButtonSmall, { backgroundColor: colors.danger }]}
+                                onPress={() => handleCloseIncident(item.id)}
+                            >
+                                <Ionicons name="stop-circle" size={16} color="white" />
+                                <Text style={[styles.dispatchButtonText, { color: 'white' }]}>Finalizar</Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
+                </View>
+
+                <View style={styles.statusBadge}>
+                    <View style={[styles.dot, { backgroundColor: item.is_active ? colors.success : colors.gray[400] }]} />
+                </View>
+            </View>
+        );
+    };
+
+    // Legacy status (for current user view, simplified)
+    const [status, setStatus] = useState('available');
+    const handleStatusChange = (newStatus: string) => {
+        // This is local status, backend sync logic is separate
+        setStatus(newStatus);
     };
 
     return (
@@ -142,32 +332,10 @@ export default function IncidentsScreen() {
                 renderItem={renderIncidentItem}
                 contentContainerStyle={styles.listContent}
                 ListEmptyComponent={<Text style={styles.emptyText}>No hay emergencias activas.</Text>}
-                ListFooterComponent={
-                    <View style={styles.statusSection}>
-                        <Text style={styles.sectionTitle}>Mi Estado</Text>
-                        <View style={styles.actionsGrid}>
-                            <TouchableOpacity style={[styles.actionButton, status === 'en_route' && styles.actionButtonActive]} onPress={() => handleStatusChange('en_route')}>
-                                <Ionicons name="car" size={24} color={status === 'en_route' ? colors.white : colors.warning} />
-                                <Text style={[styles.actionButtonText, status === 'en_route' && styles.actionButtonTextActive]}>En Camino</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={[styles.actionButton, status === 'on_scene' && styles.actionButtonActive, status === 'on_scene' && { backgroundColor: colors.danger }]} onPress={() => handleStatusChange('on_scene')}>
-                                <Ionicons name="flame" size={24} color={status === 'on_scene' ? colors.white : colors.danger} />
-                                <Text style={[styles.actionButtonText, status === 'on_scene' && styles.actionButtonTextActive]}>En Escena</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={[styles.actionButton, status === 'returning' && styles.actionButtonActive, status === 'returning' && { backgroundColor: colors.info }]} onPress={() => handleStatusChange('returning')}>
-                                <Ionicons name="arrow-back-circle" size={24} color={status === 'returning' ? colors.white : colors.info} />
-                                <Text style={[styles.actionButtonText, status === 'returning' && styles.actionButtonTextActive]}>Regresando</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={[styles.actionButton, status === 'available' && styles.actionButtonActive, status === 'available' && { backgroundColor: colors.success }]} onPress={() => handleStatusChange('available')}>
-                                <Ionicons name="checkmark-circle" size={24} color={status === 'available' ? colors.white : colors.success} />
-                                <Text style={[styles.actionButtonText, status === 'available' && styles.actionButtonTextActive]}>Disponible</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                }
+                ListFooterComponent={<View style={{ height: 80 }} />}
             />
 
-            {(role === 'SUPER_ADMIN' || role === 'COMPANY_CHIEF') && (
+            {user && (
                 <TouchableOpacity
                     style={styles.fab}
                     onPress={handleOpenModal}
@@ -176,9 +344,7 @@ export default function IncidentsScreen() {
                 </TouchableOpacity>
             )}
 
-            {/* Modals ... */}
-
-
+            {/* Create Incident Modal */}
             <Modal visible={isModalVisible} transparent animationType="slide">
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
@@ -197,31 +363,124 @@ export default function IncidentsScreen() {
                                     value={newIncident.title}
                                     onChangeText={(t) => setNewIncident({ ...newIncident, title: t })}
                                 />
-
                                 <TouchableOpacity style={styles.selectButton} onPress={() => setShowTypeSelector(true)}>
                                     <Text>{getTypeLabel()}</Text>
                                     <Ionicons name="chevron-down" size={20} color={colors.gray[500]} />
                                 </TouchableOpacity>
-
                                 <TextInput
                                     style={[styles.input, styles.textArea]}
                                     placeholder="Descripción (Opcional)"
                                     value={newIncident.description}
                                     onChangeText={(t) => setNewIncident({ ...newIncident, description: t })}
-                                    multiline
-                                    numberOfLines={3}
+                                    multiline numberOfLines={3}
                                 />
+
+                                {/* Initial Assignment Section */}
+                                <Text style={{ fontWeight: 'bold', marginBottom: 5, marginTop: 10, color: colors.gray[600] }}>Recursos Iniciales (Opcional):</Text>
+
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="Dotación / Personal (ej: 4 Bomberos)"
+                                    value={initialCrew}
+                                    onChangeText={setInitialCrew}
+                                />
+
+                                <Text style={{ fontSize: 12, marginBottom: 5, color: colors.gray[500] }}>Unidad a Utilizar (Despacho inmediato):</Text>
+                                {availableUnits.length > 0 ? (
+                                    <View style={{ height: 50, marginBottom: 15 }}>
+                                        <FlatList
+                                            horizontal
+                                            data={availableUnits}
+                                            showsHorizontalScrollIndicator={false}
+                                            keyExtractor={u => u.id.toString()}
+                                            renderItem={({ item }) => (
+                                                <TouchableOpacity
+                                                    style={[
+                                                        styles.unitChip,
+                                                        selectedInitialUnit?.id === item.id && styles.unitChipSelected
+                                                    ]}
+                                                    onPress={() => setSelectedInitialUnit(item === selectedInitialUnit ? null : item)}
+                                                >
+                                                    <Text style={[
+                                                        styles.unitChipText,
+                                                        selectedInitialUnit?.id === item.id && { color: 'white' }
+                                                    ]}>{item.name}</Text>
+                                                </TouchableOpacity>
+                                            )}
+                                        />
+                                    </View>
+                                ) : (
+                                    <Text style={{ fontStyle: 'italic', color: colors.gray[400], marginBottom: 10 }}>No hay unidades disponibles</Text>
+                                )}
+
 
                                 <Text style={styles.locationText}>
                                     Ubicación: {newIncident.latitude.toFixed(5)}, {newIncident.longitude.toFixed(5)}
                                 </Text>
-
                                 <View style={styles.modalButtons}>
                                     <TouchableOpacity style={styles.cancelButton} onPress={() => setModalVisible(false)}>
                                         <Text>Cancelar</Text>
                                     </TouchableOpacity>
                                     <TouchableOpacity style={styles.createButton} onPress={handleCreateIncident}>
                                         <Text style={styles.createButtonText}>Reportar</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </>
+                        )}
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Dispatch Modal */}
+            <Modal visible={isDispatchModalVisible} transparent animationType="slide">
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <Text style={styles.modalTitle}>Despachar Unidad</Text>
+                        <Text style={styles.modalSubtitle}>Incidente: {selectedIncidentForDispatch?.title}</Text>
+
+                        {loadingUnits ? (
+                            <ActivityIndicator size="large" color={colors.primary} />
+                        ) : (
+                            <>
+                                <Text style={{ marginBottom: 10, fontWeight: 'bold', color: colors.gray[600] }}>Unidades Disponibles:</Text>
+                                {availableUnits.length === 0 ? (
+                                    <Text style={{ fontStyle: 'italic', marginBottom: 20 }}>No hay unidades disponibles.</Text>
+                                ) : (
+                                    <View style={{ maxHeight: 200 }}>
+                                        <FlatList
+                                            data={availableUnits}
+                                            keyExtractor={(u) => u.id.toString()}
+                                            renderItem={({ item }) => (
+                                                <TouchableOpacity
+                                                    style={[
+                                                        styles.unitItem,
+                                                        selectedUnit?.id === item.id && styles.unitItemSelected
+                                                    ]}
+                                                    onPress={() => setSelectedUnit(item)}
+                                                >
+                                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                                                        <Ionicons name="bus" size={20} color={selectedUnit?.id === item.id ? colors.white : colors.primary} />
+                                                        <Text style={[styles.unitItemText, selectedUnit?.id === item.id && { color: 'white' }]}>
+                                                            {item.name} ({item.type_display})
+                                                        </Text>
+                                                    </View>
+                                                    {selectedUnit?.id === item.id && <Ionicons name="checkmark" size={20} color="white" />}
+                                                </TouchableOpacity>
+                                            )}
+                                        />
+                                    </View>
+                                )}
+
+                                <View style={styles.modalButtons}>
+                                    <TouchableOpacity style={styles.cancelButton} onPress={() => setDispatchModalVisible(false)}>
+                                        <Text>Cancelar</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={[styles.createButton, (!selectedUnit) && { backgroundColor: colors.gray[400] }]}
+                                        onPress={handleDispatch}
+                                        disabled={!selectedUnit}
+                                    >
+                                        <Text style={styles.createButtonText}>Confirmar Despacho</Text>
                                     </TouchableOpacity>
                                 </View>
                             </>
@@ -246,7 +505,7 @@ const styles = StyleSheet.create({
     listContent: { padding: spacing.md },
     card: {
         backgroundColor: colors.white, padding: spacing.md, borderRadius: borderRadius.md, marginBottom: spacing.sm,
-        flexDirection: 'row', alignItems: 'center', elevation: 2
+        flexDirection: 'row', alignItems: 'flex-start', elevation: 2
     },
     iconBox: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
     title: { fontSize: 16, fontWeight: 'bold' },
@@ -261,12 +520,13 @@ const styles = StyleSheet.create({
     },
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: spacing.lg },
     modalContent: { backgroundColor: colors.white, borderRadius: borderRadius.lg, padding: spacing.xl },
-    modalTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: spacing.lg, textAlign: 'center' },
+    modalTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: spacing.sm, textAlign: 'center' },
+    modalSubtitle: { fontSize: 14, color: colors.gray[600], marginBottom: spacing.lg, textAlign: 'center' },
     input: { backgroundColor: colors.gray[100], padding: spacing.md, borderRadius: borderRadius.md, marginBottom: spacing.md },
     textArea: { height: 80, textAlignVertical: 'top' },
     loadingContainer: { alignItems: 'center', padding: spacing.xl },
     locationText: { fontSize: 12, color: colors.gray[500], marginBottom: spacing.md },
-    modalButtons: { flexDirection: 'row', justifyContent: 'flex-end', gap: spacing.md },
+    modalButtons: { flexDirection: 'row', justifyContent: 'flex-end', gap: spacing.md, marginTop: 20 },
     cancelButton: { padding: spacing.md },
     createButton: { backgroundColor: colors.danger, padding: spacing.md, borderRadius: borderRadius.md },
     createButtonText: { color: colors.white, fontWeight: '600' },
@@ -274,15 +534,27 @@ const styles = StyleSheet.create({
         flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
         backgroundColor: colors.gray[100], padding: spacing.md, borderRadius: borderRadius.md, marginBottom: spacing.md
     },
-    // Status Styles
-    statusSection: { marginTop: spacing.lg, padding: spacing.md, backgroundColor: colors.white, borderRadius: borderRadius.lg, elevation: 2 },
-    sectionTitle: { fontSize: 16, fontWeight: 'bold', marginBottom: spacing.md },
-    actionsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-    actionButton: {
-        width: '48%', backgroundColor: colors.gray[50], borderRadius: borderRadius.lg, padding: spacing.md,
-        alignItems: 'center', justifyContent: 'center', gap: spacing.sm, borderWidth: 1, borderColor: colors.gray[200]
+    dispatchButtonSmall: {
+        flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8,
+        paddingVertical: 4, paddingHorizontal: 8,
+        backgroundColor: colors.gray[100], borderRadius: 4, alignSelf: 'flex-start'
     },
-    actionButtonActive: { backgroundColor: colors.warning, borderColor: 'transparent' },
-    actionButtonText: { fontSize: 13, fontWeight: '600', color: colors.text },
-    actionButtonTextActive: { color: colors.white },
+    dispatchButtonText: { fontSize: 12, fontWeight: '600', color: colors.primary },
+    unitItem: {
+        flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+        padding: 12, borderRadius: 8, backgroundColor: colors.gray[50], marginBottom: 8,
+        borderWidth: 1, borderColor: colors.gray[200]
+    },
+    unitItemSelected: {
+        backgroundColor: colors.primary, borderColor: colors.primary
+    },
+    unitItemText: { fontWeight: '600', color: colors.text },
+    unitChip: {
+        paddingVertical: 8, paddingHorizontal: 12, borderRadius: 20,
+        backgroundColor: colors.gray[100], marginRight: 8, borderWidth: 1, borderColor: colors.gray[300]
+    },
+    unitChipSelected: {
+        backgroundColor: colors.primary, borderColor: colors.primary
+    },
+    unitChipText: { fontSize: 13, fontWeight: '600', color: colors.gray[700] }
 });
