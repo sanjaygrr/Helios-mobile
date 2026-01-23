@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Modal, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Modal, Alert, ActivityIndicator, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { colors, spacing, borderRadius } from '../theme/colors';
 import api from '../services/api';
 import ModalSelector from '../components/ModalSelector';
+import PersonnelForm, { SectionMember } from '../components/PersonnelForm';
 import { useAuth } from '../context/AuthContext';
 
 
@@ -42,8 +43,11 @@ export default function IncidentsScreen() {
     const [loadingUnits, setLoadingUnits] = useState(false);
 
     // Initial Assignment State
-    const [initialCrew, setInitialCrew] = useState('');
+    const [personnelList, setPersonnelList] = useState<SectionMember[]>([]);
     const [selectedInitialUnit, setSelectedInitialUnit] = useState<any>(null);
+    const [availableVehicles, setAvailableVehicles] = useState<any[]>([]);
+    const [selectedVehicle, setSelectedVehicle] = useState<any>(null);
+
 
     // Incident Types
     const incidentTypes = [
@@ -108,8 +112,6 @@ export default function IncidentsScreen() {
 
     // --- Create Incident Logic ---
 
-
-
     const handleOpenModal = async () => {
         setModalVisible(true);
         setLoadingLocation(true);
@@ -119,7 +121,23 @@ export default function IncidentsScreen() {
         try {
             const res = await api.get('/units/available/');
             setAvailableUnits(res.data);
+
+            // Pre-select chief's unit if they are a chief
+            if (role === 'COMPANY_CHIEF') {
+                // Try to find user's assigned unit
+                const userUnit = res.data.find((unit: any) => unit.assigned_to === user?.id);
+                if (userUnit) {
+                    setSelectedInitialUnit(userUnit);
+                }
+            }
         } catch (e) { console.log("Error loading units", e); }
+
+        // Fetch Vehicles
+        try {
+            const vehiclesRes = await api.get('/units/'); // Assuming vehicles are units or separate endpoint
+            setAvailableVehicles(vehiclesRes.data);
+        } catch (e) { console.log("Error loading vehicles", e); }
+
         setLoadingUnits(false);
 
         try {
@@ -151,15 +169,22 @@ export default function IncidentsScreen() {
         }
 
         try {
-            // 1. Create Incident
-            // Append crew info to description if present
-            const finalDescription = initialCrew
-                ? `${newIncident.description}\n\nDotación Inicial: ${initialCrew}`
-                : newIncident.description;
+            // 1. Format Personnel Data
+            let personnelDescription = '';
+            if (personnelList.length > 0) {
+                personnelDescription = '\n\n--- PERSONAL CONCURRENTE (Form. IF-AC-3) ---\n';
+                personnelList.forEach((m, idx) => {
+                    personnelDescription += `${idx + 1}. ${m.firstName} ${m.lastName} | RUT: ${m.rut} | ${m.role} | ${m.company}\n`;
+                });
+            }
+
+            // Append formatted crew info to description
+            const finalDescription = newIncident.description + personnelDescription;
 
             const res = await api.post('/incidents/', {
                 ...newIncident,
-                description: finalDescription
+                description: finalDescription,
+                vehicle: selectedVehicle?.id // Include vehicle if selected
             });
             const incidentId = res.data.id;
 
@@ -180,8 +205,9 @@ export default function IncidentsScreen() {
             fetchIncidents();
             // Reset
             setNewIncident({ title: '', description: '', incident_type: 'OTRO', latitude: 0, longitude: 0 });
-            setInitialCrew('');
+            setPersonnelList([]);
             setSelectedInitialUnit(null);
+            setSelectedVehicle(null);
 
             Alert.alert('Éxito', 'Emergencia reportada y recursos asignados.');
         } catch (error) {
@@ -190,31 +216,6 @@ export default function IncidentsScreen() {
         }
     };
 
-    // ... inside render Modal ... 
-    // Add UI fields:
-    /*
-        <TextInput ... description ... />
-        
-        <Text style={styles.label}>Asignación Inicial (Opcional):</Text>
-        
-        <TextInput 
-            style={styles.input}
-            placeholder="Dotación (ej: J. Pérez, M. González)"
-            value={initialCrew}
-            onChangeText={setInitialCrew}
-        />
-
-        <TouchableOpacity style={styles.selectButton} onPress={() => setDispatchModalVisible(true) OR use local unit selector logic}> 
-           // Reuse dispatch modal logic OR build a simple dropdown here.
-           // Since dispatch logic exists, let's just make a simple selector here or re-use existing modal logic? 
-           // Existing dispatch modal is for specific incident. Here we are creating one. 
-           // Let's build a simple horizontal scroll or dropdown for Available Units.
-        </TouchableOpacity>
-        
-        <Text>Unidad: {selectedInitialUnit ? selectedInitialUnit.name : 'Ninguna'}</Text>
-        <FlatList horizontal data={availableUnits} ... />
-    */
-
     const handleTakeCommand = async (incidentId: number) => {
         try {
             await api.post(`/incidents/${incidentId}/take_command/`);
@@ -222,6 +223,16 @@ export default function IncidentsScreen() {
             fetchIncidents();
         } catch (error: any) {
             Alert.alert("Error", error.response?.data?.error || "No se pudo asumir el mando.");
+        }
+    };
+
+    const handleUpdateStatus = async (incidentId: number, newStatus: string) => {
+        try {
+            await api.patch(`/incidents/${incidentId}/`, { status: newStatus });
+            Alert.alert("Estado Actualizado", `Incidente marcado como ${newStatus.replace('_', ' ')}`);
+            fetchIncidents();
+        } catch (error: any) {
+            Alert.alert("Error", error.response?.data?.error || "No se pudo actualizar el estado.");
         }
     };
 
@@ -265,7 +276,7 @@ export default function IncidentsScreen() {
                     {/* Commander Info */}
                     {item.commander_name ? (
                         <Text style={{ fontSize: 12, color: colors.primary, fontWeight: '600', marginTop: 4 }}>
-                            Comandante: {item.commander_name}
+                            Jefe de Compañía: {item.commander_name}
                         </Text>
                     ) : (
                         <Text style={{ fontSize: 12, color: colors.gray[500], marginTop: 4 }}>Sin Comandante</Text>
@@ -297,6 +308,26 @@ export default function IncidentsScreen() {
                             </TouchableOpacity>
                         )}
 
+                        {/* Quick Status Buttons (Commander only) */}
+                        {isMyCommand && item.is_active && (
+                            <>
+                                <TouchableOpacity
+                                    style={[styles.dispatchButtonSmall, { backgroundColor: colors.warning }]}
+                                    onPress={() => handleUpdateStatus(item.id, 'EN_PROGRESO')}
+                                >
+                                    <Ionicons name="time" size={16} color="white" />
+                                    <Text style={[styles.dispatchButtonText, { color: 'white' }]}>En Progreso</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.dispatchButtonSmall, { backgroundColor: colors.success }]}
+                                    onPress={() => handleUpdateStatus(item.id, 'BAJO_CONTROL')}
+                                >
+                                    <Ionicons name="checkmark-circle" size={16} color="white" />
+                                    <Text style={[styles.dispatchButtonText, { color: 'white' }]}>Bajo Control</Text>
+                                </TouchableOpacity>
+                            </>
+                        )}
+
                         {/* Close Incident (Commander only) */}
                         {isMyCommand && item.is_active && (
                             <TouchableOpacity
@@ -315,13 +346,6 @@ export default function IncidentsScreen() {
                 </View>
             </View>
         );
-    };
-
-    // Legacy status (for current user view, simplified)
-    const [status, setStatus] = useState('available');
-    const handleStatusChange = (newStatus: string) => {
-        // This is local status, backend sync logic is separate
-        setStatus(newStatus);
     };
 
     return (
@@ -350,83 +374,111 @@ export default function IncidentsScreen() {
                     <View style={styles.modalContent}>
                         <Text style={styles.modalTitle}>Reportar Emergencia</Text>
 
-                        {loadingLocation ? (
-                            <View style={styles.loadingContainer}>
-                                <ActivityIndicator size="large" color={colors.primary} />
-                                <Text>Obteniendo ubicación...</Text>
-                            </View>
-                        ) : (
-                            <>
-                                <TextInput
-                                    style={styles.input}
-                                    placeholder="Título (ej: Incendio en Sector 5)"
-                                    value={newIncident.title}
-                                    onChangeText={(t) => setNewIncident({ ...newIncident, title: t })}
-                                />
-                                <TouchableOpacity style={styles.selectButton} onPress={() => setShowTypeSelector(true)}>
-                                    <Text>{getTypeLabel()}</Text>
-                                    <Ionicons name="chevron-down" size={20} color={colors.gray[500]} />
-                                </TouchableOpacity>
-                                <TextInput
-                                    style={[styles.input, styles.textArea]}
-                                    placeholder="Descripción (Opcional)"
-                                    value={newIncident.description}
-                                    onChangeText={(t) => setNewIncident({ ...newIncident, description: t })}
-                                    multiline numberOfLines={3}
-                                />
-
-                                {/* Initial Assignment Section */}
-                                <Text style={{ fontWeight: 'bold', marginBottom: 5, marginTop: 10, color: colors.gray[600] }}>Recursos Iniciales (Opcional):</Text>
-
-                                <TextInput
-                                    style={styles.input}
-                                    placeholder="Dotación / Personal (ej: 4 Bomberos)"
-                                    value={initialCrew}
-                                    onChangeText={setInitialCrew}
-                                />
-
-                                <Text style={{ fontSize: 12, marginBottom: 5, color: colors.gray[500] }}>Unidad a Utilizar (Despacho inmediato):</Text>
-                                {availableUnits.length > 0 ? (
-                                    <View style={{ height: 50, marginBottom: 15 }}>
-                                        <FlatList
-                                            horizontal
-                                            data={availableUnits}
-                                            showsHorizontalScrollIndicator={false}
-                                            keyExtractor={u => u.id.toString()}
-                                            renderItem={({ item }) => (
-                                                <TouchableOpacity
-                                                    style={[
-                                                        styles.unitChip,
-                                                        selectedInitialUnit?.id === item.id && styles.unitChipSelected
-                                                    ]}
-                                                    onPress={() => setSelectedInitialUnit(item === selectedInitialUnit ? null : item)}
-                                                >
-                                                    <Text style={[
-                                                        styles.unitChipText,
-                                                        selectedInitialUnit?.id === item.id && { color: 'white' }
-                                                    ]}>{item.name}</Text>
-                                                </TouchableOpacity>
-                                            )}
-                                        />
-                                    </View>
-                                ) : (
-                                    <Text style={{ fontStyle: 'italic', color: colors.gray[400], marginBottom: 10 }}>No hay unidades disponibles</Text>
-                                )}
-
-
-                                <Text style={styles.locationText}>
-                                    Ubicación: {newIncident.latitude.toFixed(5)}, {newIncident.longitude.toFixed(5)}
-                                </Text>
-                                <View style={styles.modalButtons}>
-                                    <TouchableOpacity style={styles.cancelButton} onPress={() => setModalVisible(false)}>
-                                        <Text>Cancelar</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity style={styles.createButton} onPress={handleCreateIncident}>
-                                        <Text style={styles.createButtonText}>Reportar</Text>
-                                    </TouchableOpacity>
+                        <ScrollView style={{ maxHeight: '80%' }}>
+                            {loadingLocation ? (
+                                <View style={styles.loadingContainer}>
+                                    <ActivityIndicator size="large" color={colors.primary} />
+                                    <Text>Obteniendo ubicación...</Text>
                                 </View>
-                            </>
-                        )}
+                            ) : (
+                                <>
+                                    <TextInput
+                                        style={styles.input}
+                                        placeholder="Título (ej: Incendio en Sector 5)"
+                                        value={newIncident.title}
+                                        onChangeText={(t) => setNewIncident({ ...newIncident, title: t })}
+                                    />
+                                    <TouchableOpacity style={styles.selectButton} onPress={() => setShowTypeSelector(true)}>
+                                        <Text>{getTypeLabel()}</Text>
+                                        <Ionicons name="chevron-down" size={20} color={colors.gray[500]} />
+                                    </TouchableOpacity>
+                                    <TextInput
+                                        style={[styles.input, styles.textArea]}
+                                        placeholder="Descripción (Opcional)"
+                                        value={newIncident.description}
+                                        onChangeText={(t) => setNewIncident({ ...newIncident, description: t })}
+                                        multiline numberOfLines={3}
+                                    />
+
+                                    <Text style={{ fontWeight: 'bold', marginBottom: 5, marginTop: 10, color: colors.gray[600] }}>Recursos Iniciales (Opcional):</Text>
+
+                                    <PersonnelForm
+                                        initialMembers={personnelList}
+                                        onChange={setPersonnelList}
+                                    />
+
+                                    <Text style={{ fontSize: 12, marginBottom: 5, color: colors.gray[500], marginTop: 15 }}>Unidad a Utilizar (Despacho inmediato):</Text>
+                                    {availableUnits.length > 0 ? (
+                                        <View style={{ height: 50, marginBottom: 15 }}>
+                                            <FlatList
+                                                horizontal
+                                                data={availableUnits}
+                                                showsHorizontalScrollIndicator={false}
+                                                keyExtractor={u => u.id.toString()}
+                                                renderItem={({ item }) => (
+                                                    <TouchableOpacity
+                                                        style={[
+                                                            styles.unitChip,
+                                                            selectedInitialUnit?.id === item.id && styles.unitChipSelected
+                                                        ]}
+                                                        onPress={() => setSelectedInitialUnit(item === selectedInitialUnit ? null : item)}
+                                                    >
+                                                        <Text style={[
+                                                            styles.unitChipText,
+                                                            selectedInitialUnit?.id === item.id && { color: 'white' }
+                                                        ]}>{item.name}</Text>
+                                                    </TouchableOpacity>
+                                                )}
+                                            />
+                                        </View>
+                                    ) : (
+                                        <Text style={{ fontStyle: 'italic', color: colors.gray[400], marginBottom: 10 }}>No hay unidades disponibles</Text>
+                                    )}
+
+                                    {/* Vehicle Selector */}
+                                    <Text style={{ fontSize: 12, marginBottom: 5, marginTop: 15, color: colors.gray[500] }}>Vehículo a Utilizar (Opcional):</Text>
+                                    {availableVehicles.length > 0 ? (
+                                        <View style={{ height: 50, marginBottom: 15 }}>
+                                            <FlatList
+                                                horizontal
+                                                data={availableVehicles}
+                                                showsHorizontalScrollIndicator={false}
+                                                keyExtractor={v => v.id.toString()}
+                                                renderItem={({ item }) => (
+                                                    <TouchableOpacity
+                                                        style={[
+                                                            styles.unitChip,
+                                                            selectedVehicle?.id === item.id && styles.unitChipSelected
+                                                        ]}
+                                                        onPress={() => setSelectedVehicle(item === selectedVehicle ? null : item)}
+                                                    >
+                                                        <Text style={[
+                                                            styles.unitChipText,
+                                                            selectedVehicle?.id === item.id && { color: 'white' }
+                                                        ]}>{item.name}</Text>
+                                                    </TouchableOpacity>
+                                                )}
+                                            />
+                                        </View>
+                                    ) : (
+                                        <Text style={{ fontStyle: 'italic', color: colors.gray[400], marginBottom: 10 }}>No hay vehículos disponibles</Text>
+                                    )}
+
+
+                                    <Text style={styles.locationText}>
+                                        Ubicación: {newIncident.latitude.toFixed(5)}, {newIncident.longitude.toFixed(5)}
+                                    </Text>
+                                    <View style={styles.modalButtons}>
+                                        <TouchableOpacity style={styles.cancelButton} onPress={() => setModalVisible(false)}>
+                                            <Text>Cancelar</Text>
+                                        </TouchableOpacity>
+                                        <TouchableOpacity style={styles.createButton} onPress={handleCreateIncident}>
+                                            <Text style={styles.createButtonText}>Reportar</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                </>
+                            )}
+                        </ScrollView>
                     </View>
                 </View>
             </Modal>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   View,
@@ -6,9 +6,12 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius, shadows, typography } from '../theme/colors';
+import { useAuth } from '../context/AuthContext';
+import api from '../services/api';
 
 type UnitStatus = 'available' | 'en_route' | 'on_scene' | 'returning';
 
@@ -20,10 +23,28 @@ interface TeamMember {
 }
 
 export default function UnitScreen() {
-  // Inicialmente NULO como pidió el usuario ("no debería haber nada de momento")
-  // Esto se poblará cuando "se hace el formulario -> se crea la unidad"
+  const { user } = useAuth();
   const [unitData, setUnitData] = useState<any>(null);
   const [status, setStatus] = useState<UnitStatus>('available');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchUserUnit();
+  }, []);
+
+  const fetchUserUnit = async () => {
+    try {
+      // Try to get user's assigned unit
+      const res = await api.get('/assignments/my_unit/');
+      if (res.data) {
+        setUnitData(res.data);
+      }
+    } catch (error) {
+      console.log('No unit assigned or error fetching unit:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getStatusConfig = (currentStatus: UnitStatus) => {
     const configs = {
@@ -76,6 +97,16 @@ export default function UnitScreen() {
     );
   };
 
+  // --- LOADING STATE ---
+  if (loading) {
+    return (
+      <View style={styles.emptyContainer}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={{ marginTop: spacing.md, color: colors.textLight }}>Cargando unidad...</Text>
+      </View>
+    );
+  }
+
   // --- EMPTY STATE VIEW ---
   if (!unitData) {
     return (
@@ -89,13 +120,6 @@ export default function UnitScreen() {
           {"\n"}
           Cuando se despache una emergencia, verás los detalles aquí.
         </Text>
-
-        {/* Botón simulación para demo (Opcional, puede ser removido prod) */}
-        {/* 
-              <TouchableOpacity onPress={() => setUnitData({ name: 'BX-3', type: 'Simulada' })} style={{ marginTop: 20 }}>
-                  <Text style={{ color: colors.primary }}>[DEV: Simular Asignación]</Text>
-              </TouchableOpacity> 
-              */}
       </View>
     );
   }

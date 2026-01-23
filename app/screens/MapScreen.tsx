@@ -5,7 +5,8 @@ import {
   Text,
   TouchableOpacity,
   ActivityIndicator,
-  Platform
+  Platform,
+  ScrollView
 } from 'react-native';
 import MapView, { Marker, PROVIDER_DEFAULT, PROVIDER_GOOGLE, Region } from 'react-native-maps';
 import * as Location from 'expo-location';
@@ -32,6 +33,9 @@ interface OtherUser {
   longitude: number;
   role?: string;
   email?: string;
+  rut?: string;
+  assigned_vehicle?: string;
+  companions?: string[];
   assigned_incident?: {
     id: number;
     title: string;
@@ -67,26 +71,35 @@ const FireMarker = React.memo(({ fire, color }: { fire: FirePoint; color: string
 
 // Custom User Marker Wrapper
 const UserMarker = ({ coordinate, role, isSelf = false, onPress }: any) => {
-  // Icons need to always track view changes initially or they might be invisible on some Androids
+  const [tracksViewChanges, setTracksViewChanges] = React.useState(true);
+
+  // Stop tracking after initial render to prevent iOS disappearance
+  React.useEffect(() => {
+    const timer = setTimeout(() => setTracksViewChanges(false), 2000);
+    return () => clearTimeout(timer);
+  }, []);
+
   const getIcon = () => {
     // Jefe -> Fire Truck
     if (role === 'COMPANY_CHIEF') {
-      return <MaterialCommunityIcons name="fire-truck" size={isSelf ? 28 : 24} color={colors.white} />;
+      return <MaterialCommunityIcons name="fire-truck" size={isSelf ? 32 : 28} color={colors.white} />;
     }
-    // Comandante -> Hard Hat
+    // Administración -> mostrar como Jefe de Compañía también
     if (role === 'SUPER_ADMIN' || role === 'COMPANY_ADMIN') {
-      return <MaterialCommunityIcons name="hard-hat" size={isSelf ? 28 : 24} color={colors.white} />;
+      return <MaterialCommunityIcons name="hard-hat" size={isSelf ? 32 : 28} color={colors.white} />;
     }
     // Firefighter -> Person with Helmet (account-hard-hat)
-    return <MaterialCommunityIcons name="account-hard-hat" size={isSelf ? 28 : 24} color={colors.white} />;
+    return <MaterialCommunityIcons name="account-hard-hat" size={isSelf ? 32 : 28} color={colors.white} />;
   };
 
   return (
     <Marker
       coordinate={coordinate}
       zIndex={isSelf ? 999 : 990}
-      tracksViewChanges={true} // Always track for users to prevent invisible icons
+      tracksViewChanges={tracksViewChanges}
       onPress={onPress}
+      onSelect={onPress}
+      anchor={{ x: 0.5, y: 0.5 }}
     >
       <View style={isSelf ? styles.myLocationMarker : styles.otherUserMarker}>
         {getIcon()}
@@ -123,7 +136,7 @@ export default function MapScreen() {
 
   const getUserLabel = (u: OtherUser) => {
     if (u.role === 'COMPANY_CHIEF') return 'Jefe de Compañía';
-    if (u.role === 'SUPER_ADMIN' || u.role === 'COMPANY_ADMIN') return 'Comandante';
+    if (u.role === 'SUPER_ADMIN' || u.role === 'COMPANY_ADMIN') return 'Jefe de Compañía';
     return `Usuario ${u.id}`;
   };
 
@@ -155,7 +168,7 @@ export default function MapScreen() {
       f.longitude >= minLng && f.longitude <= maxLng
     );
 
-    // Sort closest 60
+    // Sort closest
     inViewport.sort((a, b) => {
       const distA = Math.pow(a.latitude - currentRegion.latitude, 2) + Math.pow(a.longitude - currentRegion.longitude, 2);
       const distB = Math.pow(b.latitude - currentRegion.latitude, 2) + Math.pow(b.longitude - currentRegion.longitude, 2);
@@ -317,6 +330,20 @@ export default function MapScreen() {
         )}
       </View>
 
+      {/* Wind Info Widget (Top-Right) */}
+      {weatherData && (
+        <View style={styles.windWidget}>
+          <View style={{ position: 'relative', alignItems: 'center', marginBottom: 4 }}>
+            <MaterialCommunityIcons name="compass-rose" size={24} color={colors.white} style={{ opacity: 0.35 }} />
+            <Ionicons name="navigate" size={18} color={colors.white} style={{ position: 'absolute', transform: [{ rotate: `${weatherData.wind.deg || 0}deg` }] }} />
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Text style={styles.windText}>{Math.round(weatherData.wind.speed * 3.6)} km/h</Text>
+          </View>
+          <Text style={styles.windSubtext}>{Math.round(weatherData.main.temp)}°C</Text>
+        </View>
+      )}
+
       {/* Info Card (Dynamic) */}
       {selectedItem && (
         <View style={styles.infoCard}>
@@ -330,11 +357,10 @@ export default function MapScreen() {
               </View>
               <View>
                 <Text style={styles.infoTitle}>
-                  {selectedItem.role === 'COMPANY_CHIEF' ? 'Jefe de Compañía' :
-                    selectedItem.role?.includes('ADMIN') ? 'Comandante' :
-                      'Voluntario'}
+                  {selectedItem.role === 'COMPANY_CHIEF' || selectedItem.role?.includes('ADMIN') ? 'Jefe de Compañía' : 'Voluntario'}
                 </Text>
                 <Text style={styles.infoSubtitle}>ID: {selectedItem.id}</Text>
+                {selectedItem.rut && <Text style={styles.infoSubtitle}>{selectedItem.rut}</Text>}
               </View>
             </View>
             <TouchableOpacity onPress={() => setSelectedItem(null)}>
@@ -342,24 +368,51 @@ export default function MapScreen() {
             </TouchableOpacity>
           </View>
 
-          <View style={styles.infoGrid}>
-            {/* Contextual Info based on Role */}
-            {selectedItem.role === 'COMPANY_CHIEF' && (
+          <ScrollView style={styles.infoGrid} showsVerticalScrollIndicator={false}>
+            {/* Status if inactive */}
+            {!selectedItem.assigned_incident && (
+              <View style={[styles.incidentRow, { backgroundColor: colors.gray[200] }]}>
+                <Ionicons name="moon" size={16} color={colors.gray[600]} />
+                <Text style={[styles.incidentText, { color: colors.gray[600] }]}>Inactivo</Text>
+              </View>
+            )}
+
+            {/* Incident Info */}
+            {selectedItem.assigned_incident && (
               <View style={styles.incidentRow}>
-                <Ionicons name="alert-circle" size={16} color={selectedItem.assigned_incident ? colors.danger : colors.gray[400]} />
-                <Text style={[styles.incidentText, !selectedItem.assigned_incident && { color: colors.gray[400] }]}>
-                  {selectedItem.assigned_incident
-                    ? `Mando: ${selectedItem.assigned_incident.title}`
-                    : 'Sin emergencia asignada'}
+                <Ionicons name="alert-circle" size={16} color={colors.danger} />
+                <Text style={styles.incidentText}>
+                  Mando: {selectedItem.assigned_incident.title}
                 </Text>
+              </View>
+            )}
+
+            {/* Vehicle for Chief */}
+            {selectedItem.role === 'COMPANY_CHIEF' && selectedItem.assigned_vehicle && (
+              <View style={styles.detailRow}>
+                <MaterialCommunityIcons name="fire-truck" size={16} color={colors.primary} />
+                <Text style={styles.detailText}>Carro: {selectedItem.assigned_vehicle}</Text>
+              </View>
+            )}
+
+            {/* Companions for Chief */}
+            {selectedItem.role === 'COMPANY_CHIEF' && selectedItem.companions && selectedItem.companions.length > 0 && (
+              <View style={[styles.detailRow, { alignItems: 'flex-start' }]}>
+                <MaterialCommunityIcons name="account-group" size={16} color={colors.text} style={{ marginTop: 2 }} />
+                <View>
+                  <Text style={[styles.detailText, { fontWeight: 'bold' }]}>Tripulación:</Text>
+                  {selectedItem.companions.map((companion, idx) => (
+                    <Text key={idx} style={styles.detailSubText}>• {companion}</Text>
+                  ))}
+                </View>
               </View>
             )}
 
             {/* Location Data */}
             <Text style={styles.coordsText}>
-              Last seen: {selectedItem.latitude.toFixed(5)}, {selectedItem.longitude.toFixed(5)}
+              Loc: {selectedItem.latitude.toFixed(5)}, {selectedItem.longitude.toFixed(5)}
             </Text>
-          </View>
+          </ScrollView>
         </View>
       )}
 
@@ -407,18 +460,22 @@ const styles = StyleSheet.create({
 
   // Markers
   myLocationMarker: {
-    width: 44, height: 44, borderRadius: 22,
+    width: 48, height: 48, borderRadius: 24,
     backgroundColor: colors.primary,
     borderWidth: 3, borderColor: 'white',
     alignItems: 'center', justifyContent: 'center',
-    ...shadows.md
+    overflow: 'visible',
+    padding: 2,
+    ...shadows.lg
   },
   otherUserMarker: {
-    width: 40, height: 40, borderRadius: 20,
+    width: 44, height: 44, borderRadius: 22,
     backgroundColor: colors.secondary, // Blueish typically
     borderWidth: 2, borderColor: 'white',
     alignItems: 'center', justifyContent: 'center',
-    ...shadows.sm
+    overflow: 'visible',
+    padding: 2,
+    ...shadows.md
   },
 
   // Cards
@@ -435,6 +492,7 @@ const styles = StyleSheet.create({
   infoCard: {
     position: 'absolute', bottom: 100, left: 20, right: 20,
     backgroundColor: 'white', padding: 15, borderRadius: 15,
+    maxHeight: 250, // Limit height if companions list is long
     ...shadows.lg
   },
   infoHeader: {
@@ -451,7 +509,13 @@ const styles = StyleSheet.create({
   incidentText: {
     fontSize: 13, fontWeight: '600', color: colors.text
   },
-  coordsText: { fontSize: 12, fontFamily: 'monospace', color: colors.gray[500], marginTop: 4 },
+  detailRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    marginVertical: 2, paddingHorizontal: 4
+  },
+  detailText: { fontSize: 13, color: colors.text },
+  detailSubText: { fontSize: 12, color: colors.textLight, marginLeft: 0 },
+  coordsText: { fontSize: 12, fontFamily: 'monospace', color: colors.gray[500], marginTop: 8 },
 
   // FABs
   controlsContainer: {
@@ -471,5 +535,29 @@ const styles = StyleSheet.create({
   },
   fabActive: {
     backgroundColor: colors.primary
+  },
+
+  // Wind Widget
+  windWidget: {
+    position: 'absolute',
+    top: 60,
+    right: 20,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    padding: 10,
+    borderRadius: 12,
+    minWidth: 100,
+    alignItems: 'center',
+    ...shadows.md
+  },
+  windText: {
+    color: colors.white,
+    fontSize: 14,
+    fontWeight: '600'
+  },
+  windSubtext: {
+    color: colors.white,
+    fontSize: 11,
+    marginTop: 4,
+    opacity: 0.9
   }
 });
