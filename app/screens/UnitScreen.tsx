@@ -23,8 +23,10 @@ interface TeamMember {
 }
 
 export default function UnitScreen() {
-  const { user } = useAuth();
-  const [unitData, setUnitData] = useState<any>(null);
+  const { user, role } = useAuth();
+  const [assignment, setAssignment] = useState<any>(null);
+  const [assignments, setAssignments] = useState<any[]>([]);
+  const [incidentDetails, setIncidentDetails] = useState<any>(null);
   const [status, setStatus] = useState<UnitStatus>('available');
   const [loading, setLoading] = useState(true);
 
@@ -35,9 +37,36 @@ export default function UnitScreen() {
   const fetchUserUnit = async () => {
     try {
       // Try to get user's assigned unit
-      const res = await api.get('/assignments/my_unit/');
-      if (res.data) {
-        setUnitData(res.data);
+      if (role === 'COMPANY_CHIEF' || role === 'COMPANY_ADMIN') {
+        const resList = await api.get('/assignments/my_units/');
+        const list = Array.isArray(resList.data) ? resList.data : [];
+        setAssignments(list);
+        if (list.length > 0) {
+          setAssignment(list[0]);
+          const asgStatus = (list[0].status || 'DISPATCHED') as string;
+          const mapToLocal: Record<string, UnitStatus> = {
+            DISPATCHED: 'available',
+            EN_ROUTE: 'en_route',
+            ON_SCENE: 'on_scene',
+            RETURNING: 'returning',
+            RELEASED: 'available'
+          };
+          setStatus(mapToLocal[asgStatus] || 'available');
+        }
+      } else {
+        const res = await api.get('/assignments/my_unit/');
+        if (res.data) {
+          setAssignment(res.data);
+          const asgStatus = (res.data.status || 'DISPATCHED') as string;
+          const mapToLocal: Record<string, UnitStatus> = {
+            DISPATCHED: 'available',
+            EN_ROUTE: 'en_route',
+            ON_SCENE: 'on_scene',
+            RETURNING: 'returning',
+            RELEASED: 'available'
+          };
+          setStatus(mapToLocal[asgStatus] || 'available');
+        }
       }
     } catch (error) {
       console.log('No unit assigned or error fetching unit:', error);
@@ -76,7 +105,7 @@ export default function UnitScreen() {
     return configs[currentStatus];
   };
 
-  const handleStatusChange = (newStatus: UnitStatus) => {
+  const handleStatusChange = async (newStatus: UnitStatus) => {
     const statusLabels = {
       available: 'Disponible',
       en_route: 'En Camino',
@@ -84,17 +113,22 @@ export default function UnitScreen() {
       returning: 'Regresando',
     };
 
-    Alert.alert(
-      'Cambiar Estado',
-      `Cambiar estado a "${statusLabels[newStatus]}"?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Confirmar',
-          onPress: () => setStatus(newStatus),
-        },
-      ]
-    );
+    if (!assignment) return;
+    const mapToRemote: Record<UnitStatus, string> = {
+      available: 'DISPATCHED',
+      en_route: 'EN_ROUTE',
+      on_scene: 'ON_SCENE',
+      returning: 'RETURNING'
+    };
+    try {
+      await api.patch(`/assignments/${assignment.id}/`, { status: mapToRemote[newStatus] });
+      setStatus(newStatus);
+      // Refresh assignment to reflect timestamps if needed
+      fetchUserUnit();
+      Alert.alert('Estado Actualizado', `Unidad marcada como "${statusLabels[newStatus]}"`);
+    } catch (e) {
+      Alert.alert('Error', 'No se pudo actualizar el estado de la unidad.');
+    }
   };
 
   // --- LOADING STATE ---
@@ -108,7 +142,7 @@ export default function UnitScreen() {
   }
 
   // --- EMPTY STATE VIEW ---
-  if (!unitData) {
+  if (!assignment) {
     return (
       <View style={styles.emptyContainer}>
         <View style={styles.emptyIconContainer}>
@@ -125,18 +159,62 @@ export default function UnitScreen() {
   }
 
   const statusConfig = getStatusConfig(status);
+  const unit = assignment.unit_details || {};
+  useEffect(() => {
+    if (assignment?.incident) {
+      api.get(`/incidents/${assignment.incident}/`).then(res => {
+        setIncidentDetails(res.data);
+      }).catch(() => setIncidentDetails(null));
+    } else {
+      setIncidentDetails(null);
+    }
+  }, [assignment]);
 
   // --- ACTIVE UNIT VIEW ---
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      {/* If multiple assignments, let chief select by unit name */}
+      {assignments.length > 1 && (
+        <View style={[styles.sectionCard, { marginTop: spacing.lg }]}>
+          <Text style={{ fontSize: 12, color: colors.gray[600], marginBottom: 8 }}>Selecciona Unidad a visualizar:</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {assignments.map(asg => (
+              <TouchableOpacity
+                key={asg.id}
+                style={[
+                  styles.unitChip,
+                  assignment?.id === asg.id && styles.unitChipSelected
+                ]}
+                onPress={() => {
+                  setAssignment(asg);
+                  const asgStatus = (asg.status || 'DISPATCHED') as string;
+                  const mapToLocal: Record<string, UnitStatus> = {
+                    DISPATCHED: 'available',
+                    EN_ROUTE: 'en_route',
+                    ON_SCENE: 'on_scene',
+                    RETURNING: 'returning',
+                    RELEASED: 'available'
+                  };
+                  setStatus(mapToLocal[asgStatus] || 'available');
+                }}
+              >
+                <Text style={[
+                  styles.unitChipText,
+                  assignment?.id === asg.id && { color: 'white' }
+                ]}>{asg.unit_name}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      )}
       {/* Unit Header Card */}
       <View style={styles.headerCard}>
         <View style={styles.unitIconContainer}>
           <Ionicons name="bus" size={32} color={colors.white} />
         </View>
         <View style={styles.unitInfo}>
-          <Text style={styles.unitName}>{unitData.name}</Text>
-          <Text style={styles.unitType}>{unitData.type}</Text>
+          <Text style={styles.unitName}>{unit.name}</Text>
+          <Text style={styles.unitType}>{unit.type_display || unit.unit_type}</Text>
         </View>
         <View style={[styles.statusBadge, { backgroundColor: statusConfig.bgColor }]}>
           <Ionicons name={statusConfig.icon} size={16} color={statusConfig.color} />
@@ -146,20 +224,62 @@ export default function UnitScreen() {
         </View>
       </View>
 
+      {/* Current Incident Summary */}
+      <View style={styles.sectionCard}>
+        <View style={styles.sectionHeader}>
+          <Ionicons name="alert-circle" size={20} color={colors.danger} />
+        </View>
+        <View>
+          <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text }}>{assignment.incident_title}</Text>
+          <Text style={{ fontSize: 12, color: colors.gray[600], marginTop: 4 }}>
+            Asignación activa • ID Incidente: {assignment.incident}
+          </Text>
+          {incidentDetails && (
+            <>
+              <Text style={{ fontSize: 12, color: colors.gray[600], marginTop: 4 }}>
+                Tipo: {incidentDetails.incident_type}
+              </Text>
+              <Text style={{ fontSize: 12, color: colors.gray[600], marginTop: 4 }}>
+                Reportado: {new Date(incidentDetails.reported_at).toLocaleString()}
+              </Text>
+              <Text style={{ fontSize: 12, color: colors.gray[600], marginTop: 4 }}>
+                Coordenadas: {incidentDetails.latitude.toFixed(5)}, {incidentDetails.longitude.toFixed(5)}
+              </Text>
+              {incidentDetails.description ? (
+                <Text style={{ fontSize: 12, color: colors.gray[700], marginTop: 8 }}>{incidentDetails.description}</Text>
+              ) : null}
+            </>
+          )}
+          {(role === 'COMPANY_CHIEF' || role === 'COMPANY_ADMIN') && incidentDetails?.is_active && (
+            <TouchableOpacity
+              style={{ marginTop: spacing.md, backgroundColor: colors.danger, padding: spacing.md, borderRadius: borderRadius.md, alignItems: 'center' }}
+              onPress={async () => {
+                try {
+                  await api.post(`/incidents/${assignment.incident}/close_incident/`);
+                  fetchUserUnit();
+                } catch (e) {}
+              }}
+            >
+              <Text style={{ color: 'white', fontWeight: '700' }}>Finalizar Emergencia</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
       {/* Quick Stats */}
       <View style={styles.statsContainer}>
         <View style={styles.statCard}>
           <View style={[styles.statIcon, { backgroundColor: 'rgba(170, 43, 29, 0.1)' }]}>
             <Ionicons name="people" size={20} color={colors.primary} />
           </View>
-          <Text style={styles.statValue}>{unitData.members || 0}</Text>
+          <Text style={styles.statValue}>{unit.members_count || 0}</Text>
           <Text style={styles.statLabel}>Miembros</Text>
         </View>
         <View style={styles.statCard}>
           <View style={[styles.statIcon, { backgroundColor: 'rgba(204, 86, 30, 0.1)' }]}>
             <Ionicons name="water" size={20} color={colors.secondary} />
           </View>
-          <Text style={styles.statValue}>{unitData.capacity || 'N/A'}</Text>
+          <Text style={styles.statValue}>{unit.capacity || 'N/A'}</Text>
           <Text style={styles.statLabel}>Capacidad</Text>
         </View>
         <View style={styles.statCard}>
@@ -178,11 +298,11 @@ export default function UnitScreen() {
           <Text style={styles.sectionTitle}>Vehiculo</Text>
         </View>
         <View style={styles.vehicleInfo}>
-          <Text style={styles.vehicleName}>{unitData.vehicle || 'Sin Vehículo'}</Text>
+          <Text style={styles.vehicleName}>{unit.vehicle || 'Sin Vehículo'}</Text>
           <View style={styles.vehicleDetails}>
             <View style={styles.vehicleDetail}>
               <Ionicons name="water-outline" size={16} color={colors.textLight} />
-              <Text style={styles.vehicleDetailText}>{unitData.capacity} agua</Text>
+              <Text style={styles.vehicleDetailText}>{unit.capacity || 'N/A'} agua</Text>
             </View>
             <View style={styles.vehicleDetail}>
               <Ionicons name="checkmark-circle-outline" size={16} color={colors.success} />
@@ -497,6 +617,14 @@ const styles = StyleSheet.create({
     color: colors.textLight,
     marginTop: 1,
   },
+  unitChip: {
+    paddingVertical: 8, paddingHorizontal: 12, borderRadius: 20,
+    backgroundColor: colors.gray[100], marginRight: 8, borderWidth: 1, borderColor: colors.gray[300]
+  },
+  unitChipSelected: {
+    backgroundColor: colors.primary, borderColor: colors.primary
+  },
+  unitChipText: { fontSize: 13, fontWeight: '600', color: colors.gray[700] },
   leaderBadge: {
     backgroundColor: colors.accent,
     paddingHorizontal: spacing.sm,

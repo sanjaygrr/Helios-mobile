@@ -12,9 +12,10 @@ import MapView, { Marker, PROVIDER_DEFAULT, PROVIDER_GOOGLE, Region } from 'reac
 import * as Location from 'expo-location';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import WebSocketService from '../services/websocket';
-import { fetchFireData, FirePoint } from '../services/nasa';
+import { FirePoint } from '../services/nasa';
 import { fetchWeatherData, WeatherData } from '../services/weather';
 import { useAuth } from '../context/AuthContext';
+import api from '../services/api';
 import { colors, spacing, borderRadius, shadows } from '../theme/colors';
 
 interface LocationData {
@@ -71,13 +72,10 @@ const FireMarker = React.memo(({ fire, color }: { fire: FirePoint; color: string
 
 // Custom User Marker Wrapper
 const UserMarker = ({ coordinate, role, isSelf = false, onPress }: any) => {
-  const [tracksViewChanges, setTracksViewChanges] = React.useState(true);
+  const [tracksViewChanges, setTracksViewChanges] = React.useState(false);
 
   // Stop tracking after initial render to prevent iOS disappearance
-  React.useEffect(() => {
-    const timer = setTimeout(() => setTracksViewChanges(false), 2000);
-    return () => clearTimeout(timer);
-  }, []);
+  React.useEffect(() => {}, []);
 
   const getIcon = () => {
     // Jefe -> Fire Truck
@@ -197,6 +195,24 @@ export default function MapScreen() {
           setOtherUsers(prev => ({ ...prev, [data.id]: data }));
         }
       });
+      // REST fallback to show latest positions immediately (Android/iOS)
+      api.get('/tracking/history/live')
+        .then(res => {
+          if (Array.isArray(res.data)) {
+            const mapped: { [key: number]: OtherUser } = {};
+            res.data.forEach((pos: any) => {
+              mapped[pos.user] = {
+                id: pos.user,
+                latitude: pos.latitude,
+                longitude: pos.longitude,
+                role: pos.user_role,
+                timestamp: new Date(pos.timestamp).getTime(),
+              } as OtherUser;
+            });
+            setOtherUsers(prev => ({ ...mapped, ...prev }));
+          }
+        })
+        .catch(() => {});
 
       locationSubscription = await Location.watchPositionAsync(
         {
@@ -231,10 +247,45 @@ export default function MapScreen() {
 
   useEffect(() => {
     if (location) {
-      if (fireData.length === 0) fetchFireData().then(setFireData);
+      if (fireData.length === 0) {
+        api.get('/incidents/', { params: { is_active: true } })
+          .then(res => {
+            if (Array.isArray(res.data)) {
+              const points: FirePoint[] = res.data.map((i: any) => ({
+                latitude: i.latitude,
+                longitude: i.longitude,
+                brightness: i.severity === 'high' ? 360 : 330,
+                acq_date: (i.reported_at || '').slice(0, 10) || 'backend',
+                acq_time: '0000'
+              }));
+              setFireData(points);
+            }
+          })
+          .catch(() => {});
+      }
       if (!weatherData) fetchWeatherData(location.coords.latitude, location.coords.longitude).then(setWeatherData);
     }
   }, [location]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      api.get('/incidents/', { params: { is_active: true } })
+        .then(res => {
+          if (Array.isArray(res.data)) {
+            const points: FirePoint[] = res.data.map((i: any) => ({
+              latitude: i.latitude,
+              longitude: i.longitude,
+              brightness: i.severity === 'high' ? 360 : 330,
+              acq_date: (i.reported_at || '').slice(0, 10) || 'backend',
+              acq_time: '0000'
+            }));
+            setFireData(points);
+          }
+        })
+        .catch(() => {});
+    }, 120000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     if (location && !currentRegion) {
@@ -279,6 +330,7 @@ export default function MapScreen() {
       >
         {/* Custom User Icon (NOW this is the only indicator of self) */}
         <UserMarker
+          key="self-marker"
           coordinate={{
             latitude: location.coords.latitude,
             longitude: location.coords.longitude,
@@ -465,7 +517,8 @@ const styles = StyleSheet.create({
     borderWidth: 3, borderColor: 'white',
     alignItems: 'center', justifyContent: 'center',
     overflow: 'visible',
-    padding: 2,
+    padding: 4,
+    marginLeft: 2,
     ...shadows.lg
   },
   otherUserMarker: {
@@ -474,7 +527,8 @@ const styles = StyleSheet.create({
     borderWidth: 2, borderColor: 'white',
     alignItems: 'center', justifyContent: 'center',
     overflow: 'visible',
-    padding: 2,
+    padding: 4,
+    marginLeft: 2,
     ...shadows.md
   },
 

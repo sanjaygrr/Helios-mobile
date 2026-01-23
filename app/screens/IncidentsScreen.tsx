@@ -3,10 +3,11 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Modal, A
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { colors, spacing, borderRadius } from '../theme/colors';
-import api from '../services/api';
+ 
 import ModalSelector from '../components/ModalSelector';
 import PersonnelForm, { SectionMember } from '../components/PersonnelForm';
 import { useAuth } from '../context/AuthContext';
+import api from '../services/api';
 
 
 const getIncidentColor = (type: string) => {
@@ -25,12 +26,14 @@ export default function IncidentsScreen() {
 
     // Incident Creation State
     const [isModalVisible, setModalVisible] = useState(false);
+    const [editingIncidentId, setEditingIncidentId] = useState<number | null>(null);
     const [newIncident, setNewIncident] = useState({
         title: '',
         description: '',
         incident_type: 'OTRO',
         latitude: 0,
-        longitude: 0
+        longitude: 0,
+        commander: null as number | null,
     });
     const [loadingLocation, setLoadingLocation] = useState(false);
     const [showTypeSelector, setShowTypeSelector] = useState(false);
@@ -46,6 +49,7 @@ export default function IncidentsScreen() {
     const [personnelList, setPersonnelList] = useState<SectionMember[]>([]);
     const [selectedInitialUnit, setSelectedInitialUnit] = useState<any>(null);
     const [availableVehicles, setAvailableVehicles] = useState<any[]>([]);
+    const [availableChiefs, setAvailableChiefs] = useState<any[]>([]);
     const [selectedVehicle, setSelectedVehicle] = useState<any>(null);
 
 
@@ -114,6 +118,7 @@ export default function IncidentsScreen() {
 
     const handleOpenModal = async () => {
         setModalVisible(true);
+        setEditingIncidentId(null);
         setLoadingLocation(true);
         setLoadingUnits(true);
 
@@ -137,6 +142,12 @@ export default function IncidentsScreen() {
             const vehiclesRes = await api.get('/units/'); // Assuming vehicles are units or separate endpoint
             setAvailableVehicles(vehiclesRes.data);
         } catch (e) { console.log("Error loading vehicles", e); }
+
+        // Fetch Chiefs for commander selection
+        try {
+            const chiefsRes = await api.get('/users/', { params: { role: 'COMPANY_CHIEF' } });
+            setAvailableChiefs(chiefsRes.data);
+        } catch (e) { console.log("Error loading chiefs", e); }
 
         setLoadingUnits(false);
 
@@ -181,12 +192,21 @@ export default function IncidentsScreen() {
             // Append formatted crew info to description
             const finalDescription = newIncident.description + personnelDescription;
 
-            const res = await api.post('/incidents/', {
-                ...newIncident,
-                description: finalDescription,
-                vehicle: selectedVehicle?.id // Include vehicle if selected
-            });
-            const incidentId = res.data.id;
+            let incidentId: number;
+            if (editingIncidentId) {
+                const res = await api.patch(`/incidents/${editingIncidentId}/`, {
+                    ...newIncident,
+                    description: finalDescription,
+                });
+                incidentId = res.data.id;
+            } else {
+                const res = await api.post('/incidents/', {
+                    ...newIncident,
+                    description: finalDescription,
+                    vehicle: selectedVehicle?.id || undefined,
+                });
+                incidentId = res.data.id;
+            }
 
             // 2. Dispatch Unit (if selected)
             if (selectedInitialUnit) {
@@ -204,10 +224,11 @@ export default function IncidentsScreen() {
             setModalVisible(false);
             fetchIncidents();
             // Reset
-            setNewIncident({ title: '', description: '', incident_type: 'OTRO', latitude: 0, longitude: 0 });
+            setNewIncident({ title: '', description: '', incident_type: 'OTRO', latitude: 0, longitude: 0, commander: null });
             setPersonnelList([]);
             setSelectedInitialUnit(null);
             setSelectedVehicle(null);
+            setEditingIncidentId(null);
 
             Alert.alert('Éxito', 'Emergencia reportada y recursos asignados.');
         } catch (error) {
@@ -308,25 +329,7 @@ export default function IncidentsScreen() {
                             </TouchableOpacity>
                         )}
 
-                        {/* Quick Status Buttons (Commander only) */}
-                        {isMyCommand && item.is_active && (
-                            <>
-                                <TouchableOpacity
-                                    style={[styles.dispatchButtonSmall, { backgroundColor: colors.warning }]}
-                                    onPress={() => handleUpdateStatus(item.id, 'EN_PROGRESO')}
-                                >
-                                    <Ionicons name="time" size={16} color="white" />
-                                    <Text style={[styles.dispatchButtonText, { color: 'white' }]}>En Progreso</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={[styles.dispatchButtonSmall, { backgroundColor: colors.success }]}
-                                    onPress={() => handleUpdateStatus(item.id, 'BAJO_CONTROL')}
-                                >
-                                    <Ionicons name="checkmark-circle" size={16} color="white" />
-                                    <Text style={[styles.dispatchButtonText, { color: 'white' }]}>Bajo Control</Text>
-                                </TouchableOpacity>
-                            </>
-                        )}
+                        {/* Estado de emergencia se gestiona desde "Mi Unidad" */}
 
                         {/* Close Incident (Commander only) */}
                         {isMyCommand && item.is_active && (
@@ -338,6 +341,25 @@ export default function IncidentsScreen() {
                                 <Text style={[styles.dispatchButtonText, { color: 'white' }]}>Finalizar</Text>
                             </TouchableOpacity>
                         )}
+                        {/* Edit/Delete (Chief/Commander) */}
+                        {(role === 'COMPANY_CHIEF' || role === 'COMPANY_ADMIN') && (
+                            <>
+                                <TouchableOpacity
+                                    style={[styles.dispatchButtonSmall, { backgroundColor: colors.gray[200] }]}
+                                    onPress={() => openEditIncident(item)}
+                                >
+                                    <Ionicons name="pencil" size={16} color={colors.text} />
+                                    <Text style={[styles.dispatchButtonText, { color: colors.text }]}>Editar</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.dispatchButtonSmall, { backgroundColor: colors.gray[200] }]}
+                                    onPress={() => handleDeleteIncident(item.id)}
+                                >
+                                    <Ionicons name="trash" size={16} color={colors.danger} />
+                                    <Text style={[styles.dispatchButtonText, { color: colors.danger }]}>Eliminar</Text>
+                                </TouchableOpacity>
+                            </>
+                        )}
                     </View>
                 </View>
 
@@ -345,6 +367,44 @@ export default function IncidentsScreen() {
                     <View style={[styles.dot, { backgroundColor: item.is_active ? colors.success : colors.gray[400] }]} />
                 </View>
             </View>
+        );
+    };
+
+    const openEditIncident = (incident: any) => {
+        setNewIncident({
+            title: incident.title,
+            description: incident.description || '',
+            incident_type: incident.incident_type || 'OTRO',
+            latitude: incident.latitude,
+            longitude: incident.longitude,
+            commander: incident.commander || null,
+        });
+        setSelectedVehicle(null);
+        setSelectedInitialUnit(null);
+        setModalVisible(true);
+        setEditingIncidentId(incident.id);
+    };
+
+    const handleDeleteIncident = async (incidentId: number) => {
+        Alert.alert(
+            "Eliminar Emergencia",
+            "¿Estás seguro? Esta acción no se puede deshacer.",
+            [
+                { text: "Cancelar", style: "cancel" },
+                {
+                    text: "Eliminar",
+                    style: "destructive",
+                    onPress: async () => {
+                        try {
+                            await api.delete(`/incidents/${incidentId}/`);
+                            fetchIncidents();
+                            Alert.alert("Eliminado", "Emergencia eliminada.");
+                        } catch (error: any) {
+                            Alert.alert("Error", error.response?.data?.error || "No se pudo eliminar.");
+                        }
+                    }
+                }
+            ]
         );
     };
 
@@ -399,9 +459,52 @@ export default function IncidentsScreen() {
                                         onChangeText={(t) => setNewIncident({ ...newIncident, description: t })}
                                         multiline numberOfLines={3}
                                     />
+                                    <Text style={{ fontSize: 12, marginBottom: 5, color: colors.gray[500], marginTop: 10 }}>Encargado (Jefe de Compañía):</Text>
+                                    {availableChiefs.length > 0 ? (
+                                        <View style={{ height: 50, marginBottom: 15 }}>
+                                            <FlatList
+                                                horizontal
+                                                data={availableChiefs}
+                                                showsHorizontalScrollIndicator={false}
+                                                keyExtractor={c => c.id.toString()}
+                                                renderItem={({ item }) => (
+                                                    <TouchableOpacity
+                                                        style={[
+                                                            styles.unitChip,
+                                                            newIncident.commander === item.id && styles.unitChipSelected
+                                                        ]}
+                                                        onPress={() => setNewIncident({ ...newIncident, commander: newIncident.commander === item.id ? null : item.id })}
+                                                    >
+                                                        <Text style={[
+                                                            styles.unitChipText,
+                                                            newIncident.commander === item.id && { color: 'white' }
+                                                        ]}>{(item.email || '').split('@')[0]}</Text>
+                                                    </TouchableOpacity>
+                                                )}
+                                            />
+                                        </View>
+                                    ) : (
+                                        <Text style={{ fontStyle: 'italic', color: colors.gray[400], marginBottom: 10 }}>No hay jefes disponibles</Text>
+                                    )}
 
                                     <Text style={{ fontWeight: 'bold', marginBottom: 5, marginTop: 10, color: colors.gray[600] }}>Recursos Iniciales (Opcional):</Text>
 
+                                    {/* Bomberos guardados */}
+                                    <Text style={{ fontSize: 12, marginBottom: 5, color: colors.gray[500], marginTop: 10 }}>Bomberos Guardados:</Text>
+                                    <SavedFirefighters
+                                        onSelect={(f) => {
+                                            const member = {
+                                                firstName: (f.email || '').split('@')[0],
+                                                lastName: '',
+                                                rut: f.rut || '',
+                                                role: 'Bombero',
+                                                company: f.company_details?.name || ''
+                                            } as SectionMember;
+                                            setPersonnelList(prev => [...prev, member]);
+                                        }}
+                                    />
+
+                                    {/* Formulario de nuevo bombero */}
                                     <PersonnelForm
                                         initialMembers={personnelList}
                                         onChange={setPersonnelList}
@@ -547,6 +650,34 @@ export default function IncidentsScreen() {
                 options={incidentTypes}
                 onClose={() => setShowTypeSelector(false)}
                 onSelect={(opt) => setNewIncident({ ...newIncident, incident_type: opt.id as string })}
+                searchable={true}
+            />
+        </View>
+    );
+}
+
+function SavedFirefighters({ onSelect }: { onSelect: (f: any) => void }) {
+    const [firefighters, setFirefighters] = React.useState<any[]>([]);
+    React.useEffect(() => {
+        api.get('/users/', { params: { role: 'FIREFIGHTER' } })
+            .then(res => setFirefighters(Array.isArray(res.data) ? res.data : []))
+            .catch(() => setFirefighters([]));
+    }, []);
+    return (
+        <View style={{ height: 50, marginBottom: 15 }}>
+            <FlatList
+                horizontal
+                data={firefighters}
+                showsHorizontalScrollIndicator={false}
+                keyExtractor={u => u.id.toString()}
+                renderItem={({ item }) => (
+                    <TouchableOpacity
+                        style={styles.unitChip}
+                        onPress={() => onSelect(item)}
+                    >
+                        <Text style={styles.unitChipText}>{(item.email || '').split('@')[0]}</Text>
+                    </TouchableOpacity>
+                )}
             />
         </View>
     );
