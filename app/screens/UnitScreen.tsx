@@ -169,8 +169,17 @@ export default function UnitScreen() {
     }
   };
 
+
+  const [viewedUnit, setViewedUnit] = useState<any>(null); // For SuperAdmin drill-down
+
+  const handleBackToDashboard = () => {
+    setViewedUnit(null);
+    setAssignment(null); // Clear assignment to force list view
+    fetchUserUnit(); // Refresh list
+  };
+
   // --- COMANDANTE DASHBOARD ---
-  if (!loading && role === 'SUPER_ADMIN') {
+  if (!loading && role === 'SUPER_ADMIN' && !viewedUnit) {
     return (
       <View style={styles.container}>
         <View style={[styles.headerCard, { backgroundColor: colors.secondary }]}>
@@ -199,27 +208,48 @@ export default function UnitScreen() {
             ) || { label: item.status, color: colors.gray[500], icon: 'help', bgColor: colors.gray[100] };
 
             return (
-              <View style={styles.sectionCard}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <View>
-                    <Text style={[styles.sectionTitle, { fontSize: 18 }]}>{item.unit_name || item.unit_details?.name}</Text>
-                    <Text style={{ color: colors.textLight, fontSize: 12 }}>{item.incident_title || `Incidente #${item.incident}`}</Text>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => {
+                  setAssignment(item); // Set this as the "active" assignment for the shared view logic
+                  setViewedUnit(item);
+                  // Set status state locally so the view reflects it
+                  const asgStatus = (item.status || 'DISPATCHED') as string;
+                  const mapToLocal: Record<string, UnitStatus> = {
+                    DISPATCHED: 'available',
+                    EN_ROUTE: 'en_route',
+                    ON_SCENE: 'on_scene',
+                    RETURNING: 'returning',
+                    RELEASED: 'available'
+                  };
+                  setStatus(mapToLocal[asgStatus] || 'available');
+                }}
+              >
+                <View style={styles.sectionCard}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <View>
+                      <Text style={[styles.sectionTitle, { fontSize: 18 }]}>{item.unit_name || item.unit_details?.name}</Text>
+                      <Text style={{ color: colors.textLight, fontSize: 12 }}>{item.incident_title || `Incidente #${item.incident}`}</Text>
+                    </View>
+                    <View style={[styles.statusBadge, { backgroundColor: statusConf.bgColor }]}>
+                      <Ionicons name={statusConf.icon as any} size={14} color={statusConf.color} />
+                      <Text style={[styles.statusText, { color: statusConf.color }]}>{statusConf.label}</Text>
+                    </View>
                   </View>
-                  <View style={[styles.statusBadge, { backgroundColor: statusConf.bgColor }]}>
-                    <Ionicons name={statusConf.icon as any} size={14} color={statusConf.color} />
-                    <Text style={[styles.statusText, { color: statusConf.color }]}>{statusConf.label}</Text>
+                  {/* Basic details */}
+                  <View style={{ marginTop: 8, flexDirection: 'row', gap: 12 }}>
+                    <Text style={{ fontSize: 12, color: colors.gray[600] }}>
+                      <Ionicons name="people" /> {item.unit_details?.members_count || 0} Pers.
+                    </Text>
+                    <Text style={{ fontSize: 12, color: colors.gray[600] }}>
+                      <Ionicons name="car" /> {item.unit_details?.vehicle || 'N/A'}
+                    </Text>
+                  </View>
+                  <View style={{ marginTop: 8, alignItems: 'flex-end' }}>
+                    <Text style={{ fontSize: 12, color: colors.primary, fontWeight: '600' }}>Ver Detalles &gt;</Text>
                   </View>
                 </View>
-                {/* Basic details */}
-                <View style={{ marginTop: 8, flexDirection: 'row', gap: 12 }}>
-                  <Text style={{ fontSize: 12, color: colors.gray[600] }}>
-                    <Ionicons name="people" /> {item.unit_details?.members_count || 0} Pers.
-                  </Text>
-                  <Text style={{ fontSize: 12, color: colors.gray[600] }}>
-                    <Ionicons name="car" /> {item.unit_details?.vehicle || 'N/A'}
-                  </Text>
-                </View>
-              </View>
+              </TouchableOpacity>
             );
           }}
         />
@@ -238,7 +268,7 @@ export default function UnitScreen() {
   }
 
   // --- COMMANDER DASHBOARD (For Incident Commanders) ---
-  if (myCommand && !assignment) {
+  if (myCommand && !assignment && !viewedUnit) {
     return (
       <ScrollView style={styles.container} refreshControl={<RefreshControl refreshing={loading} onRefresh={fetchUserUnit} />}>
         <View style={[styles.headerCard, { backgroundColor: colors.danger }]}>
@@ -333,16 +363,18 @@ export default function UnitScreen() {
     return (
       <View style={styles.emptyContainer}>
         <View style={styles.emptyIconContainer}>
-          <Ionicons name="shield-checkmark-outline" size={64} color={colors.textLight} />
+          <Ionicons name="shield-checkmark-outline" size={72} color={colors.primary} />
         </View>
         <Text style={styles.emptyTitle}>Sin Asignación Activa</Text>
         <Text style={styles.emptySubtitle}>
           No tienes una unidad asignada ni estás al mando de una emergencia.
-          {"\n"}
+        </Text>
+        <Text style={styles.emptyHint}>
           Cuando se despache una emergencia, verás los detalles aquí.
         </Text>
-        <TouchableOpacity onPress={fetchUserUnit} style={{ marginTop: 20, padding: 10 }}>
-          <Text style={{ color: colors.primary }}>Refrescar</Text>
+        <TouchableOpacity onPress={fetchUserUnit} style={styles.refreshButton}>
+          <Ionicons name="refresh" size={18} color={colors.white} />
+          <Text style={styles.refreshButtonText}>Actualizar</Text>
         </TouchableOpacity>
       </View>
     );
@@ -360,9 +392,17 @@ export default function UnitScreen() {
     }
   }, [assignment]);
 
-  // --- ACTIVE UNIT VIEW ---
+  // --- ACTIVE UNIT VIEW (For Unit Chiefs & Super Admin Detail View) ---
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={loading} onRefresh={fetchUserUnit} />}>
+      {/* Back Button for Super Admin */}
+      {viewedUnit && (
+        <TouchableOpacity onPress={handleBackToDashboard} style={{ flexDirection: 'row', alignItems: 'center', padding: 16, paddingBottom: 0 }}>
+          <Ionicons name="arrow-back" size={24} color={colors.primary} />
+          <Text style={{ marginLeft: 8, fontSize: 16, color: colors.primary, fontWeight: 'bold' }}>Volver al Panel</Text>
+        </TouchableOpacity>
+      )}
+
       {/* If multiple assignments, let chief select by unit name */}
       {assignments.length > 1 && (
         <View style={[styles.sectionCard, { marginTop: spacing.lg }]}>
@@ -669,39 +709,71 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   emptyIconContainer: {
-    width: 120, height: 120,
-    borderRadius: 60,
-    backgroundColor: colors.gray[100],
-    alignItems: 'center', justifyContent: 'center',
-    marginBottom: spacing.lg,
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: colors.primary + '10',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.xl,
   },
   emptyTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 26,
+    fontWeight: '700',
     color: colors.text,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
     textAlign: 'center',
   },
   emptySubtitle: {
     fontSize: 16,
-    color: colors.textLight,
+    color: colors.gray[600],
     textAlign: 'center',
     lineHeight: 24,
+    marginBottom: spacing.xs,
+  },
+  emptyHint: {
+    fontSize: 14,
+    color: colors.gray[400],
+    textAlign: 'center',
+    marginBottom: spacing.xl,
+  },
+  refreshButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: colors.primary,
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+    borderRadius: 12,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  refreshButtonText: {
+    color: colors.white,
+    fontWeight: '600',
+    fontSize: 15,
   },
   // Header Card
   headerCard: {
     backgroundColor: colors.primary,
     margin: spacing.md,
-    borderRadius: borderRadius.xl,
+    borderRadius: 20,
     padding: spacing.lg,
     flexDirection: 'row',
     alignItems: 'center',
-    ...shadows.lg,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 10,
   },
   unitIconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 60,
+    height: 60,
+    borderRadius: 16,
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -711,26 +783,30 @@ const styles = StyleSheet.create({
     marginLeft: spacing.md,
   },
   unitName: {
-    fontSize: 28,
+    fontSize: 30,
     fontWeight: '800',
     color: colors.white,
+    letterSpacing: -0.5,
   },
   unitType: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.7)',
-    marginTop: 2,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 4,
+    fontWeight: '500',
   },
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.full,
-    gap: spacing.xs,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 25,
+    gap: 6,
   },
   statusText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   // Stats
   statsContainer: {
@@ -741,50 +817,59 @@ const styles = StyleSheet.create({
   statCard: {
     flex: 1,
     backgroundColor: colors.white,
-    borderRadius: borderRadius.lg,
+    borderRadius: 16,
     padding: spacing.md,
     alignItems: 'center',
-    ...shadows.sm,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
   },
   statIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 48,
+    height: 48,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.sm,
   },
   statValue: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 22,
+    fontWeight: '800',
     color: colors.text,
   },
   statLabel: {
     fontSize: 11,
-    color: colors.textLight,
-    marginTop: 2,
+    color: colors.gray[500],
+    marginTop: 4,
+    fontWeight: '500',
   },
   // Section Card
   sectionCard: {
     backgroundColor: colors.white,
     margin: spacing.md,
     marginTop: spacing.md,
-    borderRadius: borderRadius.lg,
-    padding: spacing.md,
-    ...shadows.sm,
+    borderRadius: 16,
+    padding: spacing.lg,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
     marginBottom: spacing.md,
-    paddingBottom: spacing.sm,
+    paddingBottom: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.gray[100],
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 17,
+    fontWeight: '700',
     color: colors.text,
     flex: 1,
   },
@@ -873,26 +958,32 @@ const styles = StyleSheet.create({
   actionsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.sm,
+    gap: 10,
   },
   actionButton: {
     width: '48%',
     backgroundColor: colors.gray[50],
-    borderRadius: borderRadius.lg,
-    padding: spacing.md,
+    borderRadius: 14,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.sm,
-    borderWidth: 1,
+    gap: 8,
+    borderWidth: 2,
     borderColor: colors.gray[200],
   },
   actionButtonActive: {
     backgroundColor: colors.warning,
     borderColor: 'transparent',
+    shadowColor: colors.warning,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
   actionButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '700',
     color: colors.text,
   },
   actionButtonTextActive: {
@@ -903,13 +994,17 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     marginHorizontal: spacing.md,
     marginVertical: spacing.md,
-    borderRadius: borderRadius.lg,
+    borderRadius: 20,
     overflow: 'hidden',
-    ...shadows.md,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 6,
   },
   ticketHeader: {
     backgroundColor: colors.danger,
-    padding: spacing.md,
+    padding: spacing.lg,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -917,12 +1012,14 @@ const styles = StyleSheet.create({
   ticketTitle: {
     color: colors.white,
     fontWeight: '800',
-    fontSize: 16,
-    letterSpacing: 1,
+    fontSize: 15,
+    letterSpacing: 2,
+    textTransform: 'uppercase',
   },
   ticketId: {
-    color: 'rgba(255,255,255,0.8)',
+    color: 'rgba(255,255,255,0.9)',
     fontWeight: '700',
+    fontSize: 16,
   },
   ticketBody: {
     padding: spacing.lg,
@@ -933,24 +1030,26 @@ const styles = StyleSheet.create({
   },
   ticketLabel: {
     fontSize: 10,
-    color: colors.textLight,
+    color: colors.gray[400],
     fontWeight: '700',
-    marginBottom: 4,
-    letterSpacing: 0.5,
+    marginBottom: 6,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
   },
   ticketValue: {
-    fontSize: 14,
+    fontSize: 15,
     color: colors.text,
     fontWeight: '600',
   },
   ticketValueLarge: {
-    fontSize: 20,
+    fontSize: 22,
     color: colors.text,
     fontWeight: '700',
+    letterSpacing: -0.3,
   },
   ticketDivider: {
     height: 1,
-    backgroundColor: colors.gray[200],
+    backgroundColor: 'transparent',
     marginVertical: spacing.md,
     borderStyle: 'dashed',
     borderWidth: 1,
@@ -959,26 +1058,33 @@ const styles = StyleSheet.create({
   },
   ticketFooter: {
     backgroundColor: colors.gray[50],
-    padding: spacing.sm,
+    padding: spacing.md,
     alignItems: 'center',
     borderTopWidth: 1,
     borderTopColor: colors.gray[100],
   },
   ticketFooterText: {
-    fontSize: 10,
+    fontSize: 11,
     color: colors.gray[500],
     fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    fontWeight: '600',
   },
   closeIncidentButton: {
     backgroundColor: colors.danger,
-    paddingVertical: spacing.md,
-    borderRadius: borderRadius.md,
+    paddingVertical: 16,
+    borderRadius: 12,
     alignItems: 'center',
-    marginTop: spacing.sm,
+    marginTop: spacing.lg,
+    shadowColor: colors.danger,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
   closeIncidentText: {
     color: colors.white,
-    fontWeight: '700',
-    letterSpacing: 1,
+    fontWeight: '800',
+    letterSpacing: 1.5,
+    fontSize: 14,
   },
 });

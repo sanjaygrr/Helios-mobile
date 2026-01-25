@@ -107,26 +107,66 @@ export default function ManageUnitsScreen() {
         );
     };
 
-    const renderItem = ({ item }: { item: any }) => (
-        <View style={styles.card}>
-            <View style={styles.iconBox}>
-                <Ionicons name="bus" size={24} color={colors.primary} />
+    const getStatusColor = (status: string) => {
+        switch (status) {
+            case 'AVAILABLE': return colors.success;
+            case 'DEPLOYED': return colors.danger;
+            case 'STANDBY': return colors.warning;
+            default: return colors.gray[500];
+        }
+    };
+
+    const getTypeIcon = (type: string) => {
+        switch (type) {
+            case 'FORESTAL': return 'leaf';
+            case 'URBANO': return 'business';
+            case 'APOYO': return 'construct';
+            default: return 'bus';
+        }
+    };
+
+    const renderItem = ({ item }: { item: any }) => {
+        const statusColor = getStatusColor(item.status);
+
+        return (
+            <View style={styles.card}>
+                {/* Header */}
+                <View style={styles.cardHeader}>
+                    <View style={[styles.iconBox, { backgroundColor: colors.primary }]}>
+                        <Ionicons name={getTypeIcon(item.unit_type) as any} size={22} color={colors.white} />
+                    </View>
+                    <View style={styles.cardInfo}>
+                        <Text style={styles.cardTitle}>{item.name}</Text>
+                        <Text style={styles.cardSubtitle}>{item.type_display || item.unit_type}</Text>
+                    </View>
+                    <View style={[styles.statusBadge, { backgroundColor: statusColor + '15' }]}>
+                        <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
+                        <Text style={[styles.statusText, { color: statusColor }]}>{item.status_display || item.status}</Text>
+                    </View>
+                </View>
+
+                {/* Company info */}
+                {item.company_name && (
+                    <View style={styles.companyRow}>
+                        <Ionicons name="business-outline" size={14} color={colors.gray[500]} />
+                        <Text style={styles.companyText}>{item.company_name}</Text>
+                    </View>
+                )}
+
+                {/* Actions */}
+                <View style={styles.cardActions}>
+                    <TouchableOpacity style={styles.actionBtn} onPress={() => handleOpenEdit(item)}>
+                        <Ionicons name="create-outline" size={18} color={colors.primary} />
+                        <Text style={[styles.actionText, { color: colors.primary }]}>Editar</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.actionBtn} onPress={() => handleDelete(item.id)}>
+                        <Ionicons name="trash-outline" size={18} color={colors.danger} />
+                        <Text style={[styles.actionText, { color: colors.danger }]}>Eliminar</Text>
+                    </TouchableOpacity>
+                </View>
             </View>
-            <View style={{ flex: 1, marginLeft: spacing.md }}>
-                <Text style={styles.cardTitle}>{item.name}</Text>
-                <Text style={styles.cardSubtitle}>{item.type_display} • {item.status_display}</Text>
-                {item.company_name && <Text style={{ fontSize: 12, color: colors.gray[500] }}>{item.company_name}</Text>}
-            </View>
-            <View style={{ flexDirection: 'row', gap: 10 }}>
-                <TouchableOpacity onPress={() => handleOpenEdit(item)}>
-                    <Ionicons name="pencil" size={20} color={colors.secondary} />
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => handleDelete(item.id)}>
-                    <Ionicons name="trash" size={20} color={colors.danger} />
-                </TouchableOpacity>
-            </View>
-        </View>
-    );
+        );
+    };
 
     return (
         <View style={styles.container}>
@@ -200,28 +240,165 @@ export default function ManageUnitsScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
-    list: { padding: spacing.md, paddingBottom: 80 },
-    empty: { textAlign: 'center', marginTop: 50, color: colors.gray[500] },
+    list: { padding: spacing.md, paddingBottom: 100 },
+    empty: { textAlign: 'center', marginTop: 50, color: colors.gray[500], fontSize: 15 },
     card: {
-        backgroundColor: 'white', padding: spacing.md, marginBottom: spacing.sm,
-        borderRadius: borderRadius.md, flexDirection: 'row', alignItems: 'center', ...shadows.sm
+        backgroundColor: 'white',
+        padding: spacing.lg,
+        marginBottom: spacing.md,
+        borderRadius: borderRadius.lg,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+        elevation: 3,
     },
-    iconBox: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.gray[100], alignItems: 'center', justifyContent: 'center' },
-    cardTitle: { fontSize: 16, fontWeight: 'bold', color: colors.text },
-    cardSubtitle: { fontSize: 12, color: colors.gray[600] },
+    cardHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    iconBox: {
+        width: 48,
+        height: 48,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    cardInfo: {
+        flex: 1,
+        marginLeft: spacing.md,
+    },
+    cardTitle: {
+        fontSize: 17,
+        fontWeight: '700',
+        color: colors.text,
+    },
+    cardSubtitle: {
+        fontSize: 13,
+        color: colors.gray[500],
+        marginTop: 2,
+    },
+    statusBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 5,
+        paddingHorizontal: 10,
+        borderRadius: 20,
+        gap: 5,
+    },
+    statusDot: {
+        width: 7,
+        height: 7,
+        borderRadius: 4,
+    },
+    statusText: {
+        fontSize: 11,
+        fontWeight: '600',
+        textTransform: 'uppercase',
+    },
+    companyRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginTop: spacing.sm,
+        paddingTop: spacing.sm,
+        borderTopWidth: 1,
+        borderTopColor: colors.gray[100],
+    },
+    companyText: {
+        fontSize: 13,
+        color: colors.gray[500],
+    },
+    cardActions: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        marginTop: spacing.md,
+        paddingTop: spacing.md,
+        borderTopWidth: 1,
+        borderTopColor: colors.gray[100],
+        gap: 16,
+    },
+    actionBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 5,
+        paddingVertical: 6,
+        paddingHorizontal: 12,
+        borderRadius: 8,
+        backgroundColor: colors.gray[50],
+    },
+    actionText: {
+        fontSize: 13,
+        fontWeight: '600',
+    },
     fab: {
-        position: 'absolute', bottom: 30, right: 20, width: 56, height: 56, borderRadius: 28,
-        backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', ...shadows.lg
+        position: 'absolute',
+        bottom: 30,
+        right: 20,
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        backgroundColor: colors.primary,
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 8,
     },
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
-    modalContent: { backgroundColor: 'white', padding: 20, borderRadius: 15 },
-    modalTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },
-    input: { backgroundColor: colors.gray[100], padding: 12, borderRadius: 8, marginBottom: 15 },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+    modalContent: {
+        backgroundColor: 'white',
+        padding: spacing.xl,
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+    },
+    modalTitle: {
+        fontSize: 22,
+        fontWeight: '700',
+        marginBottom: spacing.lg,
+        textAlign: 'center',
+        color: colors.text,
+    },
+    input: {
+        backgroundColor: colors.gray[50],
+        padding: 14,
+        borderRadius: 12,
+        marginBottom: 15,
+        fontSize: 15,
+        borderWidth: 1,
+        borderColor: colors.gray[200],
+    },
     selectBtn: {
-        backgroundColor: colors.gray[100], padding: 12, borderRadius: 8, marginBottom: 15,
-        flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'
+        backgroundColor: colors.gray[50],
+        padding: 14,
+        borderRadius: 12,
+        marginBottom: 15,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: colors.gray[200],
     },
-    modalButtons: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 10 },
-    cancelButton: { padding: 12 },
-    saveButton: { backgroundColor: colors.primary, padding: 12, borderRadius: 8 }
+    modalButtons: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, marginTop: 20 },
+    cancelButton: {
+        flex: 1,
+        padding: 14,
+        borderRadius: 12,
+        backgroundColor: colors.gray[100],
+        alignItems: 'center',
+    },
+    saveButton: {
+        flex: 2,
+        backgroundColor: colors.primary,
+        padding: 14,
+        borderRadius: 12,
+        alignItems: 'center',
+        shadowColor: colors.primary,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+        elevation: 4,
+    }
 });

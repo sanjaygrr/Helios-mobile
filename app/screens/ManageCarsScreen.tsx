@@ -120,35 +120,81 @@ export default function ManageCarsScreen({ navigation }: any) {
     );
   };
 
-  const renderItem = ({ item }: { item: any }) => (
-    <View style={styles.card}>
-      <View style={styles.cardHeader}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <View style={styles.iconContainer}>
-            <Ionicons name="bus" size={20} color={colors.white} />
-          </View>
-          <View>
-            <Text style={styles.cardTitle}>{item.name}</Text>
-            <Text style={styles.cardSubtitle}>{item.type_display || item.unit_type}</Text>
-          </View>
-        </View>
-        <View style={[styles.statusBadge, { backgroundColor: item.status === 'AVAILABLE' ? colors.success : colors.warning }]}>
-          <Text style={styles.statusText}>{item.status}</Text>
-        </View>
-      </View>
+  const getVehicleIcon = (type: string) => {
+    switch (type) {
+      case 'FORESTAL': return 'leaf';
+      case 'URBANO': return 'business';
+      case 'APOYO': return 'construct';
+      case 'ALJIBE': return 'water';
+      case 'PORTAESCALAS': return 'resize';
+      case 'RESCATE': return 'medkit';
+      case 'HAZMAT': return 'warning';
+      default: return 'car';
+    }
+  };
 
-      <View style={styles.cardActions}>
-        <TouchableOpacity style={styles.actionButton} onPress={() => handleOpenModal(item)}>
-          <Ionicons name="pencil" size={18} color={colors.primary} />
-          <Text style={[styles.actionText, { color: colors.primary }]}>Editar</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton} onPress={() => handleDelete(item)}>
-          <Ionicons name="trash" size={18} color={colors.danger} />
-          <Text style={[styles.actionText, { color: colors.danger }]}>Eliminar</Text>
-        </TouchableOpacity>
+  const getStatusInfo = (status: string) => {
+    switch (status) {
+      case 'AVAILABLE': return { label: 'Disponible', color: colors.success };
+      case 'DEPLOYED': return { label: 'Desplegado', color: colors.danger };
+      case 'STANDBY': return { label: 'En Espera', color: colors.warning };
+      case 'MAINTENANCE': return { label: 'Mantención', color: colors.gray[500] };
+      default: return { label: status, color: colors.gray[500] };
+    }
+  };
+
+  const renderItem = ({ item }: { item: any }) => {
+    const statusInfo = getStatusInfo(item.status);
+
+    return (
+      <View style={styles.card}>
+        {/* Header con icono y estado */}
+        <View style={styles.cardHeader}>
+          <View style={styles.vehicleInfo}>
+            <View style={[styles.iconContainer, { backgroundColor: colors.primary }]}>
+              <Ionicons name={getVehicleIcon(item.unit_type) as any} size={22} color={colors.white} />
+            </View>
+            <View style={styles.vehicleDetails}>
+              <Text style={styles.cardTitle}>{item.name}</Text>
+              <Text style={styles.cardSubtitle}>{item.type_display || item.unit_type}</Text>
+            </View>
+          </View>
+          <View style={[styles.statusBadge, { backgroundColor: statusInfo.color + '15' }]}>
+            <View style={[styles.statusDot, { backgroundColor: statusInfo.color }]} />
+            <Text style={[styles.statusLabel, { color: statusInfo.color }]}>{statusInfo.label}</Text>
+          </View>
+        </View>
+
+        {/* Detalles adicionales */}
+        <View style={styles.detailsRow}>
+          {item.members_count > 0 && (
+            <View style={styles.detailItem}>
+              <Ionicons name="people-outline" size={14} color={colors.gray[500]} />
+              <Text style={styles.detailText}>{item.members_count} tripulantes</Text>
+            </View>
+          )}
+          {item.observations && (
+            <View style={styles.detailItem}>
+              <Ionicons name="document-text-outline" size={14} color={colors.gray[500]} />
+              <Text style={styles.detailText} numberOfLines={1}>{item.observations}</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Actions */}
+        <View style={styles.cardActions}>
+          <TouchableOpacity style={styles.actionButton} onPress={() => handleOpenModal(item)}>
+            <Ionicons name="create-outline" size={18} color={colors.primary} />
+            <Text style={[styles.actionText, { color: colors.primary }]}>Editar</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionButton} onPress={() => handleDelete(item)}>
+            <Ionicons name="trash-outline" size={18} color={colors.danger} />
+            <Text style={[styles.actionText, { color: colors.danger }]}>Eliminar</Text>
+          </TouchableOpacity>
+        </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -234,32 +280,180 @@ export default function ManageCarsScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   card: {
-    backgroundColor: colors.white, borderRadius: borderRadius.md, padding: spacing.md, marginBottom: spacing.sm, ...shadows.sm
+    backgroundColor: colors.white,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+    marginBottom: spacing.md,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  iconContainer: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
-  cardTitle: { fontSize: 16, fontWeight: 'bold' },
-  cardSubtitle: { fontSize: 12, color: colors.gray[600] },
-  statusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  vehicleInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  iconContainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  vehicleDetails: {
+    marginLeft: spacing.md,
+    flex: 1,
+  },
+  cardTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  cardSubtitle: {
+    fontSize: 13,
+    color: colors.gray[500],
+    marginTop: 2,
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 20,
+    gap: 5,
+  },
+  statusDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+  },
+  statusLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+  },
   statusText: { fontSize: 10, color: 'white', fontWeight: 'bold' },
-  cardActions: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 10, gap: 15, borderTopWidth: 1, borderTopColor: colors.gray[100], paddingTop: 10 },
-  actionButton: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  actionText: { fontSize: 14, fontWeight: '600' },
-  emptyText: { textAlign: 'center', marginTop: 50, color: colors.gray[500] },
-  fab: {
-    position: 'absolute', bottom: 30, right: 20, width: 56, height: 56, borderRadius: 28, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', ...shadows.lg
+  detailsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginTop: spacing.md,
+    paddingTop: spacing.sm,
   },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: spacing.lg },
-  modalContent: { backgroundColor: colors.white, borderRadius: borderRadius.lg, padding: spacing.xl },
-  modalTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: spacing.lg, textAlign: 'center' },
-  label: { fontSize: 12, color: colors.gray[600], marginBottom: 5 },
-  input: { backgroundColor: colors.gray[100], padding: spacing.md, borderRadius: borderRadius.md, marginBottom: spacing.md },
-  chipsRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
-  chip: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: 16, backgroundColor: colors.gray[100], borderWidth: 1, borderColor: colors.gray[300] },
-  chipSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipText: { fontSize: 12, fontWeight: '600', color: colors.gray[700] },
-  modalButtons: { flexDirection: 'row', justifyContent: 'flex-end', gap: spacing.md, marginTop: 10 },
-  cancelButton: { padding: spacing.md },
-  saveButton: { backgroundColor: colors.primary, padding: spacing.md, borderRadius: borderRadius.md },
-  saveButtonText: { color: 'white', fontWeight: '600' }
+  detailItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  detailText: {
+    fontSize: 12,
+    color: colors.gray[500],
+  },
+  cardActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
+    gap: 16,
+    borderTopWidth: 1,
+    borderTopColor: colors.gray[100],
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: colors.gray[50],
+  },
+  actionText: { fontSize: 13, fontWeight: '600' },
+  emptyText: { textAlign: 'center', marginTop: 50, color: colors.gray[500], fontSize: 15 },
+  fab: {
+    position: 'absolute',
+    bottom: 30,
+    right: 20,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+  modalContent: {
+    backgroundColor: colors.white,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: spacing.xl,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    marginBottom: spacing.lg,
+    textAlign: 'center',
+    color: colors.text,
+  },
+  label: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 8,
+  },
+  input: {
+    backgroundColor: colors.gray[50],
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    marginBottom: spacing.md,
+    fontSize: 15,
+    borderWidth: 1,
+    borderColor: colors.gray[200],
+  },
+  chipsRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
+  chip: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    backgroundColor: colors.gray[50],
+    borderWidth: 1.5,
+    borderColor: colors.gray[200],
+  },
+  chipSelected: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  chipText: { fontSize: 13, fontWeight: '600', color: colors.gray[700] },
+  modalButtons: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing.md, marginTop: 20 },
+  cancelButton: {
+    flex: 1,
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.gray[100],
+    alignItems: 'center',
+  },
+  saveButton: {
+    flex: 2,
+    backgroundColor: colors.primary,
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  saveButtonText: { color: 'white', fontWeight: '700', fontSize: 15 }
 });

@@ -320,88 +320,115 @@ export default function IncidentsScreen() {
     };
 
     const renderIncidentItem = ({ item }: { item: any }) => {
-        const isMyCommand = item.commander === user?.id; // user.id from auth context
+        const isMyCommand = item.commander === user?.id;
+        const incidentColor = getIncidentColor(item.incident_type);
+        const reportedDate = new Date(item.reported_at);
+        const timeString = reportedDate.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
+        const dateString = reportedDate.toLocaleDateString('es-CL', { day: '2-digit', month: 'short' });
 
         return (
             <View style={styles.card}>
-                <View style={[styles.iconBox, { backgroundColor: getIncidentColor(item.incident_type) }]}>
-                    <Ionicons name="flame" size={24} color={colors.white} />
-                </View>
-                <View style={{ flex: 1, marginLeft: spacing.md }}>
-                    <Text style={styles.title}>{item.title}</Text>
-                    <Text style={styles.subtitle}>
-                        {item.incident_type} - {new Date(item.reported_at).toLocaleString()}
-                    </Text>
-
-                    {/* Commander Info */}
-                    {item.commander_name ? (
-                        <Text style={{ fontSize: 12, color: colors.primary, fontWeight: '600', marginTop: 4 }}>
-                            Jefe de Compañía: {item.commander_name}
+                {/* Header con tipo y estado */}
+                <View style={styles.cardHeader}>
+                    <View style={[styles.typeBadge, { backgroundColor: incidentColor + '20' }]}>
+                        <View style={[styles.typeIconBox, { backgroundColor: incidentColor }]}>
+                            <Ionicons
+                                name={item.incident_type === 'FORESTAL' ? 'leaf' :
+                                      item.incident_type === 'ESTRUCTURAL' ? 'business' :
+                                      item.incident_type === 'RESCATE' ? 'people' :
+                                      item.incident_type === 'HAZMAT' ? 'warning' : 'flame'}
+                                size={18}
+                                color={colors.white}
+                            />
+                        </View>
+                        <Text style={[styles.typeText, { color: incidentColor }]}>{item.incident_type}</Text>
+                    </View>
+                    <View style={[styles.statusIndicator, { backgroundColor: item.is_active ? colors.success + '20' : colors.gray[200] }]}>
+                        <View style={[styles.statusDot, { backgroundColor: item.is_active ? colors.success : colors.gray[400] }]} />
+                        <Text style={[styles.statusLabel, { color: item.is_active ? colors.success : colors.gray[500] }]}>
+                            {item.is_active ? 'Activa' : 'Cerrada'}
                         </Text>
-                    ) : (
-                        <Text style={{ fontSize: 12, color: colors.gray[500], marginTop: 4 }}>Sin Comandante</Text>
-                    )}
-
-                    {item.description ? <Text style={styles.desc} numberOfLines={2}>{item.description}</Text> : null}
-
-                    {/* Action Buttons Grid */}
-                    <View style={styles.actionsContainer}>
-                        {/* Dispatch (Admin/Chief) */}
-                        {(role === 'SUPER_ADMIN' || role === 'COMPANY_CHIEF') && item.is_active && (
-                            <TouchableOpacity
-                                style={[styles.actionBtn, { backgroundColor: colors.gray[100] }]}
-                                onPress={() => openDispatchModal(item)}
-                            >
-                                <Ionicons name="megaphone" size={18} color={colors.primary} />
-                                <Text style={styles.actionBtnText}>Despachar</Text>
-                            </TouchableOpacity>
-                        )}
-
-                        {/* Take Command (Chief only, if empty) */}
-                        {(role === 'COMPANY_CHIEF' || role === 'SUPER_ADMIN') && !item.commander && item.is_active && (
-                            <TouchableOpacity
-                                style={[styles.actionBtn, { backgroundColor: colors.secondary }]}
-                                onPress={() => handleTakeCommand(item.id)}
-                            >
-                                <Ionicons name="flag" size={18} color="white" />
-                                <Text style={[styles.actionBtnText, { color: 'white' }]}>Tomar Mando</Text>
-                            </TouchableOpacity>
-                        )}
-
-                        {/* Close Incident (Commander only) */}
-                        {isMyCommand && item.is_active && (
-                            <TouchableOpacity
-                                style={[styles.actionBtn, { backgroundColor: colors.danger }]}
-                                onPress={() => handleCloseIncident(item.id)}
-                            >
-                                <Ionicons name="stop-circle" size={18} color="white" />
-                                <Text style={[styles.actionBtnText, { color: 'white' }]}>Finalizar</Text>
-                            </TouchableOpacity>
-                        )}
-
-                        {/* Edit/Delete (Chief/Admin) */}
-                        {(role === 'COMPANY_CHIEF' || role === 'COMPANY_ADMIN' || role === 'SUPER_ADMIN') && (
-                            <>
-                                <TouchableOpacity
-                                    style={[styles.actionBtn, { backgroundColor: colors.gray[200] }]}
-                                    onPress={() => openEditIncident(item)}
-                                >
-                                    <Ionicons name="pencil" size={18} color={colors.text} />
-                                    {/* Hide text on small screens if needed, but keeping for now */}
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={[styles.actionBtn, { backgroundColor: '#fee2e2' }]}
-                                    onPress={() => handleDeleteIncident(item.id)}
-                                >
-                                    <Ionicons name="trash" size={18} color={colors.danger} />
-                                </TouchableOpacity>
-                            </>
-                        )}
                     </View>
                 </View>
 
-                <View style={styles.statusBadge}>
-                    <View style={[styles.dot, { backgroundColor: item.is_active ? colors.success : colors.gray[400] }]} />
+                {/* Título y descripción */}
+                <Text style={styles.cardTitle}>{item.title}</Text>
+                {item.description ? (
+                    <Text style={styles.cardDescription} numberOfLines={2}>{item.description}</Text>
+                ) : null}
+
+                {/* Info row */}
+                <View style={styles.infoRow}>
+                    <View style={styles.infoItem}>
+                        <Ionicons name="time-outline" size={14} color={colors.gray[500]} />
+                        <Text style={styles.infoText}>{timeString} • {dateString}</Text>
+                    </View>
+                    {item.commander_name ? (
+                        <View style={styles.infoItem}>
+                            <Ionicons name="person" size={14} color={colors.primary} />
+                            <Text style={[styles.infoText, { color: colors.primary, fontWeight: '600' }]}>{item.commander_name}</Text>
+                        </View>
+                    ) : (
+                        <View style={[styles.commanderBadge, { backgroundColor: colors.warning + '20' }]}>
+                            <Ionicons name="alert-circle" size={12} color={colors.warning} />
+                            <Text style={{ fontSize: 11, color: colors.warning, fontWeight: '600' }}>Sin Comandante</Text>
+                        </View>
+                    )}
+                </View>
+
+                {/* Divider */}
+                <View style={styles.cardDivider} />
+
+                {/* Action Buttons */}
+                <View style={styles.actionsContainer}>
+                    {(role === 'SUPER_ADMIN' || role === 'COMPANY_CHIEF') && item.is_active && (
+                        <TouchableOpacity
+                            style={[styles.actionBtn, styles.actionBtnOutline]}
+                            onPress={() => openDispatchModal(item)}
+                        >
+                            <Ionicons name="send" size={16} color={colors.primary} />
+                            <Text style={[styles.actionBtnText, { color: colors.primary }]}>Despachar</Text>
+                        </TouchableOpacity>
+                    )}
+
+                    {(role === 'COMPANY_CHIEF' || role === 'SUPER_ADMIN') && !item.commander && item.is_active && (
+                        <TouchableOpacity
+                            style={[styles.actionBtn, { backgroundColor: colors.secondary }]}
+                            onPress={() => handleTakeCommand(item.id)}
+                        >
+                            <Ionicons name="flag" size={16} color="white" />
+                            <Text style={[styles.actionBtnText, { color: 'white' }]}>Tomar Mando</Text>
+                        </TouchableOpacity>
+                    )}
+
+                    {isMyCommand && item.is_active && (
+                        <TouchableOpacity
+                            style={[styles.actionBtn, { backgroundColor: colors.danger }]}
+                            onPress={() => handleCloseIncident(item.id)}
+                        >
+                            <Ionicons name="checkmark-done" size={16} color="white" />
+                            <Text style={[styles.actionBtnText, { color: 'white' }]}>Finalizar</Text>
+                        </TouchableOpacity>
+                    )}
+
+                    <View style={{ flex: 1 }} />
+
+                    {(role === 'COMPANY_CHIEF' || role === 'COMPANY_ADMIN' || role === 'SUPER_ADMIN') && (
+                        <View style={styles.iconActions}>
+                            <TouchableOpacity
+                                style={styles.iconBtn}
+                                onPress={() => openEditIncident(item)}
+                            >
+                                <Ionicons name="create-outline" size={20} color={colors.gray[600]} />
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={styles.iconBtn}
+                                onPress={() => handleDeleteIncident(item.id)}
+                            >
+                                <Ionicons name="trash-outline" size={20} color={colors.danger} />
+                            </TouchableOpacity>
+                        </View>
+                    )}
                 </View>
             </View>
         );
@@ -615,33 +642,37 @@ export default function IncidentsScreen() {
                                         <Text style={{ fontStyle: 'italic', color: colors.gray[400], marginBottom: 10 }}>No hay unidades disponibles</Text>
                                     )}
 
-                                    {/* Vehicle Selector */}
-                                    <Text style={{ fontSize: 12, marginBottom: 5, marginTop: 15, color: colors.gray[500] }}>Vehículo a Utilizar (Opcional):</Text>
-                                    {availableVehicles.length > 0 ? (
-                                        <View style={{ height: 50, marginBottom: 15 }}>
-                                            <FlatList
-                                                horizontal
-                                                data={availableVehicles}
-                                                showsHorizontalScrollIndicator={false}
-                                                keyExtractor={v => v.id.toString()}
-                                                renderItem={({ item }) => (
-                                                    <TouchableOpacity
-                                                        style={[
-                                                            styles.unitChip,
-                                                            selectedVehicle?.id === item.id && styles.unitChipSelected
-                                                        ]}
-                                                        onPress={() => setSelectedVehicle(item === selectedVehicle ? null : item)}
-                                                    >
-                                                        <Text style={[
-                                                            styles.unitChipText,
-                                                            selectedVehicle?.id === item.id && { color: 'white' }
-                                                        ]}>{item.name}</Text>
-                                                    </TouchableOpacity>
-                                                )}
-                                            />
-                                        </View>
-                                    ) : (
-                                        <Text style={{ fontStyle: 'italic', color: colors.gray[400], marginBottom: 10 }}>No hay vehículos disponibles</Text>
+                                    {/* Vehicle Selector - Only show if NO Unit is selected, to avoid confusion/duplication */}
+                                    {!selectedInitialUnit && (
+                                        <>
+                                            <Text style={{ fontSize: 12, marginBottom: 5, marginTop: 15, color: colors.gray[500] }}>Vehículo a Utilizar (Opcional):</Text>
+                                            {availableVehicles.length > 0 ? (
+                                                <View style={{ height: 50, marginBottom: 15 }}>
+                                                    <FlatList
+                                                        horizontal
+                                                        data={availableVehicles}
+                                                        showsHorizontalScrollIndicator={false}
+                                                        keyExtractor={v => v.id.toString()}
+                                                        renderItem={({ item }) => (
+                                                            <TouchableOpacity
+                                                                style={[
+                                                                    styles.unitChip,
+                                                                    selectedVehicle?.id === item.id && styles.unitChipSelected
+                                                                ]}
+                                                                onPress={() => setSelectedVehicle(item === selectedVehicle ? null : item)}
+                                                            >
+                                                                <Text style={[
+                                                                    styles.unitChipText,
+                                                                    selectedVehicle?.id === item.id && { color: 'white' }
+                                                                ]}>{item.name}</Text>
+                                                            </TouchableOpacity>
+                                                        )}
+                                                    />
+                                                </View>
+                                            ) : (
+                                                <Text style={{ fontStyle: 'italic', color: colors.gray[400], marginBottom: 10 }}>No hay vehículos disponibles</Text>
+                                            )}
+                                        </>
                                     )}
 
 
@@ -774,10 +805,138 @@ function SavedFirefighters({ onSelect }: { onSelect: (f: any) => void }) {
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     listContent: { padding: spacing.md },
+
+    // Card styles mejorados
     card: {
-        backgroundColor: colors.white, padding: spacing.md, borderRadius: borderRadius.md, marginBottom: spacing.sm,
-        flexDirection: 'row', alignItems: 'flex-start', elevation: 2
+        backgroundColor: colors.white,
+        padding: spacing.lg,
+        borderRadius: borderRadius.lg,
+        marginBottom: spacing.md,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+        elevation: 3,
     },
+    cardHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: spacing.sm,
+    },
+    typeBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 4,
+        paddingHorizontal: 8,
+        paddingLeft: 4,
+        borderRadius: 20,
+        gap: 6,
+    },
+    typeIconBox: {
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    typeText: {
+        fontSize: 12,
+        fontWeight: '700',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+    },
+    statusIndicator: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 4,
+        paddingHorizontal: 10,
+        borderRadius: 12,
+        gap: 5,
+    },
+    statusDot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+    },
+    statusLabel: {
+        fontSize: 11,
+        fontWeight: '600',
+    },
+    cardTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: colors.text,
+        marginBottom: 4,
+    },
+    cardDescription: {
+        fontSize: 13,
+        color: colors.gray[500],
+        lineHeight: 18,
+        marginBottom: spacing.sm,
+    },
+    infoRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginTop: spacing.xs,
+    },
+    infoItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
+    infoText: {
+        fontSize: 12,
+        color: colors.gray[500],
+    },
+    commanderBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 3,
+        paddingHorizontal: 8,
+        borderRadius: 10,
+        gap: 4,
+    },
+    cardDivider: {
+        height: 1,
+        backgroundColor: colors.gray[100],
+        marginVertical: spacing.md,
+    },
+    actionsContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    actionBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 8,
+        paddingHorizontal: 14,
+        borderRadius: 8,
+        gap: 6,
+    },
+    actionBtnOutline: {
+        backgroundColor: 'transparent',
+        borderWidth: 1.5,
+        borderColor: colors.primary,
+    },
+    actionBtnText: {
+        fontSize: 13,
+        fontWeight: '600',
+    },
+    iconActions: {
+        flexDirection: 'row',
+        gap: 4,
+    },
+    iconBtn: {
+        padding: 8,
+        borderRadius: 8,
+        backgroundColor: colors.gray[50],
+    },
+
+    // Legacy styles
     iconBox: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
     title: { fontSize: 16, fontWeight: 'bold' },
     subtitle: { fontSize: 12, color: colors.gray[600] },
@@ -786,24 +945,72 @@ const styles = StyleSheet.create({
     dot: { width: 8, height: 8, borderRadius: 4 },
     emptyText: { textAlign: 'center', marginTop: spacing.xl, color: colors.gray[500] },
     fab: {
-        position: 'absolute', bottom: spacing.xl, right: spacing.md, width: 56, height: 56, borderRadius: 28,
-        backgroundColor: colors.danger, alignItems: 'center', justifyContent: 'center', elevation: 6
+        position: 'absolute', bottom: spacing.xl, right: spacing.md, width: 60, height: 60, borderRadius: 30,
+        backgroundColor: colors.danger, alignItems: 'center', justifyContent: 'center',
+        shadowColor: colors.danger, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 8
     },
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: spacing.lg },
-    modalContent: { backgroundColor: colors.white, borderRadius: borderRadius.lg, padding: spacing.xl },
-    modalTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: spacing.sm, textAlign: 'center' },
-    modalSubtitle: { fontSize: 14, color: colors.gray[600], marginBottom: spacing.lg, textAlign: 'center' },
-    input: { backgroundColor: colors.gray[100], padding: spacing.md, borderRadius: borderRadius.md, marginBottom: spacing.md },
-    textArea: { height: 80, textAlignVertical: 'top' },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+    modalContent: {
+        backgroundColor: colors.white,
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        padding: spacing.xl,
+        paddingTop: spacing.lg,
+        maxHeight: '90%',
+    },
+    modalTitle: {
+        fontSize: 22,
+        fontWeight: '700',
+        marginBottom: spacing.xs,
+        textAlign: 'center',
+        color: colors.text,
+    },
+    modalSubtitle: { fontSize: 14, color: colors.gray[500], marginBottom: spacing.lg, textAlign: 'center' },
+    input: {
+        backgroundColor: colors.gray[50],
+        padding: spacing.md,
+        borderRadius: borderRadius.md,
+        marginBottom: spacing.md,
+        fontSize: 15,
+        borderWidth: 1,
+        borderColor: colors.gray[200],
+    },
+    textArea: { height: 100, textAlignVertical: 'top' },
     loadingContainer: { alignItems: 'center', padding: spacing.xl },
-    locationText: { fontSize: 12, color: colors.gray[500], marginBottom: spacing.md },
-    modalButtons: { flexDirection: 'row', justifyContent: 'flex-end', gap: spacing.md, marginTop: 20 },
-    cancelButton: { padding: spacing.md },
-    createButton: { backgroundColor: colors.danger, padding: spacing.md, borderRadius: borderRadius.md },
-    createButtonText: { color: colors.white, fontWeight: '600' },
+    locationText: {
+        fontSize: 12,
+        color: colors.gray[500],
+        marginBottom: spacing.md,
+        textAlign: 'center',
+        backgroundColor: colors.gray[50],
+        padding: spacing.sm,
+        borderRadius: borderRadius.sm,
+    },
+    modalButtons: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing.md, marginTop: 20 },
+    cancelButton: {
+        flex: 1,
+        padding: spacing.md,
+        borderRadius: borderRadius.md,
+        backgroundColor: colors.gray[100],
+        alignItems: 'center',
+    },
+    createButton: {
+        flex: 2,
+        backgroundColor: colors.danger,
+        padding: spacing.md,
+        borderRadius: borderRadius.md,
+        alignItems: 'center',
+        shadowColor: colors.danger,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+        elevation: 4,
+    },
+    createButtonText: { color: colors.white, fontWeight: '700', fontSize: 15 },
     selectButton: {
         flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-        backgroundColor: colors.gray[100], padding: spacing.md, borderRadius: borderRadius.md, marginBottom: spacing.md
+        backgroundColor: colors.gray[50], padding: spacing.md, borderRadius: borderRadius.md, marginBottom: spacing.md,
+        borderWidth: 1, borderColor: colors.gray[200]
     },
     dispatchButtonSmall: {
         flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8,
@@ -813,41 +1020,34 @@ const styles = StyleSheet.create({
     dispatchButtonText: { fontSize: 12, fontWeight: '600', color: colors.primary },
     unitItem: {
         flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-        padding: 12, borderRadius: 8, backgroundColor: colors.gray[50], marginBottom: 8,
-        borderWidth: 1, borderColor: colors.gray[200]
+        padding: 14, borderRadius: 12, backgroundColor: colors.gray[50], marginBottom: 8,
+        borderWidth: 1.5, borderColor: colors.gray[200]
     },
     unitItemSelected: {
         backgroundColor: colors.primary, borderColor: colors.primary
     },
     unitItemText: { fontWeight: '600', color: colors.text },
     unitChip: {
-        paddingVertical: 8, paddingHorizontal: 12, borderRadius: 20,
-        backgroundColor: colors.gray[100], marginRight: 8, borderWidth: 1, borderColor: colors.gray[300]
+        paddingVertical: 10, paddingHorizontal: 16, borderRadius: 25,
+        backgroundColor: colors.gray[50], marginRight: 8, borderWidth: 1.5, borderColor: colors.gray[200]
     },
     unitChipSelected: {
         backgroundColor: colors.primary, borderColor: colors.primary
     },
     unitChipText: { fontSize: 13, fontWeight: '600', color: colors.gray[700] },
 
-    // New Styles for Actions and Chief Cards
-    actionsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
-    actionBtn: {
-        flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-        paddingVertical: 8, paddingHorizontal: 12, borderRadius: 6, gap: 6
-    },
-    actionBtnText: { fontSize: 12, fontWeight: '600', color: colors.primary },
-
+    // Chief Cards mejorados
     chiefCard: {
-        width: 100, padding: 8, backgroundColor: colors.gray[100], borderRadius: 8, marginRight: 8,
-        borderWidth: 1, borderColor: colors.gray[200], alignItems: 'center', justifyContent: 'center'
+        width: 90, padding: 10, backgroundColor: colors.gray[50], borderRadius: 12, marginRight: 10,
+        borderWidth: 1.5, borderColor: colors.gray[200], alignItems: 'center', justifyContent: 'center'
     },
     chiefCardSelected: {
         backgroundColor: colors.primary, borderColor: colors.primary
     },
     chiefAvatar: {
-        width: 40, height: 40, borderRadius: 20, backgroundColor: colors.gray[300],
-        alignItems: 'center', justifyContent: 'center', marginBottom: 6
+        width: 44, height: 44, borderRadius: 22, backgroundColor: colors.gray[200],
+        alignItems: 'center', justifyContent: 'center', marginBottom: 8
     },
-    chiefName: { fontSize: 11, fontWeight: 'bold', color: colors.text, textAlign: 'center', marginBottom: 2 },
+    chiefName: { fontSize: 11, fontWeight: '700', color: colors.text, textAlign: 'center', marginBottom: 2 },
     chiefRole: { fontSize: 10, color: colors.gray[500], textAlign: 'center' }
 });

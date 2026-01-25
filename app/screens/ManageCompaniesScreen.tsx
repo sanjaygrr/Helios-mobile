@@ -15,6 +15,8 @@ export default function ManageCompaniesScreen() {
     // For SuperAdmin to filtering/creating
     const [departments, setDepartments] = useState([]);
     const [showDeptSelector, setShowDeptSelector] = useState(false);
+    const [showCreateDept, setShowCreateDept] = useState(false);
+    const [newDeptName, setNewDeptName] = useState('');
 
     useEffect(() => {
         fetchCompanies();
@@ -55,6 +57,25 @@ export default function ManageCompaniesScreen() {
             Alert.alert('Éxito', 'Compañía creada');
         } catch (error) {
             Alert.alert('Error', 'No se pudo crear la compañía');
+        }
+    };
+
+    const handleCreateDepartment = async () => {
+        if (!newDeptName.trim()) {
+            Alert.alert('Error', 'Ingrese nombre del Cuerpo');
+            return;
+        }
+        try {
+            const res = await api.post('/departments/', { name: newDeptName.trim(), region: 'Metropolitana' });
+            const created = res.data;
+            // Refresh list and select it
+            await fetchDepartments();
+            setNewCompany({ ...newCompany, fire_department: created.id });
+            setShowCreateDept(false);
+            setNewDeptName('');
+            Alert.alert('Éxito', 'Cuerpo creado y seleccionado');
+        } catch (error) {
+            Alert.alert('Error', 'No se pudo crear el cuerpo');
         }
     };
 
@@ -111,10 +132,20 @@ export default function ManageCompaniesScreen() {
                         />
 
                         {role === 'SUPER_ADMIN' && (
-                            <TouchableOpacity style={styles.selectButton} onPress={() => setShowDeptSelector(true)}>
-                                <Text>{getDeptLabel()}</Text>
-                                <Ionicons name="chevron-down" size={20} color={colors.gray[500]} />
-                            </TouchableOpacity>
+                            <View>
+                                <View style={{ flexDirection: 'row', gap: 10 }}>
+                                    <TouchableOpacity style={[styles.selectButton, { flex: 1 }]} onPress={() => setShowDeptSelector(true)}>
+                                        <Text>{getDeptLabel()}</Text>
+                                        <Ionicons name="chevron-down" size={20} color={colors.gray[500]} />
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={[styles.selectButton, { backgroundColor: colors.secondary, width: 50, justifyContent: 'center', padding: 0 }]}
+                                        onPress={() => setShowCreateDept(true)}
+                                    >
+                                        <Ionicons name="add" size={24} color="white" />
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
                         )}
 
                         <View style={styles.modalButtons}>
@@ -137,6 +168,28 @@ export default function ManageCompaniesScreen() {
                 onClose={() => setShowDeptSelector(false)}
                 onSelect={(opt) => setNewCompany({ ...newCompany, fire_department: opt.id as number })}
             />
+
+            <Modal visible={showCreateDept} transparent animationType="fade">
+                <View style={styles.modalOverlay}>
+                    <View style={[styles.modalContent, { backgroundColor: colors.white }]}>
+                        <Text style={styles.modalTitle}>Nuevo Cuerpo de Bomberos</Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Nombre del Cuerpo (ej: Ñuñoa)"
+                            value={newDeptName}
+                            onChangeText={setNewDeptName}
+                        />
+                        <View style={styles.modalButtons}>
+                            <TouchableOpacity style={styles.cancelButton} onPress={() => setShowCreateDept(false)}>
+                                <Text>Cancelar</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.createButton} onPress={handleCreateDepartment}>
+                                <Text style={styles.createButtonText}>Crear</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 }

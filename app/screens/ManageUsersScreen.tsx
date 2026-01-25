@@ -74,21 +74,50 @@ export default function ManageUsersScreen() {
             <FlatList
                 data={users}
                 keyExtractor={(item: any) => item.id.toString()}
-                renderItem={({ item }) => (
-                    <View style={styles.userCard}>
-                        <View>
-                            <Text style={styles.userEmail}>{item.email}</Text>
-                            <Text style={styles.userRole}>
-                                {item.role}
-                                {item.company_details ? ` - ${item.company_details.number}` : ''}
-                            </Text>
+                renderItem={({ item }) => {
+                    const getRoleInfo = (role: string) => {
+                        switch (role) {
+                            case 'SUPER_ADMIN': return { label: 'Super Admin', color: colors.danger, icon: 'shield' };
+                            case 'COMPANY_ADMIN': return { label: 'Administrador', color: colors.secondary, icon: 'settings' };
+                            case 'COMPANY_CHIEF': return { label: 'Jefe de Compañía', color: colors.primary, icon: 'star' };
+                            case 'FIREFIGHTER': return { label: 'Bombero', color: colors.success, icon: 'flame' };
+                            default: return { label: role, color: colors.gray[500], icon: 'person' };
+                        }
+                    };
+                    const roleInfo = getRoleInfo(item.role);
+
+                    return (
+                        <View style={styles.userCard}>
+                            {/* Avatar */}
+                            <View style={[styles.avatar, { backgroundColor: roleInfo.color + '20' }]}>
+                                <Ionicons name={roleInfo.icon as any} size={22} color={roleInfo.color} />
+                            </View>
+
+                            {/* Info */}
+                            <View style={styles.userInfo}>
+                                <Text style={styles.userEmail}>{item.email}</Text>
+                                <View style={styles.userMeta}>
+                                    <View style={[styles.roleBadge, { backgroundColor: roleInfo.color + '15' }]}>
+                                        <Text style={[styles.roleText, { color: roleInfo.color }]}>{roleInfo.label}</Text>
+                                    </View>
+                                    {item.company_details && (
+                                        <Text style={styles.companyLabel}>• Cía {item.company_details.number}</Text>
+                                    )}
+                                </View>
+                            </View>
+
+                            {/* Status */}
+                            <View style={[styles.statusBadge, { backgroundColor: item.is_active ? colors.success + '15' : colors.gray[100] }]}>
+                                <View style={[styles.statusDot, { backgroundColor: item.is_active ? colors.success : colors.gray[400] }]} />
+                                <Text style={[styles.statusText, { color: item.is_active ? colors.success : colors.gray[500] }]}>
+                                    {item.is_active ? 'Activo' : 'Inactivo'}
+                                </Text>
+                            </View>
                         </View>
-                        <View style={styles.activeBadge}>
-                            <View style={[styles.dot, { backgroundColor: item.is_active ? colors.success : colors.danger }]} />
-                        </View>
-                    </View>
-                )}
+                    );
+                }}
                 contentContainerStyle={styles.listContent}
+                ListEmptyComponent={<Text style={styles.emptyText}>No hay usuarios registrados</Text>}
             />
 
             <TouchableOpacity
@@ -192,72 +221,170 @@ export default function ManageUsersScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
-    listContent: { padding: spacing.md },
+    listContent: { padding: spacing.md, paddingBottom: 100 },
     userCard: {
         backgroundColor: colors.white,
-        padding: spacing.md,
-        borderRadius: borderRadius.md,
-        marginBottom: spacing.sm,
+        padding: spacing.lg,
+        borderRadius: borderRadius.lg,
+        marginBottom: spacing.md,
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
         shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
-        elevation: 2,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+        elevation: 3,
     },
-    userEmail: { fontSize: 16, fontWeight: '600' },
-    userRole: { fontSize: 12, color: colors.gray[500], marginTop: 2 },
+    avatar: {
+        width: 50,
+        height: 50,
+        borderRadius: 14,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    userInfo: {
+        flex: 1,
+        marginLeft: spacing.md,
+    },
+    userEmail: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: colors.text,
+        marginBottom: 4,
+    },
+    userMeta: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    roleBadge: {
+        paddingVertical: 3,
+        paddingHorizontal: 8,
+        borderRadius: 6,
+    },
+    roleText: {
+        fontSize: 11,
+        fontWeight: '600',
+    },
+    companyLabel: {
+        fontSize: 12,
+        color: colors.gray[500],
+    },
+    statusBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 5,
+        paddingHorizontal: 10,
+        borderRadius: 20,
+        gap: 5,
+    },
+    statusDot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+    },
+    statusText: {
+        fontSize: 10,
+        fontWeight: '600',
+    },
+    emptyText: {
+        textAlign: 'center',
+        marginTop: 50,
+        color: colors.gray[500],
+        fontSize: 15,
+    },
     activeBadge: { padding: spacing.xs },
     dot: { width: 8, height: 8, borderRadius: 4 },
     fab: {
         position: 'absolute',
         bottom: spacing.xl,
         right: spacing.md,
-        width: 56,
-        height: 56,
-        borderRadius: 28,
+        width: 60,
+        height: 60,
+        borderRadius: 30,
         backgroundColor: colors.primary,
         alignItems: 'center',
         justifyContent: 'center',
-        elevation: 6,
+        shadowColor: colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 8,
     },
     modalOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        justifyContent: 'center',
-        padding: spacing.lg,
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        justifyContent: 'flex-end',
     },
     modalContent: {
         backgroundColor: colors.white,
-        borderRadius: borderRadius.lg,
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
         padding: spacing.xl,
-        maxHeight: '80%',
+        maxHeight: '90%',
     },
-    modalTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: spacing.lg, textAlign: 'center' },
+    modalTitle: {
+        fontSize: 22,
+        fontWeight: '700',
+        marginBottom: spacing.lg,
+        textAlign: 'center',
+        color: colors.text,
+    },
     input: {
-        backgroundColor: colors.gray[100],
+        backgroundColor: colors.gray[50],
         padding: spacing.md,
         borderRadius: borderRadius.md,
         marginBottom: spacing.md,
+        fontSize: 15,
+        borderWidth: 1,
+        borderColor: colors.gray[200],
     },
-    label: { fontWeight: '600', marginBottom: spacing.xs, color: colors.gray[700] },
-    roleButtons: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: spacing.lg },
+    label: {
+        fontWeight: '600',
+        marginBottom: spacing.sm,
+        color: colors.text,
+        fontSize: 14,
+    },
+    roleButtons: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: spacing.lg },
     roleButton: {
-        paddingHorizontal: 12, paddingVertical: 6,
-        borderRadius: 16, borderWidth: 1, borderColor: colors.primary
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 12,
+        borderWidth: 1.5,
+        borderColor: colors.primary,
+        backgroundColor: colors.white,
     },
-    roleButtonActive: { backgroundColor: colors.primary },
-    roleButtonText: { fontSize: 12, color: colors.primary },
+    roleButtonActive: {
+        backgroundColor: colors.primary,
+        borderColor: colors.primary,
+    },
+    roleButtonText: { fontSize: 13, fontWeight: '600', color: colors.primary },
     roleButtonTextActive: { color: colors.white },
-    modalButtons: { flexDirection: 'row', justifyContent: 'flex-end', gap: spacing.md, marginTop: spacing.lg },
-    cancelButton: { padding: spacing.md },
-    createButton: { backgroundColor: colors.primary, padding: spacing.md, borderRadius: borderRadius.md },
-    createButtonText: { color: colors.white, fontWeight: '600' },
+    modalButtons: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing.md, marginTop: spacing.lg },
+    cancelButton: {
+        flex: 1,
+        padding: spacing.md,
+        borderRadius: borderRadius.md,
+        backgroundColor: colors.gray[100],
+        alignItems: 'center',
+    },
+    createButton: {
+        flex: 2,
+        backgroundColor: colors.primary,
+        padding: spacing.md,
+        borderRadius: borderRadius.md,
+        alignItems: 'center',
+        shadowColor: colors.primary,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+        elevation: 4,
+    },
+    createButtonText: { color: colors.white, fontWeight: '700', fontSize: 15 },
     selectButton: {
         flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-        backgroundColor: colors.gray[100], padding: spacing.md, borderRadius: borderRadius.md, marginBottom: spacing.md
+        backgroundColor: colors.gray[50], padding: spacing.md, borderRadius: borderRadius.md, marginBottom: spacing.md,
+        borderWidth: 1, borderColor: colors.gray[200]
     },
     disabled: { opacity: 0.5 },
 });
