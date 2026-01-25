@@ -12,6 +12,9 @@ import {
   ActivityIndicator,
   Image,
   Dimensions,
+  ScrollView,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius, shadows, typography } from '../theme/colors';
@@ -19,6 +22,17 @@ import { colors, spacing, borderRadius, shadows, typography } from '../theme/col
 import { useAuth } from '../context/AuthContext';
 
 const { width, height } = Dimensions.get('window');
+
+const DismissKeyboard = ({ children }: { children: React.ReactNode }) => {
+  if (Platform.OS === 'web') {
+    return <>{children}</>;
+  }
+  return (
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      {children}
+    </TouchableWithoutFeedback>
+  );
+};
 
 export default function LoginScreen({ navigation }: any) {
   const { login } = useAuth();
@@ -45,8 +59,12 @@ export default function LoginScreen({ navigation }: any) {
         routes: [{ name: 'Main' }],
       });
     } catch (err) {
-      setError('Credenciales invalidas o error de conexion.');
-      console.error(err);
+      const msg = (err && (err as any).message) || '';
+      if (msg.includes('Network Error') || msg.includes('timeout')) {
+        setError('No se pudo conectar al servidor. Verifique su red o la URL del backend en Ajustes.');
+      } else {
+        setError('Credenciales invalidas o error de conexion.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -56,6 +74,7 @@ export default function LoginScreen({ navigation }: any) {
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
     >
       <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
 
@@ -66,137 +85,146 @@ export default function LoginScreen({ navigation }: any) {
       <View style={styles.backgroundCircle3} />
 
       {/* Content */}
-      <View style={styles.content}>
-        {/* Logo Section */}
-        <View style={styles.logoSection}>
-          <View style={styles.logoContainer}>
-            {/* <Logo width={120} height={120} /> */}
-            <Ionicons name="flame" size={100} color={colors.primary} />
-          </View>
-          <Text style={styles.logoText}>HELIOS</Text>
-          <View style={styles.taglineContainer}>
-            <View style={styles.taglineLine} />
-            <Text style={styles.taglineText}>Sistema de Emergencias</Text>
-            <View style={styles.taglineLine} />
-          </View>
-        </View>
-
-        {/* Form Card */}
-        <View style={styles.formCard}>
-          <View style={styles.formHeader}>
-            <Text style={styles.welcomeText}>Bienvenido</Text>
-            <Text style={styles.instructionText}>
-              Ingresa tus credenciales para continuar
-            </Text>
-          </View>
-
-          {/* Error message */}
-          {error ? (
-            <View style={styles.errorContainer}>
-              <Ionicons name="alert-circle" size={20} color="#FFFFFF" />
-              <Text style={styles.errorText}>{error}</Text>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+      >
+        <DismissKeyboard>
+          <View>
+            {/* Logo Section */}
+            <View style={styles.logoSection}>
+              <View style={styles.logoContainer}>
+                {/* <Logo width={120} height={120} /> */}
+                <Ionicons name="flame" size={100} color={colors.primary} />
+              </View>
+              <Text style={styles.logoText}>HELIOS</Text>
+              <View style={styles.taglineContainer}>
+                <View style={styles.taglineLine} />
+                <Text style={styles.taglineText}>Sistema de Emergencias</Text>
+                <View style={styles.taglineLine} />
+              </View>
             </View>
-          ) : null}
 
-          {/* Email Input */}
-          <View style={[
-            styles.inputContainer,
-            focusedInput === 'email' && styles.inputContainerFocused
-          ]}>
-            <View style={[
-              styles.inputIcon,
-              focusedInput === 'email' && styles.inputIconFocused
-            ]}>
-              <Ionicons
-                name="mail-outline"
-                size={22}
-                color={focusedInput === 'email' ? colors.primary : colors.gray[400]}
-              />
-            </View>
-            <TextInput
-              style={styles.input}
-              placeholder="Correo electronico"
-              placeholderTextColor={colors.gray[400]}
-              value={email}
-              onChangeText={(text) => {
-                setEmail(text);
-                setError('');
-              }}
-              onFocus={() => setFocusedInput('email')}
-              onBlur={() => setFocusedInput(null)}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-          </View>
+            {/* Form Card */}
+            <View style={styles.formCard}>
+              <View style={styles.formHeader}>
+                <Text style={styles.welcomeText}>Bienvenido</Text>
+                <Text style={styles.instructionText}>
+                  Ingresa tus credenciales para continuar
+                </Text>
+              </View>
 
-          {/* Password Input */}
-          <View style={[
-            styles.inputContainer,
-            focusedInput === 'password' && styles.inputContainerFocused
-          ]}>
-            <View style={[
-              styles.inputIcon,
-              focusedInput === 'password' && styles.inputIconFocused
-            ]}>
-              <Ionicons
-                name="lock-closed-outline"
-                size={22}
-                color={focusedInput === 'password' ? colors.primary : colors.gray[400]}
-              />
-            </View>
-            <TextInput
-              style={styles.input}
-              placeholder="Contrasena"
-              placeholderTextColor={colors.gray[400]}
-              value={password}
-              onChangeText={(text) => {
-                setPassword(text);
-                setError('');
-              }}
-              onFocus={() => setFocusedInput('password')}
-              onBlur={() => setFocusedInput(null)}
-              secureTextEntry={!showPassword}
-            />
-            <TouchableOpacity
-              style={styles.passwordToggle}
-              onPress={() => setShowPassword(!showPassword)}
-            >
-              <Ionicons
-                name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                size={22}
-                color={colors.gray[400]}
-              />
-            </TouchableOpacity>
-          </View>
-
-          {/* Login Button */}
-          <TouchableOpacity
-            style={[styles.loginButton, isLoading && styles.loginButtonDisabled]}
-            onPress={handleLogin}
-            disabled={isLoading}
-            activeOpacity={0.8}
-          >
-            {isLoading ? (
-              <ActivityIndicator color={colors.white} size="small" />
-            ) : (
-              <>
-                <Text style={styles.loginButtonText}>Iniciar Sesion</Text>
-                <View style={styles.loginButtonIconContainer}>
-                  <Ionicons name="arrow-forward" size={20} color={colors.primary} />
+              {/* Error message */}
+              {error ? (
+                <View style={styles.errorContainer}>
+                  <Ionicons name="alert-circle" size={20} color="#FFFFFF" />
+                  <Text style={styles.errorText}>{error}</Text>
                 </View>
-              </>
-            )}
-          </TouchableOpacity>
+              ) : null}
 
-          {/* Divider */}
-          <View style={styles.dividerContainer}>
-            <View style={styles.divider} />
-            <Text style={styles.dividerText}>Helios v1.0</Text>
-            <View style={styles.divider} />
+              {/* Email Input */}
+              <View style={[
+                styles.inputContainer,
+                focusedInput === 'email' && styles.inputContainerFocused
+              ]}>
+                <View style={[
+                  styles.inputIcon,
+                  focusedInput === 'email' && styles.inputIconFocused
+                ]}>
+                  <Ionicons
+                    name="mail-outline"
+                    size={22}
+                    color={focusedInput === 'email' ? colors.primary : colors.gray[400]}
+                  />
+                </View>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Correo electronico"
+                  placeholderTextColor={colors.gray[400]}
+                  value={email}
+                  onChangeText={(text) => {
+                    setEmail(text);
+                    setError('');
+                  }}
+                  onFocus={() => setFocusedInput('email')}
+                  onBlur={() => setFocusedInput(null)}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              </View>
+
+              {/* Password Input */}
+              <View style={[
+                styles.inputContainer,
+                focusedInput === 'password' && styles.inputContainerFocused
+              ]}>
+                <View style={[
+                  styles.inputIcon,
+                  focusedInput === 'password' && styles.inputIconFocused
+                ]}>
+                  <Ionicons
+                    name="lock-closed-outline"
+                    size={22}
+                    color={focusedInput === 'password' ? colors.primary : colors.gray[400]}
+                  />
+                </View>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Contrasena"
+                  placeholderTextColor={colors.gray[400]}
+                  value={password}
+                  onChangeText={(text) => {
+                    setPassword(text);
+                    setError('');
+                  }}
+                  onFocus={() => setFocusedInput('password')}
+                  onBlur={() => setFocusedInput(null)}
+                  secureTextEntry={!showPassword}
+                />
+                <TouchableOpacity
+                  style={styles.passwordToggle}
+                  onPress={() => setShowPassword(!showPassword)}
+                >
+                  <Ionicons
+                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                    size={22}
+                    color={colors.gray[400]}
+                  />
+                </TouchableOpacity>
+              </View>
+
+              {/* Login Button */}
+              <TouchableOpacity
+                style={[styles.loginButton, isLoading && styles.loginButtonDisabled]}
+                onPress={handleLogin}
+                disabled={isLoading}
+                activeOpacity={0.8}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color={colors.white} size="small" />
+                ) : (
+                  <>
+                    <Text style={styles.loginButtonText}>Iniciar Sesion</Text>
+                    <View style={styles.loginButtonIconContainer}>
+                      <Ionicons name="arrow-forward" size={20} color={colors.primary} />
+                    </View>
+                  </>
+                )}
+              </TouchableOpacity>
+
+              {/* Divider */}
+              <View style={styles.dividerContainer}>
+                <View style={styles.divider} />
+                <Text style={styles.dividerText}>Helios v1.0</Text>
+                <View style={styles.divider} />
+              </View>
+            </View>
+            <View style={{ height: spacing.xl }} />
           </View>
-        </View>
-      </View>
+        </DismissKeyboard>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -245,9 +273,10 @@ const styles = StyleSheet.create({
     opacity: 0.3,
   },
   content: {
-    flex: 1,
+    flexGrow: 1,
     paddingHorizontal: spacing.lg,
     paddingTop: Platform.OS === 'ios' ? 80 : 50,
+    paddingBottom: spacing.xl,
   },
   logoSection: {
     alignItems: 'center',

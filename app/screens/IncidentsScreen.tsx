@@ -3,11 +3,12 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Modal, A
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { colors, spacing, borderRadius } from '../theme/colors';
- 
+
 import ModalSelector from '../components/ModalSelector';
 import PersonnelForm, { SectionMember } from '../components/PersonnelForm';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
+import LocationPicker from '../components/LocationPicker';
 
 
 const getIncidentColor = (type: string) => {
@@ -37,6 +38,7 @@ export default function IncidentsScreen() {
     });
     const [loadingLocation, setLoadingLocation] = useState(false);
     const [showTypeSelector, setShowTypeSelector] = useState(false);
+    const [showLocationPicker, setShowLocationPicker] = useState(false);
 
     // Dispatch State
     const [isDispatchModalVisible, setDispatchModalVisible] = useState(false);
@@ -452,6 +454,13 @@ export default function IncidentsScreen() {
                                         <Text>{getTypeLabel()}</Text>
                                         <Ionicons name="chevron-down" size={20} color={colors.gray[500]} />
                                     </TouchableOpacity>
+
+                                    <TouchableOpacity style={[styles.selectButton, { backgroundColor: colors.secondary + '20' }]} onPress={() => setShowLocationPicker(true)}>
+                                        <Text style={{ color: colors.secondary, fontWeight: '600' }}>
+                                            {newIncident.latitude !== 0 ? 'Ubicación Ajustada' : 'Ajustar Ubicación en Mapa'}
+                                        </Text>
+                                        <Ionicons name="map" size={20} color={colors.secondary} />
+                                    </TouchableOpacity>
                                     <TextInput
                                         style={[styles.input, styles.textArea]}
                                         placeholder="Descripción (Opcional)"
@@ -478,7 +487,7 @@ export default function IncidentsScreen() {
                                                         <Text style={[
                                                             styles.unitChipText,
                                                             newIncident.commander === item.id && { color: 'white' }
-                                                        ]}>{(item.email || '').split('@')[0]}</Text>
+                                                        ]}>{item.first_name || item.last_name ? `${item.first_name || ''} ${item.last_name || ''}`.trim() : (item.email || '').split('@')[0]}</Text>
                                                     </TouchableOpacity>
                                                 )}
                                             />
@@ -494,8 +503,8 @@ export default function IncidentsScreen() {
                                     <SavedFirefighters
                                         onSelect={(f) => {
                                             const member = {
-                                                firstName: (f.email || '').split('@')[0],
-                                                lastName: '',
+                                                firstName: f.first_name || ((f.email || '').split('@')[0]),
+                                                lastName: f.last_name || '',
                                                 rut: f.rut || '',
                                                 role: 'Bombero',
                                                 company: f.company_details?.name || ''
@@ -587,7 +596,7 @@ export default function IncidentsScreen() {
             </Modal>
 
             {/* Dispatch Modal */}
-            <Modal visible={isDispatchModalVisible} transparent animationType="slide">
+            < Modal visible={isDispatchModalVisible} transparent animationType="slide" >
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
                         <Text style={styles.modalTitle}>Despachar Unidad</Text>
@@ -642,7 +651,7 @@ export default function IncidentsScreen() {
                         )}
                     </View>
                 </View>
-            </Modal>
+            </Modal >
 
             <ModalSelector
                 visible={showTypeSelector}
@@ -652,7 +661,14 @@ export default function IncidentsScreen() {
                 onSelect={(opt) => setNewIncident({ ...newIncident, incident_type: opt.id as string })}
                 searchable={true}
             />
-        </View>
+
+            <LocationPicker
+                visible={showLocationPicker}
+                initialLocation={{ latitude: newIncident.latitude, longitude: newIncident.longitude }}
+                onClose={() => setShowLocationPicker(false)}
+                onSelect={(lat, lng) => setNewIncident({ ...newIncident, latitude: lat, longitude: lng })}
+            />
+        </View >
     );
 }
 
@@ -675,7 +691,11 @@ function SavedFirefighters({ onSelect }: { onSelect: (f: any) => void }) {
                         style={styles.unitChip}
                         onPress={() => onSelect(item)}
                     >
-                        <Text style={styles.unitChipText}>{(item.email || '').split('@')[0]}</Text>
+                        <Text style={styles.unitChipText}>
+                            {item.first_name || item.last_name
+                                ? `${item.first_name || ''} ${item.last_name || ''}`.trim()
+                                : (item.email || '').split('@')[0]}
+                        </Text>
                     </TouchableOpacity>
                 )}
             />

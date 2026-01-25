@@ -3,6 +3,7 @@ import * as Location from 'expo-location';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import { Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const TRACKING_INTERVAL = 60000; // 60 seconds
 
@@ -31,6 +32,8 @@ export default function TrackingService() {
 
         const sendLocation = async () => {
             try {
+                const token = await AsyncStorage.getItem('@Auth:token');
+                if (!token || !user) return;
                 const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
                 await api.post('/tracking/history/', {
                     latitude: location.coords.latitude,
@@ -39,7 +42,9 @@ export default function TrackingService() {
                 });
                 console.log('Location sent for tracking');
             } catch (error) {
-                console.error('Error sending location:', error);
+                // Silenciar errores de red para no molestar al usuario
+                const msg = (error && (error as any).message) || '';
+                if (__DEV__) console.error('Error sending location:', msg);
             }
         };
 

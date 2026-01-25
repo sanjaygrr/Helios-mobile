@@ -8,7 +8,6 @@ import {
   Platform,
   ScrollView
 } from 'react-native';
-import MapView, { Marker, PROVIDER_DEFAULT, PROVIDER_GOOGLE, Region } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import WebSocketService from '../services/websocket';
@@ -17,6 +16,10 @@ import { fetchWeatherData, WeatherData } from '../services/weather';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import { colors, spacing, borderRadius, shadows } from '../theme/colors';
+
+// New MapWidget import
+import MapWidget from '../components/MapWidget';
+import { MapWidgetHandle, MapUser } from '../components/MapWidget/types';
 
 interface LocationData {
   coords: {
@@ -28,12 +31,16 @@ interface LocationData {
   timestamp: number;
 }
 
+// Re-using the OtherUser interface but aliasing or mapping to MapUser if needed.
+// Actually MapUser in types.ts is identical to OtherUser here.
 interface OtherUser {
   id: number;
   latitude: number;
   longitude: number;
   role?: string;
   email?: string;
+  user_first_name?: string;
+  user_last_name?: string;
   rut?: string;
   assigned_vehicle?: string;
   companions?: string[];
@@ -45,98 +52,23 @@ interface OtherUser {
   timestamp?: number;
 }
 
-// Optimized Fire Marker with delayed tracking update
-const FireMarker = React.memo(({ fire, color }: { fire: FirePoint; color: string }) => {
-  // Keep optimization for Fires because there are MANY
-  const [tracksViewChanges, setTracksViewChanges] = useState(true);
-
-  useEffect(() => {
-    if (tracksViewChanges) {
-      const timer = setTimeout(() => {
-        setTracksViewChanges(false);
-      }, 1000); // Increased timeout to be safe
-      return () => clearTimeout(timer);
-    }
-  }, [tracksViewChanges]);
-
-  return (
-    <Marker
-      coordinate={{ latitude: fire.latitude, longitude: fire.longitude }}
-      zIndex={1}
-      tracksViewChanges={tracksViewChanges}
-    >
-      <Ionicons name="flame" size={24} color={color} />
-    </Marker>
-  );
-});
-
-// Custom User Marker Wrapper
-const UserMarker = ({ coordinate, role, isSelf = false, onPress }: any) => {
-  const [tracksViewChanges, setTracksViewChanges] = React.useState(false);
-
-  // Stop tracking after initial render to prevent iOS disappearance
-  React.useEffect(() => {}, []);
-
-  const getIcon = () => {
-    // Jefe -> Fire Truck
-    if (role === 'COMPANY_CHIEF') {
-      return <MaterialCommunityIcons name="fire-truck" size={isSelf ? 32 : 28} color={colors.white} />;
-    }
-    // Administración -> mostrar como Jefe de Compañía también
-    if (role === 'SUPER_ADMIN' || role === 'COMPANY_ADMIN') {
-      return <MaterialCommunityIcons name="hard-hat" size={isSelf ? 32 : 28} color={colors.white} />;
-    }
-    // Firefighter -> Person with Helmet (account-hard-hat)
-    return <MaterialCommunityIcons name="account-hard-hat" size={isSelf ? 32 : 28} color={colors.white} />;
-  };
-
-  return (
-    <Marker
-      coordinate={coordinate}
-      zIndex={isSelf ? 999 : 990}
-      tracksViewChanges={tracksViewChanges}
-      onPress={onPress}
-      onSelect={onPress}
-      anchor={{ x: 0.5, y: 0.5 }}
-    >
-      <View style={isSelf ? styles.myLocationMarker : styles.otherUserMarker}>
-        {getIcon()}
-      </View>
-    </Marker>
-  );
-};
-
 export default function MapScreen() {
   const { user } = useAuth();
   const [location, setLocation] = useState<LocationData | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isTracking, setIsTracking] = useState(true);
-  const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'connecting'>('connecting');
 
-  const [currentRegion, setCurrentRegion] = useState<Region | null>(null);
+  const [currentRegion, setCurrentRegion] = useState<any>(null); // Type 'any' for Region compat
   const [otherUsers, setOtherUsers] = useState<{ [key: number]: OtherUser }>({});
   const [fireData, setFireData] = useState<FirePoint[]>([]);
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
 
   const [showFires, setShowFires] = useState(true);
-  const [selectedItem, setSelectedItem] = useState<OtherUser | null>(null);
+  const [selectedItem, setSelectedItem] = useState<OtherUser | FirePoint | any>(null);
 
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<MapWidgetHandle>(null);
 
   // --- Helpers ---
-
-  const getFireColor = (brightness: number): string => {
-    if (brightness < 320) return '#00FF00';
-    if (brightness < 340) return '#FFFF00';
-    if (brightness < 360) return '#FFA500';
-    return '#FF0000';
-  };
-
-  const getUserLabel = (u: OtherUser) => {
-    if (u.role === 'COMPANY_CHIEF') return 'Jefe de Compañía';
-    if (u.role === 'SUPER_ADMIN' || u.role === 'COMPANY_ADMIN') return 'Jefe de Compañía';
-    return `Usuario ${u.id}`;
-  };
 
   const centerOnUser = () => {
     if (location && mapRef.current) {
@@ -195,24 +127,26 @@ export default function MapScreen() {
           setOtherUsers(prev => ({ ...prev, [data.id]: data }));
         }
       });
-      // REST fallback to show latest positions immediately (Android/iOS)
+      // REST fallback
       api.get('/tracking/history/live')
         .then(res => {
           if (Array.isArray(res.data)) {
             const mapped: { [key: number]: OtherUser } = {};
             res.data.forEach((pos: any) => {
-              mapped[pos.user] = {
-                id: pos.user,
+              const uid = pos.user_id || pos.user;
+              mapped[uid] = {
+                id: uid,
                 latitude: pos.latitude,
                 longitude: pos.longitude,
                 role: pos.user_role,
+                email: pos.user_email,
                 timestamp: new Date(pos.timestamp).getTime(),
               } as OtherUser;
             });
             setOtherUsers(prev => ({ ...mapped, ...prev }));
           }
         })
-        .catch(() => {});
+        .catch(() => { });
 
       locationSubscription = await Location.watchPositionAsync(
         {
@@ -261,7 +195,7 @@ export default function MapScreen() {
               setFireData(points);
             }
           })
-          .catch(() => {});
+          .catch(() => { });
       }
       if (!weatherData) fetchWeatherData(location.coords.latitude, location.coords.longitude).then(setWeatherData);
     }
@@ -282,7 +216,7 @@ export default function MapScreen() {
             setFireData(points);
           }
         })
-        .catch(() => {});
+        .catch(() => { });
     }, 120000);
     return () => clearInterval(interval);
   }, []);
@@ -312,63 +246,18 @@ export default function MapScreen() {
 
   return (
     <View style={styles.container}>
-      <MapView
+      <MapWidget
         ref={mapRef}
         style={styles.map}
-        provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : PROVIDER_DEFAULT}
-        initialRegion={{
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude,
-          latitudeDelta: 0.1,
-          longitudeDelta: 0.1,
-        }}
-        showsUserLocation={false} // Disable System Blue Dot
-        showsCompass={true}
-        mapType="hybrid"
-        onPress={() => setSelectedItem(null)}
-        onRegionChangeComplete={setCurrentRegion}
-      >
-        {/* Custom User Icon (NOW this is the only indicator of self) */}
-        <UserMarker
-          key="self-marker"
-          coordinate={{
-            latitude: location.coords.latitude,
-            longitude: location.coords.longitude,
-          }}
-          role={user?.role}
-          isSelf={true}
-          onPress={() => setSelectedItem({
-            id: user?.id || 0,
-            latitude: location.coords.latitude,
-            longitude: location.coords.longitude,
-            role: user?.role,
-            email: user?.email,
-            // Self usually knows their assignment via Context or separate fetch, 
-            // but purely for map info we can leave undefined or fetch.
-          })}
-        />
-
-        {/* Other Users */}
-        {Object.values(otherUsers).map((u) => (
-          <UserMarker
-            key={`user-${u.id}`}
-            coordinate={{ latitude: u.latitude, longitude: u.longitude }}
-            role={u.role}
-            isSelf={false}
-            onPress={() => setSelectedItem(u)}
-          />
-        ))}
-
-        {/* Fires */}
-        {visibleFires.map((fire, index) => (
-          <FireMarker
-            key={`fire-${index}-${fire.latitude}`}
-            fire={fire}
-            color={getFireColor(fire.brightness)}
-          />
-        ))}
-
-      </MapView>
+        currentLocation={location.coords}
+        selfUser={user}
+        otherUsers={Object.values(otherUsers)}
+        fires={visibleFires}
+        showFires={showFires}
+        onSelectMarker={setSelectedItem}
+        onMapPress={() => setSelectedItem(null)}
+        onRegionChange={setCurrentRegion}
+      />
 
       {/* Status Indicators */}
       <View style={styles.statusCard}>
@@ -404,14 +293,22 @@ export default function MapScreen() {
               <View style={{ backgroundColor: colors.secondary, borderRadius: 20, padding: 4 }}>
                 <MaterialCommunityIcons name={
                   selectedItem.role === 'COMPANY_CHIEF' ? 'fire-truck' :
-                    (selectedItem.role?.includes('ADMIN') ? 'hard-hat' : 'account-hard-hat')
+                    (selectedItem.brightness ? 'fire' :  // Handle Fire Item
+                      (selectedItem.role?.includes('ADMIN') ? 'hard-hat' : 'account-hard-hat'))
                 } size={20} color="white" />
               </View>
               <View>
                 <Text style={styles.infoTitle}>
-                  {selectedItem.role === 'COMPANY_CHIEF' || selectedItem.role?.includes('ADMIN') ? 'Jefe de Compañía' : 'Voluntario'}
+                  {selectedItem.brightness ? 'Foco de Incendio' :
+                    (selectedItem.role === 'COMPANY_CHIEF' || selectedItem.role?.includes('ADMIN') ? 'Jefe de Compañía' : 'Voluntario')}
                 </Text>
-                <Text style={styles.infoSubtitle}>ID: {selectedItem.id}</Text>
+                <Text style={styles.infoSubtitle}>
+                  {selectedItem.brightness
+                    ? `Intensidad: ${selectedItem.brightness}`
+                    : (selectedItem.user_first_name || selectedItem.user_last_name
+                      ? `${selectedItem.user_first_name || ''} ${selectedItem.user_last_name || ''}`.trim()
+                      : (selectedItem.email ? (selectedItem.email.split('@')[0]) : `ID: ${selectedItem.id}`))}
+                </Text>
                 {selectedItem.rut && <Text style={styles.infoSubtitle}>{selectedItem.rut}</Text>}
               </View>
             </View>
@@ -421,15 +318,25 @@ export default function MapScreen() {
           </View>
 
           <ScrollView style={styles.infoGrid} showsVerticalScrollIndicator={false}>
-            {/* Status if inactive */}
-            {!selectedItem.assigned_incident && (
+            {/* Fire Data */}
+            {selectedItem.brightness && (
+              <View style={styles.incidentRow}>
+                <Ionicons name="flame" size={16} color={colors.danger} />
+                <Text style={styles.incidentText}>
+                  Detectado: {selectedItem.acq_date || 'N/A'} {selectedItem.acq_time || ''}
+                </Text>
+              </View>
+            )}
+
+            {/* Status if inactive (User only) */}
+            {!selectedItem.brightness && !selectedItem.assigned_incident && (
               <View style={[styles.incidentRow, { backgroundColor: colors.gray[200] }]}>
                 <Ionicons name="moon" size={16} color={colors.gray[600]} />
                 <Text style={[styles.incidentText, { color: colors.gray[600] }]}>Inactivo</Text>
               </View>
             )}
 
-            {/* Incident Info */}
+            {/* Incident Info (User only) */}
             {selectedItem.assigned_incident && (
               <View style={styles.incidentRow}>
                 <Ionicons name="alert-circle" size={16} color={colors.danger} />
@@ -453,7 +360,7 @@ export default function MapScreen() {
                 <MaterialCommunityIcons name="account-group" size={16} color={colors.text} style={{ marginTop: 2 }} />
                 <View>
                   <Text style={[styles.detailText, { fontWeight: 'bold' }]}>Tripulación:</Text>
-                  {selectedItem.companions.map((companion, idx) => (
+                  {selectedItem.companions.map((companion: string, idx: number) => (
                     <Text key={idx} style={styles.detailSubText}>• {companion}</Text>
                   ))}
                 </View>
@@ -475,7 +382,7 @@ export default function MapScreen() {
           <Ionicons name="flame" size={20} color={showFires ? colors.white : colors.gray[600]} />
         </TouchableOpacity>
 
-        {/* Recenter Button (New!) */}
+        {/* Recenter Button */}
         <TouchableOpacity style={styles.fabSmall} onPress={centerOnUser}>
           <Ionicons name="locate" size={20} color={colors.text} />
         </TouchableOpacity>
@@ -510,28 +417,6 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
 
-  // Markers
-  myLocationMarker: {
-    width: 48, height: 48, borderRadius: 24,
-    backgroundColor: colors.primary,
-    borderWidth: 3, borderColor: 'white',
-    alignItems: 'center', justifyContent: 'center',
-    overflow: 'visible',
-    padding: 4,
-    marginLeft: 2,
-    ...shadows.lg
-  },
-  otherUserMarker: {
-    width: 44, height: 44, borderRadius: 22,
-    backgroundColor: colors.secondary, // Blueish typically
-    borderWidth: 2, borderColor: 'white',
-    alignItems: 'center', justifyContent: 'center',
-    overflow: 'visible',
-    padding: 4,
-    marginLeft: 2,
-    ...shadows.md
-  },
-
   // Cards
   statusCard: {
     position: 'absolute', top: 50, left: 20,
@@ -546,7 +431,7 @@ const styles = StyleSheet.create({
   infoCard: {
     position: 'absolute', bottom: 100, left: 20, right: 20,
     backgroundColor: 'white', padding: 15, borderRadius: 15,
-    maxHeight: 250, // Limit height if companions list is long
+    maxHeight: 250,
     ...shadows.lg
   },
   infoHeader: {

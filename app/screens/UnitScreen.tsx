@@ -7,6 +7,7 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius, shadows, typography } from '../theme/colors';
@@ -224,45 +225,75 @@ export default function UnitScreen() {
         </View>
       </View>
 
-      {/* Current Incident Summary */}
-      <View style={styles.sectionCard}>
-        <View style={styles.sectionHeader}>
-          <Ionicons name="alert-circle" size={20} color={colors.danger} />
+      {/* Incident Boarding Pass Style */}
+      <View style={styles.ticketContainer}>
+        <View style={styles.ticketHeader}>
+          <Ionicons name="alert-circle" size={24} color={colors.white} />
+          <Text style={styles.ticketTitle}>DESPACHO ACTIVO</Text>
+          <Text style={styles.ticketId}>#{assignment.incident}</Text>
         </View>
-        <View>
-          <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text }}>{assignment.incident_title}</Text>
-          <Text style={{ fontSize: 12, color: colors.gray[600], marginTop: 4 }}>
-            Asignación activa • ID Incidente: {assignment.incident}
-          </Text>
+        <View style={styles.ticketBody}>
+          <View style={styles.ticketRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.ticketLabel}>EMERGENCIA</Text>
+              <Text style={styles.ticketValueLarge}>{assignment.incident_title}</Text>
+            </View>
+          </View>
+
           {incidentDetails && (
             <>
-              <Text style={{ fontSize: 12, color: colors.gray[600], marginTop: 4 }}>
-                Tipo: {incidentDetails.incident_type}
-              </Text>
-              <Text style={{ fontSize: 12, color: colors.gray[600], marginTop: 4 }}>
-                Reportado: {new Date(incidentDetails.reported_at).toLocaleString()}
-              </Text>
-              <Text style={{ fontSize: 12, color: colors.gray[600], marginTop: 4 }}>
-                Coordenadas: {incidentDetails.latitude.toFixed(5)}, {incidentDetails.longitude.toFixed(5)}
-              </Text>
+              <View style={styles.ticketDivider} />
+              <View style={styles.ticketRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.ticketLabel}>TIPO</Text>
+                  <Text style={styles.ticketValue}>{incidentDetails.incident_type}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.ticketLabel}>HORA</Text>
+                  <Text style={styles.ticketValue}>{new Date(incidentDetails.reported_at).toLocaleTimeString().slice(0, 5)}</Text>
+                </View>
+              </View>
+              <View style={styles.ticketRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.ticketLabel}>UBICACIÓN</Text>
+                  <Text style={styles.ticketValue}>{incidentDetails.latitude.toFixed(4)}, {incidentDetails.longitude.toFixed(4)}</Text>
+                </View>
+              </View>
               {incidentDetails.description ? (
-                <Text style={{ fontSize: 12, color: colors.gray[700], marginTop: 8 }}>{incidentDetails.description}</Text>
+                <View style={styles.ticketRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.ticketLabel}>DETALLES</Text>
+                    <Text style={[styles.ticketValue, { fontStyle: 'italic' }]}>{incidentDetails.description}</Text>
+                  </View>
+                </View>
               ) : null}
             </>
           )}
+
           {(role === 'COMPANY_CHIEF' || role === 'COMPANY_ADMIN') && incidentDetails?.is_active && (
             <TouchableOpacity
-              style={{ marginTop: spacing.md, backgroundColor: colors.danger, padding: spacing.md, borderRadius: borderRadius.md, alignItems: 'center' }}
+              style={styles.closeIncidentButton}
               onPress={async () => {
                 try {
-                  await api.post(`/incidents/${assignment.incident}/close_incident/`);
-                  fetchUserUnit();
-                } catch (e) {}
+                  Alert.alert('Finalizar', '¿Cerrar emergencia?', [
+                    { text: 'Cancelar' },
+                    {
+                      text: 'Sí, Finalizar', onPress: async () => {
+                        await api.post(`/incidents/${assignment.incident}/close_incident/`);
+                        fetchUserUnit();
+                      }
+                    }
+                  ])
+                } catch (e) { }
               }}
             >
-              <Text style={{ color: 'white', fontWeight: '700' }}>Finalizar Emergencia</Text>
+              <Text style={styles.closeIncidentText}>FINALIZAR EMERGENCIA</Text>
             </TouchableOpacity>
           )}
+        </View>
+        {/* Ticket Rip/Tear effect visual could go here */}
+        <View style={styles.ticketFooter}>
+          <Text style={styles.ticketFooterText}>Sistema Helios • {new Date().toLocaleDateString()}</Text>
         </View>
       </View>
 
@@ -664,5 +695,88 @@ const styles = StyleSheet.create({
   },
   actionButtonTextActive: {
     color: colors.white,
+  },
+  // Ticket Styles
+  ticketContainer: {
+    backgroundColor: colors.white,
+    marginHorizontal: spacing.md,
+    marginVertical: spacing.md,
+    borderRadius: borderRadius.lg,
+    overflow: 'hidden',
+    ...shadows.md,
+  },
+  ticketHeader: {
+    backgroundColor: colors.danger,
+    padding: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  ticketTitle: {
+    color: colors.white,
+    fontWeight: '800',
+    fontSize: 16,
+    letterSpacing: 1,
+  },
+  ticketId: {
+    color: 'rgba(255,255,255,0.8)',
+    fontWeight: '700',
+  },
+  ticketBody: {
+    padding: spacing.lg,
+  },
+  ticketRow: {
+    flexDirection: 'row',
+    marginBottom: spacing.md,
+  },
+  ticketLabel: {
+    fontSize: 10,
+    color: colors.textLight,
+    fontWeight: '700',
+    marginBottom: 4,
+    letterSpacing: 0.5,
+  },
+  ticketValue: {
+    fontSize: 14,
+    color: colors.text,
+    fontWeight: '600',
+  },
+  ticketValueLarge: {
+    fontSize: 20,
+    color: colors.text,
+    fontWeight: '700',
+  },
+  ticketDivider: {
+    height: 1,
+    backgroundColor: colors.gray[200],
+    marginVertical: spacing.md,
+    borderStyle: 'dashed',
+    borderWidth: 1,
+    borderColor: colors.gray[200],
+    borderRadius: 1
+  },
+  ticketFooter: {
+    backgroundColor: colors.gray[50],
+    padding: spacing.sm,
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: colors.gray[100],
+  },
+  ticketFooterText: {
+    fontSize: 10,
+    color: colors.gray[500],
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+  },
+  closeIncidentButton: {
+    backgroundColor: colors.danger,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+    marginTop: spacing.sm,
+  },
+  closeIncidentText: {
+    color: colors.white,
+    fontWeight: '700',
+    letterSpacing: 1,
   },
 });

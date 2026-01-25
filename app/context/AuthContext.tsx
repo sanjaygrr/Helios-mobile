@@ -5,6 +5,8 @@ import { login as apiLogin } from '../services/api';
 interface User {
     id: number;
     email: string;
+    first_name?: string;
+    last_name?: string;
     role: 'SUPER_ADMIN' | 'COMPANY_ADMIN' | 'COMPANY_CHIEF' | 'FIREFIGHTER';
     fire_department: number | null;
     company: number | null;

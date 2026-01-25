@@ -12,9 +12,10 @@ import UnitScreen from './app/screens/UnitScreen';
 import ManageUsersScreen from './app/screens/ManageUsersScreen';
 import ManageUnitsScreen from './app/screens/ManageUnitsScreen';
 import ManageCompaniesScreen from './app/screens/ManageCompaniesScreen';
-import CreateUnitScreen from './app/screens/CreateUnitScreen';
+import ManageCarsScreen from './app/screens/ManageCarsScreen';
 import IncidentsScreen from './app/screens/IncidentsScreen';
 import TrackingHistoryScreen from './app/screens/TrackingHistoryScreen';
+import SettingsScreen from './app/screens/SettingsScreen';
 import CustomHeader from './app/components/CustomHeader';
 import TrackingService from './app/components/TrackingService';
 import { colors, spacing, borderRadius } from './app/theme/colors';
@@ -29,8 +30,8 @@ const MenuContext = createContext<{
   closeMenu: () => void;
 }>({
   isMenuOpen: false,
-  openMenu: () => {},
-  closeMenu: () => {},
+  openMenu: () => { },
+  closeMenu: () => { },
 });
 
 export const useMenu = () => useContext(MenuContext);
@@ -58,7 +59,8 @@ function MenuModal({ navigation }: { navigation: any }) {
     { name: 'Compania', icon: 'business', label: 'Companias', roles: ['SUPER_ADMIN', 'COMPANY_ADMIN'] },
     { name: 'Emergencias', icon: 'flame', label: 'Emergencias', roles: ['SUPER_ADMIN', 'COMPANY_ADMIN', 'COMPANY_CHIEF'] },
     { name: 'TrackingHistory', icon: 'trail-sign', label: 'Historial Ruta', roles: ['SUPER_ADMIN', 'COMPANY_ADMIN', 'COMPANY_CHIEF'] },
-    { name: 'Carros', icon: 'bus', label: 'Crear Carro', roles: ['SUPER_ADMIN', 'COMPANY_ADMIN'] },
+    { name: 'Carros', icon: 'bus', label: 'Admin. Carros', roles: ['SUPER_ADMIN', 'COMPANY_ADMIN'] },
+    { name: 'Ajustes', icon: 'settings', label: 'Configuración', roles: ['SUPER_ADMIN', 'COMPANY_ADMIN', 'COMPANY_CHIEF', 'FIREFIGHTER'] },
   ];
 
   const filteredItems = menuItems.filter(item =>
@@ -278,7 +280,8 @@ function MainNavigator() {
       <Stack.Screen name="Compania" component={ManageCompaniesScreen} />
       <Stack.Screen name="Emergencias" component={IncidentsScreen} />
       <Stack.Screen name="TrackingHistory" component={TrackingHistoryScreen} />
-      <Stack.Screen name="Carros" component={CreateUnitScreen} />
+      <Stack.Screen name="Carros" component={ManageCarsScreen} />
+      <Stack.Screen name="Ajustes" component={SettingsScreen} />
     </Stack.Navigator>
   );
 }

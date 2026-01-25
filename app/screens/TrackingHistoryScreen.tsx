@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Dimensions, ActivityIndicator, Alert, Text } from 'react-native';
-import MapView, { Polyline, Marker, PROVIDER_GOOGLE } from 'react-native-maps';
-import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing } from '../theme/colors';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import RouteMapWidget from '../components/RouteMapWidget';
 
 export default function TrackingHistoryScreen() {
     const { user } = useAuth();
@@ -48,13 +47,6 @@ export default function TrackingHistoryScreen() {
         );
     }
 
-    const initialRegion = {
-        latitude: trackingPoints[0].latitude,
-        longitude: trackingPoints[0].longitude,
-        latitudeDelta: 0.05,
-        longitudeDelta: 0.05,
-    };
-
     const coordinates = trackingPoints.map((p: any) => ({
         latitude: p.latitude,
         longitude: p.longitude
@@ -62,29 +54,18 @@ export default function TrackingHistoryScreen() {
 
     return (
         <View style={styles.container}>
-            <MapView
+            <RouteMapWidget
+                routeCoordinates={coordinates}
+                startCoordinate={coordinates[0]}
+                endCoordinate={coordinates[coordinates.length - 1]}
                 style={styles.map}
-                provider={PROVIDER_GOOGLE}
-                initialRegion={initialRegion}
-            >
-                <Polyline
-                    coordinates={coordinates}
-                    strokeColor={colors.primary}
-                    strokeWidth={4}
-                />
-                <Marker coordinate={coordinates[0]} title="Inicio">
-                    <Ionicons name="play-circle" size={32} color={colors.success} />
-                </Marker>
-                <Marker coordinate={coordinates[coordinates.length - 1]} title="Fin">
-                    <Ionicons name="stop-circle" size={32} color={colors.danger} />
-                </Marker>
-            </MapView>
+            />
         </View>
     );
 }
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
-    map: { width: Dimensions.get('window').width, height: Dimensions.get('window').height },
+    map: { width: '100%', height: '100%' },
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' }
 });
