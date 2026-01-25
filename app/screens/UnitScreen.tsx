@@ -8,7 +8,10 @@ import {
   Alert,
   ActivityIndicator,
   Platform,
+  FlatList,
+  RefreshControl
 } from 'react-native';
+import PersonnelForm from '../components/PersonnelForm';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius, shadows, typography } from '../theme/colors';
 import { useAuth } from '../context/AuthContext';
@@ -27,9 +30,13 @@ export default function UnitScreen() {
   const { user, role } = useAuth();
   const [assignment, setAssignment] = useState<any>(null);
   const [assignments, setAssignments] = useState<any[]>([]);
+  const [allAssignments, setAllAssignments] = useState<any[]>([]);
   const [incidentDetails, setIncidentDetails] = useState<any>(null);
   const [status, setStatus] = useState<UnitStatus>('available');
   const [loading, setLoading] = useState(true);
+
+  const [myCommand, setMyCommand] = useState<any>(null);
+  const [commandedUnits, setCommandedUnits] = useState<any[]>([]);
 
   useEffect(() => {
     fetchUserUnit();
@@ -37,40 +44,70 @@ export default function UnitScreen() {
 
   const fetchUserUnit = async () => {
     try {
-      // Try to get user's assigned unit
-      if (role === 'COMPANY_CHIEF' || role === 'COMPANY_ADMIN') {
-        const resList = await api.get('/assignments/my_units/');
-        const list = Array.isArray(resList.data) ? resList.data : [];
-        setAssignments(list);
-        if (list.length > 0) {
-          setAssignment(list[0]);
-          const asgStatus = (list[0].status || 'DISPATCHED') as string;
-          const mapToLocal: Record<string, UnitStatus> = {
-            DISPATCHED: 'available',
-            EN_ROUTE: 'en_route',
-            ON_SCENE: 'on_scene',
-            RETURNING: 'returning',
-            RELEASED: 'available'
-          };
-          setStatus(mapToLocal[asgStatus] || 'available');
+      setLoading(true);
+
+      // 1. Check for specific unit assignment (Physical Unit)
+      let foundAssignment = null;
+      try {
+        if (role === 'SUPER_ADMIN') {
+          const res = await api.get('/assignments/'); // View everything
+          if (Array.isArray(res.data)) setAllAssignments(res.data);
+        } else {
+          // Try fetching my specific unit assignment
+          try {
+            const res = await api.get('/assignments/my_unit/');
+            if (res.data) {
+              foundAssignment = res.data;
+              setAssignment(res.data);
+              // Update local status
+              const asgStatus = (res.data.status || 'DISPATCHED') as string;
+              const mapToLocal: Record<string, UnitStatus> = {
+                DISPATCHED: 'available',
+                EN_ROUTE: 'en_route',
+                ON_SCENE: 'on_scene',
+                RETURNING: 'returning',
+                RELEASED: 'available'
+              };
+              setStatus(mapToLocal[asgStatus] || 'available');
+            }
+          } catch (e) {
+            // Fallback for company chief with multiple units? 
+            // For now, if my_unit fails, we assume no physical unit or search for my_units list
+            // The original code had complex logic here, simplifying to priority:
+            // 1. Assigned Unit
+            // 2. Incident Command
+          }
         }
-      } else {
-        const res = await api.get('/assignments/my_unit/');
-        if (res.data) {
-          setAssignment(res.data);
-          const asgStatus = (res.data.status || 'DISPATCHED') as string;
-          const mapToLocal: Record<string, UnitStatus> = {
-            DISPATCHED: 'available',
-            EN_ROUTE: 'en_route',
-            ON_SCENE: 'on_scene',
-            RETURNING: 'returning',
-            RELEASED: 'available'
-          };
-          setStatus(mapToLocal[asgStatus] || 'available');
-        }
+      } catch (e) { console.log("Error fetching unit", e); }
+
+
+      // 2. Check if I am a Commander of an active incident (Command Unit)
+      // Only if I'm a Chief or Admin, or if I don't have a physical unit
+      if ((role === 'COMPANY_CHIEF' || role === 'SUPER_ADMIN' || role === 'COMPANY_ADMIN')) {
+        try {
+          // Fetch active incidents where I am commander
+          const incRes = await api.get('/incidents/', { params: { active: true, commander: user?.id } });
+          // Filter client-side if API doesn't support filter by param perfectly
+          const myIncidents = incRes.data.filter((i: any) => i.commander === user?.id && i.is_active);
+
+          if (myIncidents.length > 0) {
+            const activeCommand = myIncidents[0];
+            setMyCommand(activeCommand);
+            setIncidentDetails(activeCommand); // Use this for details view
+
+            // Fetch units assigned to this incident
+            const unitsRes = await api.get('/assignments/', { params: { incident: activeCommand.id } });
+            const incidentUnits = unitsRes.data.filter((a: any) => a.incident === activeCommand.id);
+            setCommandedUnits(incidentUnits);
+          } else {
+            setMyCommand(null);
+            setCommandedUnits([]);
+          }
+        } catch (e) { console.log("Error fetching command", e); }
       }
+
     } catch (error) {
-      console.log('No unit assigned or error fetching unit:', error);
+      console.log('Error fetching user data:', error);
     } finally {
       setLoading(false);
     }
@@ -132,6 +169,64 @@ export default function UnitScreen() {
     }
   };
 
+  // --- COMANDANTE DASHBOARD ---
+  if (!loading && role === 'SUPER_ADMIN') {
+    return (
+      <View style={styles.container}>
+        <View style={[styles.headerCard, { backgroundColor: colors.secondary }]}>
+          <Ionicons name="apps" size={32} color={colors.white} />
+          <View style={{ marginLeft: 16 }}>
+            <Text style={[styles.unitName, { fontSize: 22 }]}>Panel de Comando</Text>
+            <Text style={styles.unitType}>Todas las Unidades Activas</Text>
+          </View>
+        </View>
+        <FlatList
+          data={allAssignments}
+          keyExtractor={(item) => item.id.toString()}
+          refreshControl={<RefreshControl refreshing={loading} onRefresh={fetchUserUnit} />}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptySubtitle}>No hay unidades desplegadas.</Text>
+            </View>
+          }
+          contentContainerStyle={{ paddingBottom: 20 }}
+          renderItem={({ item }) => {
+            const statusConf = getStatusConfig(
+              item.status === 'DISPATCHED' ? 'available' : // Adjust mapping as needed
+                item.status === 'EN_ROUTE' ? 'en_route' :
+                  item.status === 'ON_SCENE' ? 'on_scene' :
+                    item.status === 'RETURNING' ? 'returning' : 'available'
+            ) || { label: item.status, color: colors.gray[500], icon: 'help', bgColor: colors.gray[100] };
+
+            return (
+              <View style={styles.sectionCard}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <View>
+                    <Text style={[styles.sectionTitle, { fontSize: 18 }]}>{item.unit_name || item.unit_details?.name}</Text>
+                    <Text style={{ color: colors.textLight, fontSize: 12 }}>{item.incident_title || `Incidente #${item.incident}`}</Text>
+                  </View>
+                  <View style={[styles.statusBadge, { backgroundColor: statusConf.bgColor }]}>
+                    <Ionicons name={statusConf.icon as any} size={14} color={statusConf.color} />
+                    <Text style={[styles.statusText, { color: statusConf.color }]}>{statusConf.label}</Text>
+                  </View>
+                </View>
+                {/* Basic details */}
+                <View style={{ marginTop: 8, flexDirection: 'row', gap: 12 }}>
+                  <Text style={{ fontSize: 12, color: colors.gray[600] }}>
+                    <Ionicons name="people" /> {item.unit_details?.members_count || 0} Pers.
+                  </Text>
+                  <Text style={{ fontSize: 12, color: colors.gray[600] }}>
+                    <Ionicons name="car" /> {item.unit_details?.vehicle || 'N/A'}
+                  </Text>
+                </View>
+              </View>
+            );
+          }}
+        />
+      </View>
+    );
+  }
+
   // --- LOADING STATE ---
   if (loading) {
     return (
@@ -139,6 +234,97 @@ export default function UnitScreen() {
         <ActivityIndicator size="large" color={colors.primary} />
         <Text style={{ marginTop: spacing.md, color: colors.textLight }}>Cargando unidad...</Text>
       </View>
+    );
+  }
+
+  // --- COMMANDER DASHBOARD (For Incident Commanders) ---
+  if (myCommand && !assignment) {
+    return (
+      <ScrollView style={styles.container} refreshControl={<RefreshControl refreshing={loading} onRefresh={fetchUserUnit} />}>
+        <View style={[styles.headerCard, { backgroundColor: colors.danger }]}>
+          <Ionicons name="flame" size={32} color={colors.white} />
+          <View style={{ marginLeft: 16, flex: 1 }}>
+            <Text style={[styles.unitName, { fontSize: 20 }]}>Puesto de Mando</Text>
+            <Text style={styles.unitType}>{myCommand.title}</Text>
+            <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12 }}>{myCommand.incident_type}</Text>
+          </View>
+        </View>
+
+        {/* Status Management */}
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>Estado de Emergencia</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 10 }}>
+            {['PRE_INFORME', 'ALARMA_GENERAL', 'INCENDIO', 'CONTROLADO'].map((s) => (
+              <TouchableOpacity
+                key={s}
+                style={[
+                  styles.unitChip,
+                  myCommand.status === s && styles.unitChipSelected,
+                  { minWidth: '45%', justifyContent: 'center', alignItems: 'center' }
+                ]}
+                onPress={async () => {
+                  try {
+                    await api.patch(`/incidents/${myCommand.id}/`, { status: s });
+                    fetchUserUnit();
+                    Alert.alert("Estado Actualizado");
+                  } catch (e) { Alert.alert("Error"); }
+                }}
+              >
+                <Text style={[styles.unitChipText, myCommand.status === s && { color: 'white' }]}>
+                  {s.replace('_', ' ')}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <TouchableOpacity
+            style={[styles.closeIncidentButton, { marginTop: 15, backgroundColor: colors.danger }]}
+            onPress={() => {
+              Alert.alert("Finalizar", "¿Cerrar emergencia?", [
+                { text: "Cancelar" },
+                {
+                  text: "Sí, Finalizar", onPress: async () => {
+                    await api.post(`/incidents/${myCommand.id}/close_incident/`);
+                    setMyCommand(null);
+                    fetchUserUnit();
+                  }
+                }
+              ])
+            }}
+          >
+            <Text style={styles.closeIncidentText}>FINALIZAR EMERGENCIA</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Units List */}
+        <View style={styles.sectionCard}>
+          <Text style={[styles.sectionTitle, { marginBottom: 10 }]}>Unidades Asignadas ({commandedUnits.length})</Text>
+          {commandedUnits.length === 0 ? (
+            <Text style={{ fontStyle: 'italic', color: colors.gray[500] }}>No hay unidades asignadas.</Text>
+          ) : (
+            commandedUnits.map((u: any) => {
+              const statusConf = getStatusConfig(
+                u.status === 'DISPATCHED' ? 'available' : // map API status to local
+                  u.status === 'EN_ROUTE' ? 'en_route' :
+                    u.status === 'ON_SCENE' ? 'on_scene' :
+                      u.status === 'RETURNING' ? 'returning' : 'available'
+              ) || { label: u.status, color: colors.gray[500], icon: 'help', bgColor: colors.gray[100] };
+
+              return (
+                <View key={u.id} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderColor: colors.gray[100], alignItems: 'center' }}>
+                  <View>
+                    <Text style={{ fontWeight: '600' }}>{u.unit_name || u.unit_details?.name}</Text>
+                    <Text style={{ fontSize: 12, color: colors.gray[500] }}>{u.unit_details?.vehicle || 'Sin Vehículo'}</Text>
+                  </View>
+                  <View style={[styles.statusBadge, { backgroundColor: statusConf.bgColor, paddingVertical: 4, paddingHorizontal: 8 }]}>
+                    <Ionicons name={statusConf.icon as any} size={12} color={statusConf.color} />
+                    <Text style={[styles.statusText, { color: statusConf.color, fontSize: 10 }]}>{statusConf.label}</Text>
+                  </View>
+                </View>
+              )
+            })
+          )}
+        </View>
+      </ScrollView>
     );
   }
 
@@ -151,10 +337,13 @@ export default function UnitScreen() {
         </View>
         <Text style={styles.emptyTitle}>Sin Asignación Activa</Text>
         <Text style={styles.emptySubtitle}>
-          No tienes una unidad asignada en este momento.
+          No tienes una unidad asignada ni estás al mando de una emergencia.
           {"\n"}
           Cuando se despache una emergencia, verás los detalles aquí.
         </Text>
+        <TouchableOpacity onPress={fetchUserUnit} style={{ marginTop: 20, padding: 10 }}>
+          <Text style={{ color: colors.primary }}>Refrescar</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -173,7 +362,7 @@ export default function UnitScreen() {
 
   // --- ACTIVE UNIT VIEW ---
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={loading} onRefresh={fetchUserUnit} />}>
       {/* If multiple assignments, let chief select by unit name */}
       {assignments.length > 1 && (
         <View style={[styles.sectionCard, { marginTop: spacing.lg }]}>
@@ -224,6 +413,19 @@ export default function UnitScreen() {
           </Text>
         </View>
       </View>
+
+      {/* Personnel Form for Chief Logic */}
+      {(role === 'COMPANY_CHIEF' || role === 'COMPANY_ADMIN') && (
+        <View style={{ marginHorizontal: spacing.md, marginBottom: spacing.sm }}>
+          <PersonnelForm
+            initialMembers={[]} // In future, load from API if saved
+            onChange={(members) => {
+              // console.log("Members updated", members);
+              // Autosave logic could go here
+            }}
+          />
+        </View>
+      )}
 
       {/* Incident Boarding Pass Style */}
       <View style={styles.ticketContainer}>

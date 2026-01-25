@@ -118,11 +118,15 @@ export default function IncidentsScreen() {
 
     // --- Create Incident Logic ---
 
+    const [addressQuery, setAddressQuery] = useState('');
+    const [isGeocoding, setIsGeocoding] = useState(false);
+
     const handleOpenModal = async () => {
         setModalVisible(true);
         setEditingIncidentId(null);
         setLoadingLocation(true);
         setLoadingUnits(true);
+        setAddressQuery('');
 
         // Fetch Units for initial dispatch
         try {
@@ -167,11 +171,44 @@ export default function IncidentsScreen() {
                 latitude: location.coords.latitude,
                 longitude: location.coords.longitude
             }));
+
+            // Reverse Geocode defaults
+            try {
+                const addresses = await Location.reverseGeocodeAsync({
+                    latitude: location.coords.latitude,
+                    longitude: location.coords.longitude
+                });
+                if (addresses.length > 0) {
+                    const addr = addresses[0];
+                    const addrStr = `${addr.street || ''} ${addr.streetNumber || ''}, ${addr.city || ''}`.trim();
+                    setAddressQuery(addrStr);
+                }
+            } catch (ignore) { }
+
         } catch (error) {
             console.error(error);
             Alert.alert('Error', 'No se pudo obtener la ubicación.');
         } finally {
             setLoadingLocation(false);
+        }
+    };
+
+    const handleGeocode = async () => {
+        if (!addressQuery) return;
+        setIsGeocoding(true);
+        try {
+            const results = await Location.geocodeAsync(addressQuery);
+            if (results.length > 0) {
+                const { latitude, longitude } = results[0];
+                setNewIncident(prev => ({ ...prev, latitude, longitude }));
+                Alert.alert("Ubicación Encontrada", `Coordenadas actualizadas a: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+            } else {
+                Alert.alert("No encontrado", "No se encontró la dirección.");
+            }
+        } catch (error) {
+            Alert.alert("Error", "Falló la búsqueda de dirección.");
+        } finally {
+            setIsGeocoding(false);
         }
     };
 
@@ -307,58 +344,56 @@ export default function IncidentsScreen() {
 
                     {item.description ? <Text style={styles.desc} numberOfLines={2}>{item.description}</Text> : null}
 
-                    {/* Action Buttons Row */}
-                    <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
+                    {/* Action Buttons Grid */}
+                    <View style={styles.actionsContainer}>
                         {/* Dispatch (Admin/Chief) */}
                         {(role === 'SUPER_ADMIN' || role === 'COMPANY_CHIEF') && item.is_active && (
                             <TouchableOpacity
-                                style={styles.dispatchButtonSmall}
+                                style={[styles.actionBtn, { backgroundColor: colors.gray[100] }]}
                                 onPress={() => openDispatchModal(item)}
                             >
-                                <Ionicons name="megaphone-outline" size={16} color={colors.primary} />
-                                <Text style={styles.dispatchButtonText}>Despachar</Text>
+                                <Ionicons name="megaphone" size={18} color={colors.primary} />
+                                <Text style={styles.actionBtnText}>Despachar</Text>
                             </TouchableOpacity>
                         )}
 
                         {/* Take Command (Chief only, if empty) */}
                         {(role === 'COMPANY_CHIEF' || role === 'SUPER_ADMIN') && !item.commander && item.is_active && (
                             <TouchableOpacity
-                                style={[styles.dispatchButtonSmall, { backgroundColor: colors.secondary }]}
+                                style={[styles.actionBtn, { backgroundColor: colors.secondary }]}
                                 onPress={() => handleTakeCommand(item.id)}
                             >
-                                <Ionicons name="flag" size={16} color="white" />
-                                <Text style={[styles.dispatchButtonText, { color: 'white' }]}>Tomar Mando</Text>
+                                <Ionicons name="flag" size={18} color="white" />
+                                <Text style={[styles.actionBtnText, { color: 'white' }]}>Tomar Mando</Text>
                             </TouchableOpacity>
                         )}
-
-                        {/* Estado de emergencia se gestiona desde "Mi Unidad" */}
 
                         {/* Close Incident (Commander only) */}
                         {isMyCommand && item.is_active && (
                             <TouchableOpacity
-                                style={[styles.dispatchButtonSmall, { backgroundColor: colors.danger }]}
+                                style={[styles.actionBtn, { backgroundColor: colors.danger }]}
                                 onPress={() => handleCloseIncident(item.id)}
                             >
-                                <Ionicons name="stop-circle" size={16} color="white" />
-                                <Text style={[styles.dispatchButtonText, { color: 'white' }]}>Finalizar</Text>
+                                <Ionicons name="stop-circle" size={18} color="white" />
+                                <Text style={[styles.actionBtnText, { color: 'white' }]}>Finalizar</Text>
                             </TouchableOpacity>
                         )}
-                        {/* Edit/Delete (Chief/Commander) */}
-                        {(role === 'COMPANY_CHIEF' || role === 'COMPANY_ADMIN') && (
+
+                        {/* Edit/Delete (Chief/Admin) */}
+                        {(role === 'COMPANY_CHIEF' || role === 'COMPANY_ADMIN' || role === 'SUPER_ADMIN') && (
                             <>
                                 <TouchableOpacity
-                                    style={[styles.dispatchButtonSmall, { backgroundColor: colors.gray[200] }]}
+                                    style={[styles.actionBtn, { backgroundColor: colors.gray[200] }]}
                                     onPress={() => openEditIncident(item)}
                                 >
-                                    <Ionicons name="pencil" size={16} color={colors.text} />
-                                    <Text style={[styles.dispatchButtonText, { color: colors.text }]}>Editar</Text>
+                                    <Ionicons name="pencil" size={18} color={colors.text} />
+                                    {/* Hide text on small screens if needed, but keeping for now */}
                                 </TouchableOpacity>
                                 <TouchableOpacity
-                                    style={[styles.dispatchButtonSmall, { backgroundColor: colors.gray[200] }]}
+                                    style={[styles.actionBtn, { backgroundColor: '#fee2e2' }]}
                                     onPress={() => handleDeleteIncident(item.id)}
                                 >
-                                    <Ionicons name="trash" size={16} color={colors.danger} />
-                                    <Text style={[styles.dispatchButtonText, { color: colors.danger }]}>Eliminar</Text>
+                                    <Ionicons name="trash" size={18} color={colors.danger} />
                                 </TouchableOpacity>
                             </>
                         )}
@@ -455,9 +490,29 @@ export default function IncidentsScreen() {
                                         <Ionicons name="chevron-down" size={20} color={colors.gray[500]} />
                                     </TouchableOpacity>
 
+                                    {/* Address Input */}
+                                    <View style={{ marginBottom: spacing.md }}>
+                                        <View style={{ flexDirection: 'row', gap: 8 }}>
+                                            <TextInput
+                                                style={[styles.input, { flex: 1, marginBottom: 0 }]}
+                                                placeholder="Dirección / Referencia"
+                                                value={addressQuery}
+                                                onChangeText={setAddressQuery}
+                                                onSubmitEditing={handleGeocode}
+                                            />
+                                            <TouchableOpacity
+                                                style={{ backgroundColor: colors.gray[200], justifyContent: 'center', paddingHorizontal: 12, borderRadius: borderRadius.md }}
+                                                onPress={handleGeocode}
+                                            >
+                                                {isGeocoding ? <ActivityIndicator size="small" color={colors.text} /> : <Ionicons name="search" size={20} color={colors.text} />}
+                                            </TouchableOpacity>
+                                        </View>
+                                        <Text style={{ fontSize: 10, color: colors.gray[500], marginTop: 2 }}>Ingresa dirección y presiona buscar, o ajusta en el mapa.</Text>
+                                    </View>
+
                                     <TouchableOpacity style={[styles.selectButton, { backgroundColor: colors.secondary + '20' }]} onPress={() => setShowLocationPicker(true)}>
                                         <Text style={{ color: colors.secondary, fontWeight: '600' }}>
-                                            {newIncident.latitude !== 0 ? 'Ubicación Ajustada' : 'Ajustar Ubicación en Mapa'}
+                                            {newIncident.latitude !== 0 ? 'Map: Ubicación Ajustada' : 'Seleccionar en Mapa'}
                                         </Text>
                                         <Ionicons name="map" size={20} color={colors.secondary} />
                                     </TouchableOpacity>
@@ -479,15 +534,28 @@ export default function IncidentsScreen() {
                                                 renderItem={({ item }) => (
                                                     <TouchableOpacity
                                                         style={[
-                                                            styles.unitChip,
-                                                            newIncident.commander === item.id && styles.unitChipSelected
+                                                            styles.chiefCard,
+                                                            newIncident.commander === item.id && styles.chiefCardSelected
                                                         ]}
                                                         onPress={() => setNewIncident({ ...newIncident, commander: newIncident.commander === item.id ? null : item.id })}
                                                     >
-                                                        <Text style={[
-                                                            styles.unitChipText,
-                                                            newIncident.commander === item.id && { color: 'white' }
-                                                        ]}>{item.first_name || item.last_name ? `${item.first_name || ''} ${item.last_name || ''}`.trim() : (item.email || '').split('@')[0]}</Text>
+                                                        <View style={{ alignItems: 'center' }}>
+                                                            <View style={[styles.chiefAvatar, newIncident.commander === item.id && { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+                                                                <Ionicons name="person" size={20} color={newIncident.commander === item.id ? 'white' : colors.primary} />
+                                                            </View>
+                                                            <Text
+                                                                numberOfLines={1}
+                                                                style={[
+                                                                    styles.chiefName,
+                                                                    newIncident.commander === item.id && { color: 'white' }
+                                                                ]}
+                                                            >
+                                                                {item.first_name || item.last_name ? `${item.first_name || ''} ${item.last_name || ''}`.trim() : (item.email || '').split('@')[0]}
+                                                            </Text>
+                                                            <Text style={[styles.chiefRole, newIncident.commander === item.id && { color: 'rgba(255,255,255,0.8)' }]}>
+                                                                Disponible
+                                                            </Text>
+                                                        </View>
                                                     </TouchableOpacity>
                                                 )}
                                             />
@@ -596,7 +664,7 @@ export default function IncidentsScreen() {
             </Modal>
 
             {/* Dispatch Modal */}
-            < Modal visible={isDispatchModalVisible} transparent animationType="slide" >
+            <Modal visible={isDispatchModalVisible} transparent animationType="slide">
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
                         <Text style={styles.modalTitle}>Despachar Unidad</Text>
@@ -651,7 +719,7 @@ export default function IncidentsScreen() {
                         )}
                     </View>
                 </View>
-            </Modal >
+            </Modal>
 
             <ModalSelector
                 visible={showTypeSelector}
@@ -668,7 +736,7 @@ export default function IncidentsScreen() {
                 onClose={() => setShowLocationPicker(false)}
                 onSelect={(lat, lng) => setNewIncident({ ...newIncident, latitude: lat, longitude: lng })}
             />
-        </View >
+        </View>
     );
 }
 
@@ -759,5 +827,27 @@ const styles = StyleSheet.create({
     unitChipSelected: {
         backgroundColor: colors.primary, borderColor: colors.primary
     },
-    unitChipText: { fontSize: 13, fontWeight: '600', color: colors.gray[700] }
+    unitChipText: { fontSize: 13, fontWeight: '600', color: colors.gray[700] },
+
+    // New Styles for Actions and Chief Cards
+    actionsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
+    actionBtn: {
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+        paddingVertical: 8, paddingHorizontal: 12, borderRadius: 6, gap: 6
+    },
+    actionBtnText: { fontSize: 12, fontWeight: '600', color: colors.primary },
+
+    chiefCard: {
+        width: 100, padding: 8, backgroundColor: colors.gray[100], borderRadius: 8, marginRight: 8,
+        borderWidth: 1, borderColor: colors.gray[200], alignItems: 'center', justifyContent: 'center'
+    },
+    chiefCardSelected: {
+        backgroundColor: colors.primary, borderColor: colors.primary
+    },
+    chiefAvatar: {
+        width: 40, height: 40, borderRadius: 20, backgroundColor: colors.gray[300],
+        alignItems: 'center', justifyContent: 'center', marginBottom: 6
+    },
+    chiefName: { fontSize: 11, fontWeight: 'bold', color: colors.text, textAlign: 'center', marginBottom: 2 },
+    chiefRole: { fontSize: 10, color: colors.gray[500], textAlign: 'center' }
 });

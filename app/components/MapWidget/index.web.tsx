@@ -43,6 +43,23 @@ const getFireColor = (brightness: number): string => {
 const MapController = forwardRef<MapWidgetHandle, any>((_, ref) => {
     const map = useMap();
 
+    React.useEffect(() => {
+        // Inject Leaflet CSS if not already present
+        const linkId = 'leaflet-css';
+        if (!document.getElementById(linkId)) {
+            const link = document.createElement('link');
+            link.id = linkId;
+            link.rel = 'stylesheet';
+            link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+            document.head.appendChild(link);
+        }
+
+        // Force map invalidation after a short delay to ensure rendering
+        setTimeout(() => {
+            map.invalidateSize();
+        }, 100);
+    }, [map]);
+
     useImperativeHandle(ref, () => ({
         animateToRegion: (region, duration) => { // duration ignored for now or used in options
             const southWest = L.latLng(
@@ -84,7 +101,6 @@ const MapWidget = forwardRef<MapWidgetHandle, MapWidgetProps>(({
                 center={[currentLocation.latitude, currentLocation.longitude]}
                 zoom={13}
                 style={{ height: '100%', width: '100%' }}
-                zIndex={0} // Ensure it doesn't overlap inappropriately
             >
                 <MapController ref={ref} />
 
