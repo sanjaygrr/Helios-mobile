@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, KeyboardAvo
 import { colors, spacing, borderRadius } from '../theme/colors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { setApiBaseURL } from '../services/api';
-import { isBackgroundTrackingEnabled, setBackgroundTrackingEnabled } from '../services/backgroundTracking';
+import { isBackgroundTrackingEnabled, setBackgroundTrackingEnabled, supportsBackgroundTracking } from '../services/backgroundTracking';
 
 export default function SettingsScreen() {
   const [baseURL, setBaseURL] = useState('');
@@ -77,7 +77,8 @@ export default function SettingsScreen() {
       <Text style={{ marginTop: spacing.md, color: colors.textLight }}>
         Actual: {baseURL || 'Por defecto (producción)'}
       </Text>
-      {Platform.OS !== 'web' && <TouchableOpacity style={styles.backgroundOption} onPress={changeBackgroundTracking}>
+      {!supportsBackgroundTracking && Platform.OS !== 'web' && <Text style={styles.backgroundDescription}>En Expo Go, mantén Helios abierta para compartir tu ubicación con el equipo.</Text>}
+      {supportsBackgroundTracking && <TouchableOpacity style={styles.backgroundOption} onPress={changeBackgroundTracking}>
         <View style={{ flex: 1 }}>
           <Text style={styles.backgroundTitle}>Ubicación en segundo plano</Text>
           <Text style={styles.backgroundDescription}>Comparte tu posición mientras la app está minimizada.</Text>

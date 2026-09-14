@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
@@ -8,6 +9,7 @@ import { isLocationSharingEnabled } from './locationSharing';
 
 const TASK_NAME = 'helios-background-location';
 const BACKGROUND_KEY = '@Helios:backgroundTracking';
+export const supportsBackgroundTracking = Platform.OS !== 'web' && Constants.executionEnvironment !== ExecutionEnvironment.StoreClient;
 
 TaskManager.defineTask(TASK_NAME, async ({ data, error }) => {
   if (error || !data || !(await isLocationSharingEnabled())) return;
@@ -28,18 +30,19 @@ TaskManager.defineTask(TASK_NAME, async ({ data, error }) => {
 });
 
 export async function isBackgroundTrackingEnabled(): Promise<boolean> {
+  if (!supportsBackgroundTracking) return false;
   return (await AsyncStorage.getItem(BACKGROUND_KEY)) === 'true';
 }
 
 export async function stopBackgroundTracking(): Promise<void> {
-  if (Platform.OS === 'web') return;
+  if (!supportsBackgroundTracking) return;
   if (await Location.hasStartedLocationUpdatesAsync(TASK_NAME)) {
     await Location.stopLocationUpdatesAsync(TASK_NAME);
   }
 }
 
 export async function setBackgroundTrackingEnabled(enabled: boolean): Promise<boolean> {
-  if (Platform.OS === 'web') return false;
+  if (!supportsBackgroundTracking) return false;
   if (!enabled) {
     await AsyncStorage.setItem(BACKGROUND_KEY, 'false');
     await stopBackgroundTracking();
@@ -55,7 +58,7 @@ export async function setBackgroundTrackingEnabled(enabled: boolean): Promise<bo
 }
 
 export async function resumeBackgroundTracking(): Promise<void> {
-  if (Platform.OS === 'web' || !(await isBackgroundTrackingEnabled()) || !(await isLocationSharingEnabled())) return;
+  if (!supportsBackgroundTracking || !(await isBackgroundTrackingEnabled()) || !(await isLocationSharingEnabled())) return;
   if (await Location.hasStartedLocationUpdatesAsync(TASK_NAME)) return;
   await Location.startLocationUpdatesAsync(TASK_NAME, {
     accuracy: Location.Accuracy.Balanced,

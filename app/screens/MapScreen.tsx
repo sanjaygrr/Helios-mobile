@@ -235,22 +235,15 @@ export default function MapScreen() {
 
   // --- Render ---
 
-  if (!location) {
-    return (
-      <View style={styles.loadingContainer}>
-        {!errorMsg && <ActivityIndicator size="large" color={colors.primary} />}
-        <Text style={styles.loadingText}>{errorMsg || 'Obteniendo ubicación...'}</Text>
-      </View>
-    );
-  }
+  const mapCenter = location?.coords || Object.values(otherUsers)[0] || fireData[0] || { latitude: -41.4693, longitude: -72.9424 };
 
   return (
     <View style={styles.container}>
       <MapWidget
         ref={mapRef}
         style={styles.map}
-        currentLocation={location.coords}
-        selfUser={user}
+        currentLocation={mapCenter}
+        selfUser={location ? user : null}
         otherUsers={Object.values(otherUsers)}
         fires={visibleFires}
         showFires={showFires}
@@ -258,6 +251,11 @@ export default function MapScreen() {
         onMapPress={() => setSelectedItem(null)}
         onRegionChange={setCurrentRegion}
       />
+
+      {!location && <View style={styles.locationNotice}>
+        {!errorMsg && <ActivityIndicator size="small" color={colors.primary} />}
+        <Text style={styles.locationNoticeText}>{errorMsg || 'Obteniendo tu ubicación...'}</Text>
+      </View>}
 
       {/* Status Indicators */}
       <View style={styles.statusCard}>
@@ -413,6 +411,13 @@ const styles = StyleSheet.create({
   map: {
     flex: 1,
   },
+  locationNotice: {
+    position: 'absolute', top: 72, left: 16, right: 16,
+    backgroundColor: colors.white, borderRadius: 12, padding: 12,
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    ...shadows.md,
+  },
+  locationNoticeText: { color: colors.text, fontWeight: '600' },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',

@@ -112,13 +112,13 @@ const MapWidget = forwardRef<MapWidgetHandle, MapWidgetProps>(({
                 {/* Helper to capture map clicks if strictly needed, but Leaflet markers handle their own clicks well */}
 
                 {/* Self Marker */}
-                <Marker
+                {selfUser && <Marker
                     position={[currentLocation.latitude, currentLocation.longitude]}
                     icon={selfIcon}
                     eventHandlers={{
                         click: () => onSelectMarker({ ...selfUser, ...currentLocation, isSelf: true })
                     }}
-                />
+                />}
 
                 {/* Other Users */}
                 {otherUsers.map((u) => (

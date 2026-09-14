@@ -114,7 +114,7 @@ const MapWidget = forwardRef<MapWidgetHandle, MapWidgetProps>(({
             onRegionChangeComplete={onRegionChange}
         >
             {/* Self Marker */}
-            <UserMarker
+            {selfUser && <UserMarker
                 key="self-marker"
                 coordinate={{
                     latitude: currentLocation.latitude,
@@ -124,7 +124,7 @@ const MapWidget = forwardRef<MapWidgetHandle, MapWidgetProps>(({
                 person={selfUser}
                 isSelf={true}
                 onPress={() => onSelectMarker({ ...selfUser, ...currentLocation, isSelf: true })}
-            />
+            />}
 
             {/* Other Users */}
             {otherUsers.map((u) => (
