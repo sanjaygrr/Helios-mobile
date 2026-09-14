@@ -10,11 +10,13 @@ import {
 } from 'react-native';
 import * as Location from 'expo-location';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import WebSocketService from '../services/websocket';
 import { FirePoint } from '../services/nasa';
 import { fetchWeatherData, WeatherData } from '../services/weather';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
+import { isLocationSharingEnabled, setLocationSharingEnabled } from '../services/locationSharing';
+import { getDeviceId } from '../services/deviceIdentity';
+import { resumeBackgroundTracking, stopBackgroundTracking } from '../services/backgroundTracking';
 import { colors, spacing, borderRadius, shadows } from '../theme/colors';
 
 // New MapWidget import
@@ -35,6 +37,7 @@ interface LocationData {
 // Actually MapUser in types.ts is identical to OtherUser here.
 interface OtherUser {
   id: number;
+  device_id?: string;
   latitude: number;
   longitude: number;
   role?: string;
@@ -59,7 +62,7 @@ export default function MapScreen() {
   const [isTracking, setIsTracking] = useState(true);
 
   const [currentRegion, setCurrentRegion] = useState<any>(null); // Type 'any' for Region compat
-  const [otherUsers, setOtherUsers] = useState<{ [key: number]: OtherUser }>({});
+  const [otherUsers, setOtherUsers] = useState<{ [key: string]: OtherUser }>({});
   const [fireData, setFireData] = useState<FirePoint[]>([]);
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
 
@@ -111,73 +114,70 @@ export default function MapScreen() {
   // --- Effects ---
 
   useEffect(() => {
+    isLocationSharingEnabled().then(setIsTracking).catch(() => {});
+  }, []);
+
+  useEffect(() => {
     let locationSubscription: Location.LocationSubscription | null = null;
+    let cancelled = false;
 
     const startTracking = async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        setErrorMsg('Permiso de ubicación denegado');
-        return;
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          setErrorMsg('Permiso de ubicación denegado');
+          return;
+        }
+        locationSubscription = await Location.watchPositionAsync(
+          { accuracy: Location.Accuracy.Balanced, timeInterval: 5000, distanceInterval: 10 },
+          loc => setLocation(loc as LocationData)
+        );
+        if (cancelled) locationSubscription.remove();
+      } catch {
+        if (!cancelled) setErrorMsg('No se pudo obtener la ubicación');
       }
-
-      WebSocketService.connect();
-
-      const unsubscribe = WebSocketService.subscribe((data: OtherUser) => {
-        if (data.id && data.id !== user?.id) {
-          setOtherUsers(prev => ({ ...prev, [data.id]: data }));
-        }
-      });
-      // REST fallback
-      api.get('/tracking/history/live')
-        .then(res => {
-          if (Array.isArray(res.data)) {
-            const mapped: { [key: number]: OtherUser } = {};
-            res.data.forEach((pos: any) => {
-              const uid = pos.user_id || pos.user;
-              mapped[uid] = {
-                id: uid,
-                latitude: pos.latitude,
-                longitude: pos.longitude,
-                role: pos.user_role,
-                email: pos.user_email,
-                timestamp: new Date(pos.timestamp).getTime(),
-              } as OtherUser;
-            });
-            setOtherUsers(prev => ({ ...mapped, ...prev }));
-          }
-        })
-        .catch(() => { });
-
-      locationSubscription = await Location.watchPositionAsync(
-        {
-          accuracy: Location.Accuracy.Balanced,
-          timeInterval: 5000,
-          distanceInterval: 10,
-        },
-        (loc) => {
-          setLocation(loc as LocationData);
-          if (isTracking && user) {
-            WebSocketService.sendLocation(
-              loc.coords.latitude,
-              loc.coords.longitude,
-              user.id,
-              user.role
-            );
-          }
-        }
-      );
-
-      return () => {
-        unsubscribe();
-      };
     };
 
     startTracking();
 
     return () => {
+      cancelled = true;
       if (locationSubscription) locationSubscription.remove();
     };
-  }, [isTracking, user]);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const refreshPeople = async () => {
+      try {
+        const ownDeviceId = await getDeviceId();
+        const res = await api.get('/tracking/history/live/');
+        if (cancelled || !Array.isArray(res.data)) return;
+        const mapped: { [key: string]: OtherUser } = {};
+        res.data.forEach((pos: any) => {
+          const uid = pos.user_id;
+          if (!uid || (uid === user?.id && pos.device_id === ownDeviceId)) return;
+          mapped[`${uid}:${pos.device_id || 'legacy'}`] = {
+            id: uid,
+            device_id: pos.device_id,
+            latitude: pos.latitude,
+            longitude: pos.longitude,
+            role: pos.user_role,
+            email: pos.user_email,
+            user_first_name: pos.user_first_name,
+            user_last_name: pos.user_last_name,
+            timestamp: new Date(pos.timestamp).getTime(),
+          };
+        });
+        setOtherUsers(mapped);
+      } catch (error) {
+        if (__DEV__) console.warn('No se pudieron actualizar las posiciones', error);
+      }
+    };
+    refreshPeople();
+    const interval = setInterval(refreshPeople, 10000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [user?.id]);
 
   useEffect(() => {
     if (location) {
@@ -238,8 +238,8 @@ export default function MapScreen() {
   if (!location) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.loadingText}>Obteniendo ubicación...</Text>
+        {!errorMsg && <ActivityIndicator size="large" color={colors.primary} />}
+        <Text style={styles.loadingText}>{errorMsg || 'Obteniendo ubicación...'}</Text>
       </View>
     );
   }
@@ -262,7 +262,9 @@ export default function MapScreen() {
       {/* Status Indicators */}
       <View style={styles.statusCard}>
         <View style={[styles.statusDot, { backgroundColor: isTracking ? colors.success : colors.danger }]} />
-        <Text style={styles.statusLabel}>{isTracking ? "Transmitiendo" : "Pausado"}</Text>
+        <Text style={styles.statusLabel}>{isTracking ? 'Ubicación activada' : 'Ubicación pausada'}</Text>
+        <View style={styles.statusDivider} />
+        <Text style={styles.statusLabel}>{Object.keys(otherUsers).length} en mapa</Text>
         {showFires && (
           <>
             <View style={styles.statusDivider} />
@@ -328,11 +330,11 @@ export default function MapScreen() {
               </View>
             )}
 
-            {/* Status if inactive (User only) */}
-            {!selectedItem.brightness && !selectedItem.assigned_incident && (
+            {/* Last confirmed position */}
+            {!selectedItem.brightness && selectedItem.timestamp && (
               <View style={[styles.incidentRow, { backgroundColor: colors.gray[200] }]}>
-                <Ionicons name="moon" size={16} color={colors.gray[600]} />
-                <Text style={[styles.incidentText, { color: colors.gray[600] }]}>Inactivo</Text>
+                <Ionicons name="time-outline" size={16} color={colors.gray[600]} />
+                <Text style={[styles.incidentText, { color: colors.gray[600] }]}>Última señal: {new Date(selectedItem.timestamp).toLocaleTimeString()}</Text>
               </View>
             )}
 
@@ -388,7 +390,13 @@ export default function MapScreen() {
         </TouchableOpacity>
 
         {/* Toggle Tracking */}
-        <TouchableOpacity style={[styles.fab, { backgroundColor: isTracking ? colors.secondary : colors.success }]} onPress={() => setIsTracking(!isTracking)}>
+        <TouchableOpacity style={[styles.fab, { backgroundColor: isTracking ? colors.secondary : colors.success }]} onPress={async () => {
+          const next = !isTracking;
+          await setLocationSharingEnabled(next);
+          setIsTracking(next);
+          if (next) resumeBackgroundTracking().catch(() => {});
+          else stopBackgroundTracking().catch(() => {});
+        }}>
           <Ionicons name={isTracking ? "pause" : "play"} size={28} color="white" />
         </TouchableOpacity>
       </View>

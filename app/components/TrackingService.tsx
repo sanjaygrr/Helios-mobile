@@ -1,61 +1,70 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
+import { AppState } from 'react-native';
 import * as Location from 'expo-location';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
-import { Alert } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { isLocationSharingEnabled } from '../services/locationSharing';
+import { getDeviceId } from '../services/deviceIdentity';
+import { resumeBackgroundTracking, stopBackgroundTracking } from '../services/backgroundTracking';
 
-const TRACKING_INTERVAL = 60000; // 60 seconds
-
+/** Shares the signed-in person's foreground position across devices. */
 export default function TrackingService() {
-    const { user, role } = useAuth();
+  const { user } = useAuth();
 
-    useEffect(() => {
-        let intervalId: NodeJS.Timeout;
+  useEffect(() => {
+    if (!user) {
+      stopBackgroundTracking().catch(() => {});
+      return;
+    }
+    let active = true;
+    let subscription: Location.LocationSubscription | null = null;
+    let lastSent = 0;
+    let sending = false;
 
-        const startTracking = async () => {
-            if (role === 'COMPANY_CHIEF') {
-                // Request permissions first
-                const { status } = await Location.requestForegroundPermissionsAsync();
-                if (status !== 'granted') {
-                    console.log('Location permission not granted for tracking');
-                    return;
-                }
+    const stop = () => {
+      subscription?.remove();
+      subscription = null;
+    };
 
-                // Send initial location
-                sendLocation();
-
-                // Start interval
-                intervalId = setInterval(sendLocation, TRACKING_INTERVAL);
-            }
-        };
-
-        const sendLocation = async () => {
-            try {
-                const token = await AsyncStorage.getItem('@Auth:token');
-                if (!token || !user) return;
-                const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
-                await api.post('/tracking/history/', {
-                    latitude: location.coords.latitude,
-                    longitude: location.coords.longitude,
-                    // incident: null // Optional: if we want to link to active incident
-                });
-                console.log('Location sent for tracking');
-            } catch (error) {
-                // Silenciar errores de red para no molestar al usuario
-                const msg = (error && (error as any).message) || '';
-                if (__DEV__) console.error('Error sending location:', msg);
-            }
-        };
-
-        if (user) {
-            startTracking();
+    const start = async () => {
+      if (subscription || !active || AppState.currentState !== 'active') return;
+      const permission = await Location.requestForegroundPermissionsAsync();
+      if (!active || permission.status !== 'granted') return;
+      subscription = await Location.watchPositionAsync(
+        { accuracy: Location.Accuracy.Balanced, timeInterval: 5000, distanceInterval: 10 },
+        async ({ coords }) => {
+          const now = Date.now();
+          if (!active || !(await isLocationSharingEnabled()) || sending || now - lastSent < 10000) return;
+          sending = true;
+          try {
+            await api.post('/tracking/history/', {
+              latitude: coords.latitude,
+              longitude: coords.longitude,
+              device_id: await getDeviceId(),
+            });
+            lastSent = now;
+          } catch (error) {
+            if (__DEV__) console.warn('No se pudo compartir la ubicación', error);
+          } finally {
+            sending = false;
+          }
         }
+      );
+      if (!active) stop();
+    };
 
-        return () => {
-            if (intervalId) clearInterval(intervalId);
-        };
-    }, [user, role]);
+    start();
+    resumeBackgroundTracking().catch(() => {});
+    const appListener = AppState.addEventListener('change', state => {
+      if (state === 'active') start();
+      else stop();
+    });
+    return () => {
+      active = false;
+      stop();
+      appListener.remove();
+    };
+  }, [user?.id]);
 
-    return null; // This component handles logic only
+  return null;
 }

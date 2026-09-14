@@ -153,7 +153,7 @@ export default function UnitScreen() {
 
     if (!assignment) return;
     const mapToRemote: Record<UnitStatus, string> = {
-      available: 'DISPATCHED',
+      available: 'RELEASED',
       en_route: 'EN_ROUTE',
       on_scene: 'ON_SCENE',
       returning: 'RETURNING'

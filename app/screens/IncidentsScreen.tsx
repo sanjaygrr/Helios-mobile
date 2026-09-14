@@ -35,7 +35,11 @@ export default function IncidentsScreen() {
         latitude: 0,
         longitude: 0,
         commander: null as number | null,
+        fire_department: user?.fire_department || null as number | null,
     });
+    const [departments, setDepartments] = useState<{ id: number; label: string }[]>([]);
+    const [companyDepartments, setCompanyDepartments] = useState<Record<number, number>>({});
+    const [showDepartmentSelector, setShowDepartmentSelector] = useState(false);
     const [loadingLocation, setLoadingLocation] = useState(false);
     const [showTypeSelector, setShowTypeSelector] = useState(false);
     const [showLocationPicker, setShowLocationPicker] = useState(false);
@@ -122,11 +126,16 @@ export default function IncidentsScreen() {
     const [isGeocoding, setIsGeocoding] = useState(false);
 
     const handleOpenModal = async () => {
+        setNewIncident({ title: '', description: '', incident_type: 'OTRO', latitude: 0, longitude: 0, commander: null, fire_department: user?.fire_department || null });
         setModalVisible(true);
         setEditingIncidentId(null);
         setLoadingLocation(true);
         setLoadingUnits(true);
         setAddressQuery('');
+        if (role === 'SUPER_ADMIN') {
+            api.get('/departments/').then(res => setDepartments(res.data.map((item: any) => ({ id: item.id, label: item.name })))).catch(() => {});
+            api.get('/companies/').then(res => setCompanyDepartments(Object.fromEntries(res.data.map((item: any) => [item.id, item.fire_department])))).catch(() => {});
+        }
 
         // Fetch Units for initial dispatch
         try {
@@ -213,6 +222,10 @@ export default function IncidentsScreen() {
     };
 
     const handleCreateIncident = async () => {
+        if (role === 'SUPER_ADMIN' && !newIncident.fire_department) {
+            Alert.alert('Error', 'Selecciona el cuerpo de bomberos antes de reportar.');
+            return;
+        }
         if (!newIncident.title || !newIncident.latitude) {
             Alert.alert('Error', 'Complete los campos y verificque la ubicación.');
             return;
@@ -256,14 +269,14 @@ export default function IncidentsScreen() {
             }
 
             // 3. Auto-Take Command (if Chief/Admin)
-            if (role === 'COMPANY_CHIEF' || role === 'SUPER_ADMIN') {
+            if ((role === 'COMPANY_CHIEF' || role === 'SUPER_ADMIN') && !newIncident.commander) {
                 await api.post(`/incidents/${incidentId}/take_command/`);
             }
 
             setModalVisible(false);
             fetchIncidents();
             // Reset
-            setNewIncident({ title: '', description: '', incident_type: 'OTRO', latitude: 0, longitude: 0, commander: null });
+            setNewIncident({ title: '', description: '', incident_type: 'OTRO', latitude: 0, longitude: 0, commander: null, fire_department: user?.fire_department || null });
             setPersonnelList([]);
             setSelectedInitialUnit(null);
             setSelectedVehicle(null);
@@ -413,7 +426,7 @@ export default function IncidentsScreen() {
 
                     <View style={{ flex: 1 }} />
 
-                    {(role === 'COMPANY_CHIEF' || role === 'COMPANY_ADMIN' || role === 'SUPER_ADMIN') && (
+                    {(role === 'COMPANY_ADMIN' || role === 'SUPER_ADMIN' || isMyCommand || (role === 'COMPANY_CHIEF' && !item.commander)) && (
                         <View style={styles.iconActions}>
                             <TouchableOpacity
                                 style={styles.iconBtn}
@@ -421,12 +434,12 @@ export default function IncidentsScreen() {
                             >
                                 <Ionicons name="create-outline" size={20} color={colors.gray[600]} />
                             </TouchableOpacity>
-                            <TouchableOpacity
+                            {(role === 'COMPANY_ADMIN' || role === 'SUPER_ADMIN') && <TouchableOpacity
                                 style={styles.iconBtn}
                                 onPress={() => handleDeleteIncident(item.id)}
                             >
                                 <Ionicons name="trash-outline" size={20} color={colors.danger} />
-                            </TouchableOpacity>
+                            </TouchableOpacity>}
                         </View>
                     )}
                 </View>
@@ -442,6 +455,7 @@ export default function IncidentsScreen() {
             latitude: incident.latitude,
             longitude: incident.longitude,
             commander: incident.commander || null,
+            fire_department: incident.fire_department || null,
         });
         setSelectedVehicle(null);
         setSelectedInitialUnit(null);
@@ -512,6 +526,10 @@ export default function IncidentsScreen() {
                                         value={newIncident.title}
                                         onChangeText={(t) => setNewIncident({ ...newIncident, title: t })}
                                     />
+                                    {role === 'SUPER_ADMIN' && !editingIncidentId && <TouchableOpacity style={styles.selectButton} onPress={() => setShowDepartmentSelector(true)}>
+                                        <Text>{departments.find(item => item.id === newIncident.fire_department)?.label || 'Seleccionar cuerpo de bomberos'}</Text>
+                                        <Ionicons name="chevron-down" size={20} color={colors.gray[500]} />
+                                    </TouchableOpacity>}
                                     <TouchableOpacity style={styles.selectButton} onPress={() => setShowTypeSelector(true)}>
                                         <Text>{getTypeLabel()}</Text>
                                         <Ionicons name="chevron-down" size={20} color={colors.gray[500]} />
@@ -555,7 +573,7 @@ export default function IncidentsScreen() {
                                         <View style={{ height: 50, marginBottom: 15 }}>
                                             <FlatList
                                                 horizontal
-                                                data={availableChiefs}
+                                                data={availableChiefs.filter(item => role !== 'SUPER_ADMIN' || item.fire_department === newIncident.fire_department)}
                                                 showsHorizontalScrollIndicator={false}
                                                 keyExtractor={c => c.id.toString()}
                                                 renderItem={({ item }) => (
@@ -619,7 +637,7 @@ export default function IncidentsScreen() {
                                         <View style={{ height: 50, marginBottom: 15 }}>
                                             <FlatList
                                                 horizontal
-                                                data={availableUnits}
+                                                data={availableUnits.filter(item => role !== 'SUPER_ADMIN' || companyDepartments[item.company] === newIncident.fire_department)}
                                                 showsHorizontalScrollIndicator={false}
                                                 keyExtractor={u => u.id.toString()}
                                                 renderItem={({ item }) => (
@@ -650,7 +668,7 @@ export default function IncidentsScreen() {
                                                 <View style={{ height: 50, marginBottom: 15 }}>
                                                     <FlatList
                                                         horizontal
-                                                        data={availableVehicles}
+                                                        data={availableVehicles.filter(item => role !== 'SUPER_ADMIN' || companyDepartments[item.company] === newIncident.fire_department)}
                                                         showsHorizontalScrollIndicator={false}
                                                         keyExtractor={v => v.id.toString()}
                                                         renderItem={({ item }) => (
@@ -759,6 +777,17 @@ export default function IncidentsScreen() {
                 onClose={() => setShowTypeSelector(false)}
                 onSelect={(opt) => setNewIncident({ ...newIncident, incident_type: opt.id as string })}
                 searchable={true}
+            />
+            <ModalSelector
+                visible={showDepartmentSelector}
+                title="Cuerpo de bomberos"
+                options={departments}
+                onClose={() => setShowDepartmentSelector(false)}
+                onSelect={option => {
+                    setNewIncident({ ...newIncident, fire_department: Number(option.id), commander: null });
+                    setSelectedInitialUnit(null);
+                    setSelectedVehicle(null);
+                }}
             />
 
             <LocationPicker

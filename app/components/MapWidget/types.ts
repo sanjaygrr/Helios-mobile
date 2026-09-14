@@ -9,6 +9,7 @@ export interface FirePoint {
 
 export interface MapUser {
     id: number;
+    device_id?: string;
     latitude: number;
     longitude: number;
     role?: string;

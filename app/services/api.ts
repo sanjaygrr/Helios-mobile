@@ -29,11 +29,31 @@ api.interceptors.request.use(
     }
 );
 
-export const login = async (email, password) => {
+api.interceptors.response.use(response => response, async error => {
+    const original = error.config;
+    if (error.response?.status !== 401 || !original || original._retried || original.url?.includes('/token/')) {
+        return Promise.reject(error);
+    }
+    original._retried = true;
+    const refresh = await AsyncStorage.getItem('@Auth:refresh');
+    if (!refresh) return Promise.reject(error);
+    try {
+        const storedBase = await AsyncStorage.getItem('@Api:baseURL');
+        const response = await axios.post(`${storedBase || ENV_URL || PROD_URL}/token/refresh/`, { refresh });
+        const access = response.data.access;
+        await AsyncStorage.setItem('@Auth:token', access);
+        original.headers.Authorization = `Bearer ${access}`;
+        return api(original);
+    } catch {
+        return Promise.reject(error);
+    }
+});
+
+export const login = async (email: string, password: string) => {
     return api.post('/token/', { email, password });
 };
 
-export const updatePosition = async (unitId, lat, lon) => {
+export const updatePosition = async (unitId: number, lat: number, lon: number) => {
     return api.post('/tracking/', {
         unit: unitId,
         latitude: lat,

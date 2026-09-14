@@ -123,7 +123,7 @@ const MapWidget = forwardRef<MapWidgetHandle, MapWidgetProps>(({
                 {/* Other Users */}
                 {otherUsers.map((u) => (
                     <Marker
-                        key={`user-${u.id}`}
+                        key={`user-${u.id}-${u.device_id || 'legacy'}`}
                         position={[u.latitude, u.longitude]}
                         icon={userIcon}
                         eventHandlers={{

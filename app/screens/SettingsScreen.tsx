@@ -3,14 +3,17 @@ import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, KeyboardAvo
 import { colors, spacing, borderRadius } from '../theme/colors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { setApiBaseURL } from '../services/api';
+import { isBackgroundTrackingEnabled, setBackgroundTrackingEnabled } from '../services/backgroundTracking';
 
 export default function SettingsScreen() {
   const [baseURL, setBaseURL] = useState('');
+  const [backgroundEnabled, setBackgroundEnabled] = useState(false);
 
   useEffect(() => {
     (async () => {
       const storedBase = await AsyncStorage.getItem('@Api:baseURL');
       setBaseURL(storedBase || (process as any)?.env?.EXPO_PUBLIC_API_URL || '');
+      setBackgroundEnabled(await isBackgroundTrackingEnabled());
     })();
   }, []);
 
@@ -28,6 +31,27 @@ export default function SettingsScreen() {
     const env = (process as any)?.env?.EXPO_PUBLIC_API_URL || '';
     setBaseURL(env);
     Alert.alert('Restablecido', 'Se usará la URL por defecto del entorno.');
+  };
+
+  const changeBackgroundTracking = async () => {
+    if (backgroundEnabled) {
+      await setBackgroundTrackingEnabled(false);
+      setBackgroundEnabled(false);
+      return;
+    }
+    const enable = async () => {
+      try {
+        const granted = await setBackgroundTrackingEnabled(true);
+        setBackgroundEnabled(granted);
+        if (!granted) Alert.alert('Permiso necesario', 'Activa la ubicación en segundo plano en la configuración del teléfono.');
+      } catch {
+        Alert.alert('No disponible', 'La ubicación en segundo plano requiere una compilación instalada de Helios.');
+      }
+    };
+    Alert.alert('Compartir en segundo plano', 'Tu equipo podrá ver tu posición mientras Helios esté abierta en segundo plano. Puedes pausarla desde el mapa o desactivarla aquí.', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Activar', onPress: enable },
+    ]);
   };
 
   return (
@@ -53,6 +77,13 @@ export default function SettingsScreen() {
       <Text style={{ marginTop: spacing.md, color: colors.textLight }}>
         Actual: {baseURL || 'Por defecto (producción)'}
       </Text>
+      {Platform.OS !== 'web' && <TouchableOpacity style={styles.backgroundOption} onPress={changeBackgroundTracking}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.backgroundTitle}>Ubicación en segundo plano</Text>
+          <Text style={styles.backgroundDescription}>Comparte tu posición mientras la app está minimizada.</Text>
+        </View>
+        <Text style={styles.backgroundState}>{backgroundEnabled ? 'Activada' : 'Desactivada'}</Text>
+      </TouchableOpacity>}
     </KeyboardAvoidingView>
   );
 }
@@ -65,5 +96,8 @@ const styles = StyleSheet.create({
   btnPrimary: { backgroundColor: colors.primary, padding: spacing.md, borderRadius: borderRadius.md, alignItems: 'center', flex: 1 },
   btnSecondary: { backgroundColor: colors.gray[100], padding: spacing.md, borderRadius: borderRadius.md, alignItems: 'center', flex: 1, borderWidth: 1, borderColor: colors.gray[300] },
   btnText: { color: colors.white, fontWeight: '700' },
+  backgroundOption: { marginTop: spacing.xl, padding: spacing.md, borderRadius: borderRadius.md, backgroundColor: colors.white, flexDirection: 'row', alignItems: 'center' },
+  backgroundTitle: { color: colors.text, fontWeight: '700' },
+  backgroundDescription: { color: colors.textLight, fontSize: 12, marginTop: 4 },
+  backgroundState: { color: colors.primary, fontWeight: '700' },
 });
-

@@ -36,22 +36,6 @@ export const fetchWeatherData = async (lat: number, lon: number): Promise<Weathe
         return response.data;
     } catch (error) {
         console.error('Error fetching weather data:', error);
-        return mockWeatherData();
+        return null;
     }
-};
-
-const mockWeatherData = (): WeatherData => {
-    return {
-        wind: {
-            speed: 15.5, // Strong wind
-            deg: 240,    // SW
-        },
-        main: {
-            temp: 25,
-            humidity: 40,
-        },
-        weather: [
-            { main: "Clear", description: "clear sky", icon: "01d" }
-        ]
-    };
 };

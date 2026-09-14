@@ -13,7 +13,7 @@ export default function ManageCompaniesScreen() {
     const [newCompany, setNewCompany] = useState({ name: '', number: '', fire_department: user?.fire_department });
 
     // For SuperAdmin to filtering/creating
-    const [departments, setDepartments] = useState([]);
+    const [departments, setDepartments] = useState<{ id: number; label: string }[]>([]);
     const [showDeptSelector, setShowDeptSelector] = useState(false);
     const [showCreateDept, setShowCreateDept] = useState(false);
     const [newDeptName, setNewDeptName] = useState('');

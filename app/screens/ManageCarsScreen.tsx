@@ -3,8 +3,11 @@ import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, FlatList, M
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius, shadows } from '../theme/colors';
 import api from '../services/api';
+import ModalSelector from '../components/ModalSelector';
+import { useAuth } from '../context/AuthContext';
 
 export default function ManageCarsScreen({ navigation }: any) {
+  const { user } = useAuth();
   const [units, setUnits] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalVisible, setModalVisible] = useState(false);
@@ -16,6 +19,9 @@ export default function ManageCarsScreen({ navigation }: any) {
   const [status, setStatus] = useState('AVAILABLE');
   const [membersCount, setMembersCount] = useState('1');
   const [observations, setObservations] = useState('');
+  const [company, setCompany] = useState<number | null>(user?.company || null);
+  const [companies, setCompanies] = useState<{ id: number; label: string }[]>([]);
+  const [showCompanySelector, setShowCompanySelector] = useState(false);
 
   const unitTypes = [
     { id: 'FORESTAL', label: 'Forestal' },
@@ -35,6 +41,9 @@ export default function ManageCarsScreen({ navigation }: any) {
 
   useEffect(() => {
     fetchUnits();
+    api.get('/companies/').then(res => {
+      setCompanies(res.data.map((item: any) => ({ id: item.id, label: `${item.name} (${item.number})` })));
+    }).catch(() => {});
   }, []);
 
   const fetchUnits = async () => {
@@ -58,6 +67,7 @@ export default function ManageCarsScreen({ navigation }: any) {
       setStatus(unit.status || 'AVAILABLE');
       setMembersCount(unit.members_count?.toString() || '1');
       setObservations(unit.observations || '');
+      setCompany(unit.company || null);
     } else {
       setEditingUnit(null);
       setName('');
@@ -65,6 +75,7 @@ export default function ManageCarsScreen({ navigation }: any) {
       setStatus('AVAILABLE');
       setMembersCount('1');
       setObservations('');
+      setCompany(user?.company || null);
     }
     setModalVisible(true);
   };
@@ -74,13 +85,18 @@ export default function ManageCarsScreen({ navigation }: any) {
       Alert.alert('Error', 'El nombre del carro es obligatorio');
       return;
     }
+    if (!company) {
+      Alert.alert('Error', 'Selecciona una compañía para el carro');
+      return;
+    }
 
     const payload = {
       name,
       unit_type: unitType,
       status,
       members_count: parseInt(membersCount || '1', 10),
-      observations
+      observations,
+      company,
     };
 
     try {
@@ -228,6 +244,9 @@ export default function ManageCarsScreen({ navigation }: any) {
             />
 
             <Text style={styles.label}>Tipo</Text>
+            <TouchableOpacity style={styles.input} onPress={() => setShowCompanySelector(true)}>
+              <Text>{companies.find(item => item.id === company)?.label || 'Seleccionar compañía'}</Text>
+            </TouchableOpacity>
             <View style={[styles.chipsRow, { marginBottom: 15 }]}>
               {unitTypes.map(t => (
                 <TouchableOpacity
@@ -273,6 +292,14 @@ export default function ManageCarsScreen({ navigation }: any) {
           </View>
         </View>
       </Modal>
+
+      <ModalSelector
+        visible={showCompanySelector}
+        title="Seleccionar compañía"
+        options={companies}
+        onClose={() => setShowCompanySelector(false)}
+        onSelect={item => setCompany(Number(item.id))}
+      />
     </View>
   );
 }

@@ -48,13 +48,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     async function login(email: string, password: string) {
         try {
             const response = await apiLogin(email, password);
-            console.log('Login Response:', response); // Debuging
 
             // Assuming API returns { token: '...', user: { ... } }
             // If API format is different, we adjust here.
             // Based on typical JWT Auth:
             // The API response is wrapped in an axios object, so we need response.data
-            const { access, user } = response.data;
+            const { access, refresh, user } = response.data;
 
             // If backend only returns access token, we might need to decode it or fetch me endpoint.
             // For now, let's assume login returns user info or we modify backend to return it.
@@ -67,6 +66,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
             // Store data FIRST before updating state to prevent race conditions with child components
             await AsyncStorage.setItem('@Auth:token', access);
+            await AsyncStorage.setItem('@Auth:refresh', refresh);
             await AsyncStorage.setItem('@Auth:user', JSON.stringify(user));
 
             // Now update state, triggering re-renders
@@ -80,6 +80,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     async function logout() {
         setUser(null);
         await AsyncStorage.removeItem('@Auth:token');
+        await AsyncStorage.removeItem('@Auth:refresh');
         await AsyncStorage.removeItem('@Auth:user');
     }
 

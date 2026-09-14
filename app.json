@@ -6,11 +6,6 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#FF1E00"
-    },
     "assetBundlePatterns": [
       "**/*"
     ],
@@ -49,9 +44,21 @@
         "expo-location",
         {
           "locationAlwaysAndWhenInUsePermission": "Helios necesita acceso a tu ubicacion para rastrear tu unidad.",
-          "isAndroidBackgroundLocationEnabled": true
+          "isAndroidBackgroundLocationEnabled": true,
+          "isIosBackgroundLocationEnabled": true
         }
-      ]
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#FF1E00"
+        }
+      ],
+      "expo-asset",
+      "expo-font",
+      "expo-status-bar"
     ],
     "extra": {
       "eas": {

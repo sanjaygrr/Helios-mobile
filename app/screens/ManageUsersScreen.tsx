@@ -16,8 +16,8 @@ export default function ManageUsersScreen() {
         company: null as number | null
     });
 
-    const [departments, setDepartments] = useState([]);
-    const [companies, setCompanies] = useState([]);
+    const [departments, setDepartments] = useState<{ id: number; label: string }[]>([]);
+    const [companies, setCompanies] = useState<{ id: number; label: string }[]>([]);
 
     const [showDeptSelector, setShowDeptSelector] = useState(false);
     const [showCompSelector, setShowCompSelector] = useState(false);

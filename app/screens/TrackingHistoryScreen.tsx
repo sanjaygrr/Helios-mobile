@@ -1,25 +1,34 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Dimensions, ActivityIndicator, Alert, Text } from 'react-native';
+import { View, StyleSheet, ActivityIndicator, Alert, Text, TouchableOpacity } from 'react-native';
 import { colors, spacing } from '../theme/colors';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import RouteMapWidget from '../components/RouteMapWidget';
+import ModalSelector from '../components/ModalSelector';
 
 export default function TrackingHistoryScreen() {
     const { user } = useAuth();
-    const [trackingPoints, setTrackingPoints] = useState([]);
+    const [trackingPoints, setTrackingPoints] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [selectedUserId, setSelectedUserId] = useState<number | null>(user?.id || null);
+    const [people, setPeople] = useState<{ id: number; label: string }[]>([]);
+    const [showPicker, setShowPicker] = useState(false);
 
     useEffect(() => {
-        fetchTrackingHistory();
+        if (selectedUserId) fetchTrackingHistory(selectedUserId);
+    }, [selectedUserId]);
+
+    useEffect(() => {
+        api.get('/users/').then(response => setPeople(response.data.map((person: any) => ({
+            id: person.id,
+            label: `${person.first_name || ''} ${person.last_name || ''}`.trim() || person.email,
+        })))).catch(() => {});
     }, []);
 
-    const fetchTrackingHistory = async () => {
+    const fetchTrackingHistory = async (personId: number) => {
+        setLoading(true);
         try {
-            // TODO: Add date filtering or user filtering if Admin
-            // For now, fetch all relative to permissions
-            const response = await api.get('/tracking/history/');
-            // Sort by timestamp just in case
+            const response = await api.get('/tracking/history/', { params: { user: personId } });
             const points = response.data.sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
             setTrackingPoints(points);
         } catch (error) {
@@ -30,23 +39,6 @@ export default function TrackingHistoryScreen() {
         }
     };
 
-    if (loading) {
-        return (
-            <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={colors.primary} />
-                <Text>Cargando ruta...</Text>
-            </View>
-        );
-    }
-
-    if (trackingPoints.length === 0) {
-        return (
-            <View style={styles.loadingContainer}>
-                <Text>No hay datos de ruta disponibles.</Text>
-            </View>
-        );
-    }
-
     const coordinates = trackingPoints.map((p: any) => ({
         latitude: p.latitude,
         longitude: p.longitude
@@ -54,12 +46,18 @@ export default function TrackingHistoryScreen() {
 
     return (
         <View style={styles.container}>
-            <RouteMapWidget
+            {loading ? <View style={styles.loadingContainer}><ActivityIndicator size="large" color={colors.primary} /></View> :
+            coordinates.length ? <RouteMapWidget
+                key={selectedUserId}
                 routeCoordinates={coordinates}
                 startCoordinate={coordinates[0]}
                 endCoordinate={coordinates[coordinates.length - 1]}
                 style={styles.map}
-            />
+            /> : <View style={styles.loadingContainer}><Text>No hay datos de ruta para esta persona.</Text></View>}
+            <TouchableOpacity style={styles.personButton} onPress={() => setShowPicker(true)}>
+                <Text style={styles.personButtonText}>{people.find(person => person.id === selectedUserId)?.label || user?.email || 'Seleccionar persona'} ▾</Text>
+            </TouchableOpacity>
+            <ModalSelector visible={showPicker} title="Historial de persona" searchable options={people} onClose={() => setShowPicker(false)} onSelect={option => setSelectedUserId(Number(option.id))} />
         </View>
     );
 }
@@ -67,5 +65,7 @@ export default function TrackingHistoryScreen() {
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     map: { width: '100%', height: '100%' },
-    loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' }
+    loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    personButton: { position: 'absolute', top: 16, left: 16, right: 16, backgroundColor: 'white', borderRadius: 12, padding: 14 },
+    personButtonText: { color: colors.text, fontWeight: '700' },
 });

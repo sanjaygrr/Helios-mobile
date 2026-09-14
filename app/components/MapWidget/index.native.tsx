@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useImperativeHandle, forwardRef, useRef } from 'react';
-import { StyleSheet, View, Platform } from 'react-native';
+import { StyleSheet, View, Platform, Text } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE, PROVIDER_DEFAULT } from 'react-native-maps';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors, shadows } from '../../theme/colors';
@@ -30,7 +30,9 @@ const FireMarker = React.memo(({ fire, color }: { fire: FirePoint; color: string
     );
 });
 
-const UserMarker = ({ coordinate, role, isSelf = false, onPress }: any) => {
+const markerColors = ['#2563EB', '#7C3AED', '#0891B2', '#BE185D', '#B45309', '#047857'];
+
+const UserMarker = ({ coordinate, role, person, isSelf = false, onPress }: any) => {
     const [tracksViewChanges, setTracksViewChanges] = React.useState(false);
 
     React.useEffect(() => { }, []);
@@ -53,9 +55,13 @@ const UserMarker = ({ coordinate, role, isSelf = false, onPress }: any) => {
             onPress={onPress}
             anchor={{ x: 0.5, y: 0.5 }}
         >
-            <View style={isSelf ? styles.myLocationMarker : styles.otherUserMarker}>
+            <View style={[isSelf ? styles.myLocationMarker : styles.otherUserMarker, !isSelf && { backgroundColor: markerColors[Math.abs(Number(person?.id) || 0) % markerColors.length] }]}>
                 {getIcon()}
             </View>
+            {!isSelf && <Text style={styles.markerName} numberOfLines={1}>
+                {person?.user_first_name || person?.email?.split('@')[0] || `#${person?.id}`}
+                {person?.device_id ? ` · ${person.device_id.slice(0, 4)}` : ''}
+            </Text>}
         </Marker>
     );
 };
@@ -115,6 +121,7 @@ const MapWidget = forwardRef<MapWidgetHandle, MapWidgetProps>(({
                     longitude: currentLocation.longitude,
                 }}
                 role={selfUser?.role}
+                person={selfUser}
                 isSelf={true}
                 onPress={() => onSelectMarker({ ...selfUser, ...currentLocation, isSelf: true })}
             />
@@ -122,9 +129,10 @@ const MapWidget = forwardRef<MapWidgetHandle, MapWidgetProps>(({
             {/* Other Users */}
             {otherUsers.map((u) => (
                 <UserMarker
-                    key={`user-${u.id}`}
+                    key={`user-${u.id}-${u.device_id || 'legacy'}`}
                     coordinate={{ latitude: u.latitude, longitude: u.longitude }}
                     role={u.role}
+                    person={u}
                     isSelf={false}
                     onPress={() => onSelectMarker(u)}
                 />
@@ -167,5 +175,16 @@ const styles = StyleSheet.create({
         padding: 4,
         marginLeft: 2,
         ...shadows.md
+    },
+    markerName: {
+        maxWidth: 110,
+        marginTop: 2,
+        paddingHorizontal: 5,
+        backgroundColor: 'white',
+        borderRadius: 4,
+        color: colors.text,
+        fontSize: 11,
+        fontWeight: '700',
+        textAlign: 'center',
     },
 });
