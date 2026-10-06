@@ -45,7 +45,7 @@ export default function Button({
       primary: {
         container: {
           backgroundColor: colors.primary,
-          borderColor: colors.primary,
+          borderColor: colors.accent,
         },
         text: { color: colors.white },
         iconColor: colors.white,
@@ -61,10 +61,10 @@ export default function Button({
       outline: {
         container: {
           backgroundColor: 'transparent',
-          borderColor: colors.primary,
+          borderColor: colors.accent,
           borderWidth: 2,
         },
-        text: { color: colors.primary },
+        text: { color: colors.accent },
         iconColor: colors.primary,
       },
       ghost: {
@@ -72,7 +72,7 @@ export default function Button({
           backgroundColor: 'transparent',
           borderColor: 'transparent',
         },
-        text: { color: colors.primary },
+        text: { color: colors.accent },
         iconColor: colors.primary,
       },
       danger: {

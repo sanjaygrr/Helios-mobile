@@ -412,7 +412,7 @@ const styles = StyleSheet.create({
   },
   locationNotice: {
     position: 'absolute', top: 72, left: 16, right: 16,
-    backgroundColor: colors.white, borderRadius: 12, padding: 12,
+    backgroundColor: colors.surface, borderRadius: 12, padding: 12,
     flexDirection: 'row', alignItems: 'center', gap: 8,
     ...shadows.md,
   },

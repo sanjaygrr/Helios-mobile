@@ -323,7 +323,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   formCard: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     borderRadius: 24,
     padding: spacing.xl,
     ...shadows.lg,
@@ -367,8 +367,8 @@ const styles = StyleSheet.create({
     borderColor: colors.gray[100],
   },
   inputContainerFocused: {
-    borderColor: colors.primary,
-    backgroundColor: colors.white,
+    borderColor: colors.accent,
+    backgroundColor: colors.surface,
   },
   inputIcon: {
     paddingLeft: spacing.md,
@@ -409,7 +409,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: spacing.md,

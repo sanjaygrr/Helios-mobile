@@ -246,7 +246,7 @@ export default function UnitScreen() {
                     </Text>
                   </View>
                   <View style={{ marginTop: 8, alignItems: 'flex-end' }}>
-                    <Text style={{ fontSize: 12, color: colors.primary, fontWeight: '600' }}>Ver Detalles &gt;</Text>
+                    <Text style={{ fontSize: 12, color: colors.accent, fontWeight: '600' }}>Ver Detalles &gt;</Text>
                   </View>
                 </View>
               </TouchableOpacity>
@@ -399,7 +399,7 @@ export default function UnitScreen() {
       {viewedUnit && (
         <TouchableOpacity onPress={handleBackToDashboard} style={{ flexDirection: 'row', alignItems: 'center', padding: 16, paddingBottom: 0 }}>
           <Ionicons name="arrow-back" size={24} color={colors.primary} />
-          <Text style={{ marginLeft: 8, fontSize: 16, color: colors.primary, fontWeight: 'bold' }}>Volver al Panel</Text>
+          <Text style={{ marginLeft: 8, fontSize: 16, color: colors.accent, fontWeight: 'bold' }}>Volver al Panel</Text>
         </TouchableOpacity>
       )}
 
@@ -816,7 +816,7 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     borderRadius: 16,
     padding: spacing.md,
     alignItems: 'center',
@@ -847,7 +847,7 @@ const styles = StyleSheet.create({
   },
   // Section Card
   sectionCard: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     margin: spacing.md,
     marginTop: spacing.md,
     borderRadius: 16,
@@ -940,7 +940,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.gray[100], marginRight: 8, borderWidth: 1, borderColor: colors.gray[300]
   },
   unitChipSelected: {
-    backgroundColor: colors.primary, borderColor: colors.primary
+    backgroundColor: colors.primary, borderColor: colors.accent
   },
   unitChipText: { fontSize: 13, fontWeight: '600', color: colors.gray[700] },
   leaderBadge: {
@@ -991,7 +991,7 @@ const styles = StyleSheet.create({
   },
   // Ticket Styles
   ticketContainer: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     marginHorizontal: spacing.md,
     marginVertical: spacing.md,
     borderRadius: 20,

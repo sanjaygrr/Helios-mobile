@@ -171,7 +171,7 @@ export default function ManageCompaniesScreen() {
 
             <Modal visible={showCreateDept} transparent animationType="fade">
                 <View style={styles.modalOverlay}>
-                    <View style={[styles.modalContent, { backgroundColor: colors.white }]}>
+                    <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
                         <Text style={styles.modalTitle}>Nuevo Cuerpo de Bomberos</Text>
                         <TextInput
                             style={styles.input}
@@ -198,7 +198,7 @@ const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     listContent: { padding: spacing.md },
     card: {
-        backgroundColor: colors.white,
+        backgroundColor: colors.surface,
         padding: spacing.md,
         borderRadius: borderRadius.md,
         marginBottom: spacing.sm,
@@ -229,7 +229,7 @@ const styles = StyleSheet.create({
         elevation: 6,
     },
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: spacing.lg },
-    modalContent: { backgroundColor: colors.white, borderRadius: borderRadius.lg, padding: spacing.xl },
+    modalContent: { backgroundColor: colors.surface, borderRadius: borderRadius.lg, padding: spacing.xl },
     modalTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: spacing.lg, textAlign: 'center' },
     input: { backgroundColor: colors.gray[100], padding: spacing.md, borderRadius: borderRadius.md, marginBottom: spacing.md },
     modalButtons: { flexDirection: 'row', justifyContent: 'flex-end', gap: spacing.md, marginTop: spacing.md },

@@ -201,7 +201,7 @@ export default function ManageCarsScreen({ navigation }: any) {
         <View style={styles.cardActions}>
           <TouchableOpacity style={styles.actionButton} onPress={() => handleOpenModal(item)}>
             <Ionicons name="create-outline" size={18} color={colors.primary} />
-            <Text style={[styles.actionText, { color: colors.primary }]}>Editar</Text>
+            <Text style={[styles.actionText, { color: colors.accent }]}>Editar</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.actionButton} onPress={() => handleDelete(item)}>
             <Ionicons name="trash-outline" size={18} color={colors.danger} />
@@ -307,7 +307,7 @@ export default function ManageCarsScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   card: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     borderRadius: borderRadius.lg,
     padding: spacing.lg,
     marginBottom: spacing.md,
@@ -421,7 +421,7 @@ const styles = StyleSheet.create({
   },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
   modalContent: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: spacing.xl,
@@ -459,7 +459,7 @@ const styles = StyleSheet.create({
   },
   chipSelected: {
     backgroundColor: colors.primary,
-    borderColor: colors.primary,
+    borderColor: colors.accent,
   },
   chipText: { fontSize: 13, fontWeight: '600', color: colors.gray[700] },
   modalButtons: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing.md, marginTop: 20 },

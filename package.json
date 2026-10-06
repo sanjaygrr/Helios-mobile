@@ -48,6 +48,7 @@
     "expo-splash-screen": "~57.0.9",
     "jimp": "^0.22.10",
     "react-native-svg-transformer": "^1.5.2",
+    "sharp": "^0.34.2",
     "typescript": "~6.0.3"
   },
   "private": true

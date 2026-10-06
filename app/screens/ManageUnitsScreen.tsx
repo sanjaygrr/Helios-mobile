@@ -157,7 +157,7 @@ export default function ManageUnitsScreen() {
                 <View style={styles.cardActions}>
                     <TouchableOpacity style={styles.actionBtn} onPress={() => handleOpenEdit(item)}>
                         <Ionicons name="create-outline" size={18} color={colors.primary} />
-                        <Text style={[styles.actionText, { color: colors.primary }]}>Editar</Text>
+                        <Text style={[styles.actionText, { color: colors.accent }]}>Editar</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.actionBtn} onPress={() => handleDelete(item.id)}>
                         <Ionicons name="trash-outline" size={18} color={colors.danger} />

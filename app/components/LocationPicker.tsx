@@ -94,11 +94,11 @@ export default function LocationPicker({ visible, onClose, onSelect, initialLoca
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: colors.white },
+    container: { flex: 1, backgroundColor: colors.surface },
     header: {
         flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
         paddingTop: 50, paddingHorizontal: spacing.md, paddingBottom: spacing.md,
-        backgroundColor: colors.white, borderBottomWidth: 1, borderBottomColor: colors.gray[100]
+        backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.gray[100]
     },
     title: { fontSize: 18, fontWeight: 'bold' },
     closeButton: { padding: spacing.sm },
@@ -110,7 +110,7 @@ const styles = StyleSheet.create({
         alignItems: 'center', justifyContent: 'center',
         zIndex: 10
     },
-    footer: { padding: spacing.lg, alignItems: 'center', backgroundColor: colors.white },
+    footer: { padding: spacing.lg, alignItems: 'center', backgroundColor: colors.surface },
     coordText: { fontSize: 16, fontWeight: 'bold', fontFamily: 'monospace' },
     hintText: { fontSize: 12, color: colors.gray[500], marginTop: 4 }
 });

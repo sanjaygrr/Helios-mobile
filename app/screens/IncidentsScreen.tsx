@@ -379,7 +379,7 @@ export default function IncidentsScreen() {
                     {item.commander_name ? (
                         <View style={styles.infoItem}>
                             <Ionicons name="person" size={14} color={colors.primary} />
-                            <Text style={[styles.infoText, { color: colors.primary, fontWeight: '600' }]}>{item.commander_name}</Text>
+                            <Text style={[styles.infoText, { color: colors.accent, fontWeight: '600' }]}>{item.commander_name}</Text>
                         </View>
                     ) : (
                         <View style={[styles.commanderBadge, { backgroundColor: colors.warning + '20' }]}>
@@ -400,7 +400,7 @@ export default function IncidentsScreen() {
                             onPress={() => openDispatchModal(item)}
                         >
                             <Ionicons name="send" size={16} color={colors.primary} />
-                            <Text style={[styles.actionBtnText, { color: colors.primary }]}>Despachar</Text>
+                            <Text style={[styles.actionBtnText, { color: colors.accent }]}>Despachar</Text>
                         </TouchableOpacity>
                     )}
 
@@ -837,7 +837,7 @@ const styles = StyleSheet.create({
 
     // Card styles mejorados
     card: {
-        backgroundColor: colors.white,
+        backgroundColor: colors.surface,
         padding: spacing.lg,
         borderRadius: borderRadius.lg,
         marginBottom: spacing.md,
@@ -949,7 +949,7 @@ const styles = StyleSheet.create({
     actionBtnOutline: {
         backgroundColor: 'transparent',
         borderWidth: 1.5,
-        borderColor: colors.primary,
+        borderColor: colors.accent,
     },
     actionBtnText: {
         fontSize: 13,
@@ -980,7 +980,7 @@ const styles = StyleSheet.create({
     },
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
     modalContent: {
-        backgroundColor: colors.white,
+        backgroundColor: colors.surface,
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
         padding: spacing.xl,
@@ -1046,14 +1046,14 @@ const styles = StyleSheet.create({
         paddingVertical: 4, paddingHorizontal: 8,
         backgroundColor: colors.gray[100], borderRadius: 4, alignSelf: 'flex-start'
     },
-    dispatchButtonText: { fontSize: 12, fontWeight: '600', color: colors.primary },
+    dispatchButtonText: { fontSize: 12, fontWeight: '600', color: colors.accent },
     unitItem: {
         flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
         padding: 14, borderRadius: 12, backgroundColor: colors.gray[50], marginBottom: 8,
         borderWidth: 1.5, borderColor: colors.gray[200]
     },
     unitItemSelected: {
-        backgroundColor: colors.primary, borderColor: colors.primary
+        backgroundColor: colors.primary, borderColor: colors.accent
     },
     unitItemText: { fontWeight: '600', color: colors.text },
     unitChip: {
@@ -1061,7 +1061,7 @@ const styles = StyleSheet.create({
         backgroundColor: colors.gray[50], marginRight: 8, borderWidth: 1.5, borderColor: colors.gray[200]
     },
     unitChipSelected: {
-        backgroundColor: colors.primary, borderColor: colors.primary
+        backgroundColor: colors.primary, borderColor: colors.accent
     },
     unitChipText: { fontSize: 13, fontWeight: '600', color: colors.gray[700] },
 
@@ -1071,7 +1071,7 @@ const styles = StyleSheet.create({
         borderWidth: 1.5, borderColor: colors.gray[200], alignItems: 'center', justifyContent: 'center'
     },
     chiefCardSelected: {
-        backgroundColor: colors.primary, borderColor: colors.primary
+        backgroundColor: colors.primary, borderColor: colors.accent
     },
     chiefAvatar: {
         width: 44, height: 44, borderRadius: 22, backgroundColor: colors.gray[200],

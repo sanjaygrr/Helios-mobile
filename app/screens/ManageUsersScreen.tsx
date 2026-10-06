@@ -79,7 +79,7 @@ export default function ManageUsersScreen() {
                         switch (role) {
                             case 'SUPER_ADMIN': return { label: 'Super Admin', color: colors.danger, icon: 'shield' };
                             case 'COMPANY_ADMIN': return { label: 'Administrador', color: colors.secondary, icon: 'settings' };
-                            case 'COMPANY_CHIEF': return { label: 'Jefe de Compañía', color: colors.primary, icon: 'star' };
+                            case 'COMPANY_CHIEF': return { label: 'Jefe de Compañía', color: colors.accent, icon: 'star' };
                             case 'FIREFIGHTER': return { label: 'Bombero', color: colors.success, icon: 'flame' };
                             default: return { label: role, color: colors.gray[500], icon: 'person' };
                         }
@@ -223,7 +223,7 @@ const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     listContent: { padding: spacing.md, paddingBottom: 100 },
     userCard: {
-        backgroundColor: colors.white,
+        backgroundColor: colors.surface,
         padding: spacing.lg,
         borderRadius: borderRadius.lg,
         marginBottom: spacing.md,
@@ -317,7 +317,7 @@ const styles = StyleSheet.create({
         justifyContent: 'flex-end',
     },
     modalContent: {
-        backgroundColor: colors.white,
+        backgroundColor: colors.surface,
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
         padding: spacing.xl,
@@ -351,14 +351,14 @@ const styles = StyleSheet.create({
         paddingVertical: 10,
         borderRadius: 12,
         borderWidth: 1.5,
-        borderColor: colors.primary,
-        backgroundColor: colors.white,
+        borderColor: colors.accent,
+        backgroundColor: colors.surface,
     },
     roleButtonActive: {
         backgroundColor: colors.primary,
-        borderColor: colors.primary,
+        borderColor: colors.accent,
     },
-    roleButtonText: { fontSize: 13, fontWeight: '600', color: colors.primary },
+    roleButtonText: { fontSize: 13, fontWeight: '600', color: colors.accent },
     roleButtonTextActive: { color: colors.white },
     modalButtons: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing.md, marginTop: spacing.lg },
     cancelButton: {

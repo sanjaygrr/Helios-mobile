@@ -68,7 +68,7 @@ export default function RouteMapWidget({
 
                 <Polyline
                     positions={polylinePositions}
-                    pathOptions={{ color: colors.primary, weight: 4 }}
+                    pathOptions={{ color: colors.accent, weight: 4 }}
                 />
 
                 {startCoordinate && (

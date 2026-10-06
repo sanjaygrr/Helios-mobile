@@ -23,15 +23,15 @@ export default function Card({
   const getVariantStyles = (): ViewStyle => {
     const variants = {
       default: {
-        backgroundColor: colors.white,
+        backgroundColor: colors.surface,
         ...shadows.sm,
       },
       elevated: {
-        backgroundColor: colors.white,
+        backgroundColor: colors.surface,
         ...shadows.lg,
       },
       outlined: {
-        backgroundColor: colors.white,
+        backgroundColor: colors.surface,
         borderWidth: 1,
         borderColor: colors.gray[200],
       },

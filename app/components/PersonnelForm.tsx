@@ -152,7 +152,7 @@ export default function PersonnelForm({ onChange, initialMembers = [] }: Personn
 
 const styles = StyleSheet.create({
     container: {
-        backgroundColor: colors.white,
+        backgroundColor: colors.surface,
         borderRadius: borderRadius.md,
         borderWidth: 1,
         borderColor: colors.gray[200],
@@ -189,7 +189,7 @@ const styles = StyleSheet.create({
         marginBottom: 4
     },
     headerInput: {
-        backgroundColor: colors.white,
+        backgroundColor: colors.surface,
         borderBottomWidth: 1,
         borderBottomColor: colors.gray[300],
         paddingVertical: 4,
@@ -198,11 +198,11 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: 14,
         fontWeight: 'bold',
-        color: colors.primary,
+        color: colors.accent,
         marginBottom: 10
     },
     memberCard: {
-        backgroundColor: colors.white,
+        backgroundColor: colors.surface,
         borderWidth: 1,
         borderColor: colors.gray[200],
         borderRadius: 8,
