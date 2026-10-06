@@ -45,10 +45,10 @@ export default function SettingsScreen() {
         setBackgroundEnabled(granted);
         if (!granted) Alert.alert('Permiso necesario', 'Activa la ubicación en segundo plano en la configuración del teléfono.');
       } catch {
-        Alert.alert('No disponible', 'La ubicación en segundo plano requiere una compilación instalada de Helios.');
+        Alert.alert('No disponible', 'La ubicación en segundo plano requiere una compilación instalada de Lumbre.');
       }
     };
-    Alert.alert('Compartir en segundo plano', 'Tu equipo podrá ver tu posición mientras Helios esté abierta en segundo plano. Puedes pausarla desde el mapa o desactivarla aquí.', [
+    Alert.alert('Compartir en segundo plano', 'Tu equipo podrá ver tu posición mientras Lumbre esté abierta en segundo plano. Puedes pausarla desde el mapa o desactivarla aquí.', [
       { text: 'Cancelar', style: 'cancel' },
       { text: 'Activar', onPress: enable },
     ]);
@@ -77,7 +77,7 @@ export default function SettingsScreen() {
       <Text style={{ marginTop: spacing.md, color: colors.textLight }}>
         Actual: {baseURL || 'Por defecto (producción)'}
       </Text>
-      {!supportsBackgroundTracking && Platform.OS !== 'web' && <Text style={styles.backgroundDescription}>En Expo Go, mantén Helios abierta para compartir tu ubicación con el equipo.</Text>}
+      {!supportsBackgroundTracking && Platform.OS !== 'web' && <Text style={styles.backgroundDescription}>En Expo Go, mantén Lumbre abierta para compartir tu ubicación con el equipo.</Text>}
       {supportsBackgroundTracking && <TouchableOpacity style={styles.backgroundOption} onPress={changeBackgroundTracking}>
         <View style={{ flex: 1 }}>
           <Text style={styles.backgroundTitle}>Ubicación en segundo plano</Text>

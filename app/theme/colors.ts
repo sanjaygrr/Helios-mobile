@@ -1,4 +1,4 @@
-// Helios Color Palette
+// Lumbre Color Palette
 export const colors = {
   // Primary palette
   primary: '#FF1E00',      // Rojo

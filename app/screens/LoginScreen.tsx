@@ -217,7 +217,7 @@ export default function LoginScreen({ navigation }: any) {
               {/* Divider */}
               <View style={styles.dividerContainer}>
                 <View style={styles.divider} />
-                <Text style={styles.dividerText}>Helios v1.0</Text>
+                <Text style={styles.dividerText}>Lumbre v1.0</Text>
                 <View style={styles.divider} />
               </View>
             </View>

@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Helios",
-    "slug": "helios",
+    "name": "Lumbre",
+    "slug": "lumbre",
     "owner": "sanjaygrr",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -12,10 +12,10 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.helios.app",
+      "bundleIdentifier": "cl.lumbre.app",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Helios necesita acceso a tu ubicacion para rastrear la posicion de tu unidad.",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "Helios necesita acceso a tu ubicacion para rastrear la posicion de tu unidad en tiempo real.",
+        "NSLocationWhenInUseUsageDescription": "Lumbre necesita acceso a tu ubicacion para rastrear la posicion de tu unidad.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Lumbre necesita acceso a tu ubicacion para rastrear la posicion de tu unidad en tiempo real.",
         "ITSAppUsesNonExemptEncryption": false,
         "UIBackgroundModes": [
           "location"
@@ -27,7 +27,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#FF1E00"
       },
-      "package": "com.helios.app",
+      "package": "cl.lumbre.app",
       "permissions": [
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION",
@@ -47,7 +47,7 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "Helios necesita acceso a tu ubicacion para rastrear tu unidad.",
+          "locationAlwaysAndWhenInUsePermission": "Lumbre necesita acceso a tu ubicacion para rastrear tu unidad.",
           "isAndroidBackgroundLocationEnabled": true,
           "isIosBackgroundLocationEnabled": true
         }
@@ -66,14 +66,15 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "afbecfb1-e655-4ec8-a5c1-224ea570b0a7"
+        "projectId": "cb991a4c-af05-4b98-bbe8-e318cc62feb0"
       }
     },
     "runtimeVersion": {
       "policy": "sdkVersion"
     },
     "updates": {
-      "url": "https://u.expo.dev/afbecfb1-e655-4ec8-a5c1-224ea570b0a7"
-    }
+      "url": "https://u.expo.dev/cb991a4c-af05-4b98-bbe8-e318cc62feb0"
+    },
+    "scheme": "lumbre"
   }
 }

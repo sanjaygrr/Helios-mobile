@@ -69,7 +69,7 @@ export default function CustomDrawer(props: CustomDrawerProps) {
             <Ionicons name="flame" size={32} color={colors.accent} />
           </View>
           <View style={styles.logoTextContainer}>
-            <Text style={styles.logoText}>Helios</Text>
+            <Text style={styles.logoText}>Lumbre</Text>
           </View>
         </View>
 

@@ -96,7 +96,7 @@ function MenuModal({ navigation }: { navigation: any }) {
               <View style={menuStyles.header}>
                 <View style={menuStyles.logoContainer}>
                   <Ionicons name="flame" size={28} color={colors.accent} />
-                  <Text style={menuStyles.logoText}>Helios</Text>
+                  <Text style={menuStyles.logoText}>Lumbre</Text>
                 </View>
                 <TouchableOpacity onPress={closeMenu} style={menuStyles.closeButton}>
                   <Ionicons name="close" size={28} color={colors.white} />

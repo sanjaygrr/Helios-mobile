@@ -535,7 +535,7 @@ export default function UnitScreen() {
         </View>
         {/* Ticket Rip/Tear effect visual could go here */}
         <View style={styles.ticketFooter}>
-          <Text style={styles.ticketFooterText}>Sistema Helios • {new Date().toLocaleDateString()}</Text>
+          <Text style={styles.ticketFooterText}>Sistema Lumbre • {new Date().toLocaleDateString()}</Text>
         </View>
       </View>
 

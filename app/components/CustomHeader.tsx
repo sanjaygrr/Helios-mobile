@@ -58,7 +58,7 @@ export default function CustomHeader({
         <View style={styles.centerSection}>
           <View style={styles.logoContainer}>
             <Ionicons name="flame" size={24} color={colors.accent} />
-            <Text style={styles.logoText}>Helios</Text>
+            <Text style={styles.logoText}>Lumbre</Text>
           </View>
           {title ? <Text style={styles.subtitle}>{title}</Text> : null}
         </View>
