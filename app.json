@@ -16,7 +16,10 @@
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Helios necesita acceso a tu ubicacion para rastrear la posicion de tu unidad.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "Helios necesita acceso a tu ubicacion para rastrear la posicion de tu unidad en tiempo real.",
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "UIBackgroundModes": [
+          "location"
+        ]
       }
     },
     "android": {

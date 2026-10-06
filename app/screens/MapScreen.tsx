@@ -10,7 +10,6 @@ import {
 } from 'react-native';
 import * as Location from 'expo-location';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { FirePoint } from '../services/nasa';
 import { fetchWeatherData, WeatherData } from '../services/weather';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
@@ -21,7 +20,7 @@ import { colors, spacing, borderRadius, shadows } from '../theme/colors';
 
 // New MapWidget import
 import MapWidget from '../components/MapWidget';
-import { MapWidgetHandle, MapUser } from '../components/MapWidget/types';
+import { MapWidgetHandle, MapUser, FirePoint } from '../components/MapWidget/types';
 
 interface LocationData {
   coords: {

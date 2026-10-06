@@ -64,7 +64,7 @@ export async function resumeBackgroundTracking(): Promise<void> {
     accuracy: Location.Accuracy.Balanced,
     distanceInterval: 25,
     timeInterval: 15000,
-    pausesUpdatesAutomatically: true,
+    pausesUpdatesAutomatically: false,
     showsBackgroundLocationIndicator: true,
     foregroundService: {
       notificationTitle: 'Helios comparte tu ubicación',
