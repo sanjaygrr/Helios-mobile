@@ -98,7 +98,7 @@ export default function LoginScreen({ navigation }: any) {
                 {/* <Logo width={120} height={120} /> */}
                 <Ionicons name="flame" size={100} color={colors.primary} />
               </View>
-              <Text style={styles.logoText}>HELIOS</Text>
+              <Text style={styles.logoText}>LUMBRE</Text>
               <View style={styles.taglineContainer}>
                 <View style={styles.taglineLine} />
                 <Text style={styles.taglineText}>Sistema de Emergencias</Text>
