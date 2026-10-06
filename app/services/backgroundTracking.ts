@@ -67,7 +67,7 @@ export async function resumeBackgroundTracking(): Promise<void> {
     pausesUpdatesAutomatically: false,
     showsBackgroundLocationIndicator: true,
     foregroundService: {
-      notificationTitle: 'Helios comparte tu ubicación',
+      notificationTitle: 'Lumbre comparte tu ubicación',
       notificationBody: 'Tu equipo puede ver tu posición mientras estés en servicio.',
     },
   });
