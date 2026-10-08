@@ -12,13 +12,14 @@
 export const colors = {
   brand: '#FF1E00',            // logo y severidad crítica, nada más
 
-  // Acción
-  primary: '#B82E0A',          // relleno de botón — blanco encima 6.12:1
-  primaryPressed: '#8F2408',
-  accent: '#FF8A3D',           // texto, íconos y bordes sobre oscuro — 8.01:1
-  accentMuted: '#C45A18',
+  // Acción. Deliberadamente NO es rojo: si el rojo pinta los botones, deja de
+  // significar emergencia. Acá el rojo es solo severidad, y la interfaz es cian.
+  primary: '#22D3EE',          // relleno de botón — texto oscuro encima 10.40:1
+  primaryPressed: '#0E9FB8',
+  accent: '#22D3EE',           // texto, íconos y bordes sobre oscuro — 10.40:1
+  accentMuted: '#0E7490',
   secondary: '#3DDC97',
-  highlight: '#FF8A3D',
+  highlight: '#22D3EE',
 
   // Superficies
   canvas: '#0E1217',
@@ -38,7 +39,7 @@ export const colors = {
   textMuted: '#A8B0BA',        // 8.58:1
   textLight: '#A8B0BA',
   textDisabled: '#6B7380',
-  textOnPrimary: '#FFFFFF',
+  textOnPrimary: '#06232B',   // oscuro sobre el cian, no blanco
   textOnAccent: '#0E1217',
   white: '#FFFFFF',            // solo texto sobre rellenos de color
   black: '#000000',

@@ -373,7 +373,7 @@ const styles = StyleSheet.create({
         borderColor: colors.accent,
     },
     roleButtonText: { fontSize: 13, fontWeight: '600', color: colors.accent },
-    roleButtonTextActive: { color: colors.white },
+    roleButtonTextActive: { color: colors.textOnPrimary },
     modalButtons: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing.md, marginTop: spacing.lg },
     cancelButton: {
         flex: 1,

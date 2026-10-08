@@ -221,6 +221,20 @@ export default function MapScreen() {
     return () => clearInterval(interval);
   }, []);
 
+  // Apenas llega la ubicacion real, el mapa se va ahi.
+  const yaCentrado = useRef(false);
+  useEffect(() => {
+    if (location && !yaCentrado.current && mapRef.current) {
+      yaCentrado.current = true;
+      mapRef.current.animateToRegion({
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+        latitudeDelta: 0.04,
+        longitudeDelta: 0.04,
+      }, 600);
+    }
+  }, [location]);
+
   useEffect(() => {
     if (location && !currentRegion) {
       setCurrentRegion({
@@ -235,10 +249,32 @@ export default function MapScreen() {
 
   // --- Render ---
 
-  const mapCenter = location?.coords || Object.values(otherUsers)[0] || fireData[0] || { latitude: -41.4693, longitude: -72.9424 };
+  // Chile como ultimo recurso, nunca una ciudad puntual: antes arrancaba
+  // siempre en Puerto Montt aunque estuvieras en otra region.
+  const mapCenter = location?.coords || Object.values(otherUsers)[0] || fireData[0]
+    || { latitude: -35.6751, longitude: -71.5430 };
 
   return (
     <View style={styles.container}>
+      {/* Status Indicators */}
+      <View style={styles.franja}>
+        <View style={[styles.statusDot, { backgroundColor: isTracking ? colors.success : colors.danger }]} />
+        <Text style={styles.statusLabel}>{isTracking ? 'Ubicación activada' : 'Ubicación pausada'}</Text>
+        <View style={styles.statusDivider} />
+        <Text style={styles.statusLabel}>
+          {Object.keys(otherUsers).length === 1 ? '1 en mapa'
+            : `${Object.keys(otherUsers).length} en mapa`}
+        </Text>
+        {showFires && (
+          <>
+            <View style={styles.statusDivider} />
+            <Text style={styles.statusLabel}>
+              {visibleFires.length === 1 ? '1 emergencia' : `${visibleFires.length} emergencias`}
+            </Text>
+          </>
+        )}
+      </View>
+
       <MapWidget
         ref={mapRef}
         style={styles.map}
@@ -256,20 +292,6 @@ export default function MapScreen() {
         {!errorMsg && <ActivityIndicator size="small" color={colors.primary} />}
         <Text style={styles.locationNoticeText}>{errorMsg || 'Obteniendo tu ubicación...'}</Text>
       </View>}
-
-      {/* Status Indicators */}
-      <View style={styles.statusCard}>
-        <View style={[styles.statusDot, { backgroundColor: isTracking ? colors.success : colors.danger }]} />
-        <Text style={styles.statusLabel}>{isTracking ? 'Ubicación activada' : 'Ubicación pausada'}</Text>
-        <View style={styles.statusDivider} />
-        <Text style={styles.statusLabel}>{Object.keys(otherUsers).length} en mapa</Text>
-        {showFires && (
-          <>
-            <View style={styles.statusDivider} />
-            <Text style={styles.statusLabel}>{visibleFires.length} Fuegos</Text>
-          </>
-        )}
-      </View>
 
       {/* Wind Info Widget (Top-Right) */}
       {weatherData && (
@@ -388,40 +410,7 @@ export default function MapScreen() {
         </TouchableOpacity>
 
         {/* Toggle Tracking */}
-        <TouchableOpacity
-          style={[styles.fabAncho, { backgroundColor: isTracking ? colors.surfaceRaised : colors.dangerFill }]}
-          activeOpacity={0.8}
-          onPress={() => {
-            const aplicar = async (next: boolean) => {
-              await setLocationSharingEnabled(next);
-              setIsTracking(next);
-              if (next) resumeBackgroundTracking().catch(() => {});
-              else stopBackgroundTracking().catch(() => {});
-            };
-            if (isTracking) {
-              // Dejar de compartir te saca del mapa de la central: no puede ser un toque suelto.
-              Alert.alert(
-                'Dejar de compartir tu ubicación',
-                'La central dejará de verte en el mapa hasta que la vuelvas a activar.',
-                [
-                  { text: 'Cancelar', style: 'cancel' },
-                  { text: 'Dejar de compartir', style: 'destructive', onPress: () => aplicar(false) },
-                ]
-              );
-            } else {
-              aplicar(true);
-            }
-          }}
-        >
-          <Ionicons
-            name={isTracking ? 'radio-button-on' : 'eye-off'}
-            size={20}
-            color={isTracking ? colors.success : colors.white}
-          />
-          <Text style={[styles.fabAnchoTexto, !isTracking && { color: colors.white }]}>
-            {isTracking ? 'Compartiendo' : 'No te ven'}
-          </Text>
-        </TouchableOpacity>
+
       </View>
 
     </View>
@@ -456,11 +445,11 @@ const styles = StyleSheet.create({
   },
 
   // Cards
-  statusCard: {
-    position: 'absolute', top: 56, left: 16, right: 16,
+  franja: {
     flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 10,
-    paddingVertical: 12, paddingHorizontal: 16, borderRadius: borderRadius.lg,
-    ...overlay,
+    paddingVertical: 12, paddingHorizontal: spacing.md,
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1, borderBottomColor: colors.border,
   },
   statusDot: { width: 12, height: 12, borderRadius: borderRadius.sm },
   statusLabel: { fontSize: 15, fontWeight: '700', color: colors.text },

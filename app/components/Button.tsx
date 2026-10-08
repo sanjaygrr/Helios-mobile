@@ -47,7 +47,7 @@ export default function Button({
           backgroundColor: colors.primary,
           borderColor: colors.accent,
         },
-        text: { color: colors.white },
+        text: { color: colors.textOnPrimary },
         iconColor: colors.white,
       },
       secondary: {

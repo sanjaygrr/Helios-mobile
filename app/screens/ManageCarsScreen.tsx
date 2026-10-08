@@ -564,5 +564,5 @@ const estilosDetalle = StyleSheet.create({
   editar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
             gap: spacing.sm, height: 56, borderRadius: borderRadius.md,
             backgroundColor: colors.primary, marginTop: spacing.lg },
-  editarTexto: { fontSize: 18, fontWeight: '700', color: colors.white },
+  editarTexto: { fontSize: 18, fontWeight: '700', color: colors.textOnPrimary },
 });

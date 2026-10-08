@@ -503,7 +503,7 @@ const styles = StyleSheet.create({
     ...shadows.md,
   },
   permissionButtonText: {
-    color: colors.white,
+    color: colors.textOnPrimary,
     fontSize: spacing.md,
     fontWeight: '700',
     textAlign: 'center',

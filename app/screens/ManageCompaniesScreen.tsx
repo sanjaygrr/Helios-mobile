@@ -325,7 +325,7 @@ const styles = StyleSheet.create({
     modalButtons: { flexDirection: 'row', justifyContent: 'flex-end', gap: spacing.md, marginTop: spacing.md },
     cancelButton: { padding: spacing.md },
     createButton: { backgroundColor: colors.primary, padding: spacing.md, borderRadius: borderRadius.md },
-    createButtonText: { color: colors.white, fontWeight: '600' },
+    createButtonText: { color: colors.textOnPrimary, fontWeight: '600' },
     selectButton: {
         flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
         backgroundColor: colors.gray[100], padding: spacing.md, borderRadius: borderRadius.md, marginBottom: spacing.md

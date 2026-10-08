@@ -103,7 +103,7 @@ const styles = StyleSheet.create({
     title: { fontSize: 18, fontWeight: 'bold' },
     closeButton: { padding: spacing.sm },
     confirmButton: { backgroundColor: colors.primary, paddingVertical: 6, paddingHorizontal: 12, borderRadius: borderRadius.md },
-    confirmText: { color: colors.white, fontWeight: '600' },
+    confirmText: { color: colors.textOnPrimary, fontWeight: '600' },
     mapContainer: { flex: 1, position: 'relative' },
     reticleContainer: {
         position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,

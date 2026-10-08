@@ -38,6 +38,7 @@ import {
   spacing,
   touch,
 } from '../theme/colors';
+import api from '../services/api';
 import type {
   BomberoStackParamList,
   GestionStackParamList,
@@ -61,6 +62,8 @@ type HubItem = {
   description: string;
   icon: IconName;
   onPress: () => void;
+  metrica?: number | string;
+  metricaEtiqueta?: string;
 };
 
 const mandoRoles: MandoRole[] = [
@@ -155,11 +158,17 @@ function NavigationHub({
   title,
   description,
   items,
+  variante = 'operacion',
 }: {
   title: string;
   description: string;
   items: HubItem[];
+  variante?: 'operacion' | 'administracion';
 }) {
+  // Recursos y Gestion usaban el mismo componente con el mismo aspecto, asi que
+  // parecian la misma pantalla. Operacion muestra cifras en vivo; administracion
+  // es una lista de ajustes, deliberadamente mas callada.
+  const esOperacion = variante === 'operacion';
   return (
     <ScrollView
       style={styles.hub}
@@ -183,13 +192,25 @@ function NavigationHub({
               pressed && styles.cardPressed,
             ]}
           >
-            <View style={styles.cardIcon}>
-              <Ionicons name={item.icon} size={spacing.lg} color={colors.primary} />
+            <View style={[styles.cardIcon, !esOperacion && styles.cardIconQuieto]}>
+              <Ionicons
+                name={item.icon}
+                size={spacing.lg}
+                color={esOperacion ? colors.primary : colors.textMuted}
+              />
             </View>
             <View style={styles.cardText}>
               <Text style={styles.cardTitle}>{item.title}</Text>
               <Text style={styles.cardDescription}>{item.description}</Text>
             </View>
+            {esOperacion && item.metrica !== undefined && (
+              <View style={styles.metrica}>
+                <Text style={styles.metricaNumero}>{item.metrica}</Text>
+                {!!item.metricaEtiqueta && (
+                  <Text style={styles.metricaEtiqueta}>{item.metricaEtiqueta}</Text>
+                )}
+              </View>
+            )}
             <Ionicons
               name="chevron-forward"
               size={spacing.lg}
@@ -207,6 +228,24 @@ function RecursosHubScreen() {
     StackNavigationProp<RecursosStackParamList, 'RecursosInicio'>
   >();
   const { role } = useAuth();
+
+  // Recursos es un tablero, no un menu: muestra cuanto hay de cada cosa.
+  const [cifras, setCifras] = React.useState<{ carros?: number; libres?: number }>({});
+  React.useEffect(() => {
+    let vivo = true;
+    api.get('/units/')
+      .then(r => {
+        if (!vivo) return;
+        const lista = Array.isArray(r.data) ? r.data : (r.data?.results ?? []);
+        setCifras({
+          carros: lista.length,
+          libres: lista.filter((u: any) => u.status === 'AVAILABLE').length,
+        });
+      })
+      .catch(() => {});
+    return () => { vivo = false; };
+  }, []);
+
   const items: HubItem[] = [
     {
       key: 'unidad',
@@ -229,8 +268,12 @@ function RecursosHubScreen() {
       {
         key: 'carros',
         title: 'Carros',
-        description: 'Administra los carros y su compañía.',
+        description: cifras.libres !== undefined
+          ? `${cifras.libres} disponibles para despachar.`
+          : 'Administra los carros y su compañía.',
         icon: 'bus-outline',
+        metrica: cifras.carros,
+        metricaEtiqueta: 'total',
         onPress: () => navigation.navigate('Carros'),
       },
     );
@@ -281,6 +324,7 @@ function GestionHubScreen() {
 
   return (
     <NavigationHub
+      variante="administracion"
       title="Gestión"
       description="Herramientas operativas según tu responsabilidad."
       items={items}
@@ -562,6 +606,16 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     ...shadows.sm,
   },
+  metrica: { alignItems: 'flex-end', minWidth: 54 },
+  metricaNumero: {
+    fontSize: 26, fontWeight: '700', color: colors.accent,
+    fontVariant: ['tabular-nums'],
+  },
+  metricaEtiqueta: {
+    fontSize: 11, fontWeight: '700', letterSpacing: 0.5,
+    textTransform: 'uppercase', color: colors.textMuted, marginTop: 1,
+  },
+  cardIconQuieto: { backgroundColor: colors.surfaceRaised },
   cardPressed: {
     backgroundColor: colors.pressOverlay,
   },

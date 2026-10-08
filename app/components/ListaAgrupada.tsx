@@ -225,7 +225,7 @@ const estilos = StyleSheet.create({
   },
   chipActivo: { backgroundColor: colors.primary, borderColor: colors.primary },
   chipTexto: { fontSize: 15, fontWeight: '700', color: colors.textMuted },
-  chipTextoActivo: { color: colors.white },
+  chipTextoActivo: { color: colors.textOnPrimary },
 
   resumenFila: {
     flexDirection: 'row',

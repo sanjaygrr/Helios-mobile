@@ -97,7 +97,7 @@ const styles = StyleSheet.create({
   input: { backgroundColor: colors.surface, padding: spacing.md, borderRadius: borderRadius.md, borderWidth: 1, borderColor: colors.gray[200], marginBottom: spacing.md, color: colors.text,},
   btnPrimary: { backgroundColor: colors.primary, padding: spacing.md, borderRadius: borderRadius.md, alignItems: 'center', flex: 1 },
   btnSecondary: { backgroundColor: colors.gray[100], padding: spacing.md, borderRadius: borderRadius.md, alignItems: 'center', flex: 1, borderWidth: 1, borderColor: colors.gray[300] },
-  btnText: { color: colors.white, fontWeight: '700' },
+  btnText: { color: colors.textOnPrimary, fontWeight: '700' },
   backgroundOption: { marginTop: spacing.xl, padding: spacing.md, borderRadius: borderRadius.md, backgroundColor: colors.surface, flexDirection: 'row', alignItems: 'center' },
   backgroundTitle: { color: colors.text, fontWeight: '700' },
   backgroundDescription: { color: colors.textLight, fontSize: 12, marginTop: 4 },
