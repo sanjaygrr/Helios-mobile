@@ -10,6 +10,7 @@ export default function ManageCompaniesScreen() {
     const { user, role } = useAuth();
     const [companies, setCompanies] = useState([]);
     const [isModalVisible, setModalVisible] = useState(false);
+    const [detalle, setDetalle] = useState<any>(null);
     const [newCompany, setNewCompany] = useState({ name: '', number: '', fire_department: user?.fire_department });
 
     // For SuperAdmin to filtering/creating
@@ -88,18 +89,80 @@ export default function ManageCompaniesScreen() {
                 data={companies}
                 keyExtractor={(item: any) => item.id.toString()}
                 renderItem={({ item }) => (
-                    <View style={styles.card}>
+                    <TouchableOpacity
+                        style={styles.card}
+                        activeOpacity={0.7}
+                        onPress={() => setDetalle(item)}
+                    >
                         <View style={styles.iconBox}>
-                            <Ionicons name="business" size={24} color={colors.primary} />
+                            <Ionicons name="business" size={24} color={colors.accent} />
                         </View>
                         <View style={{ flex: 1, marginLeft: spacing.md }}>
                             <Text style={styles.title}>{item.name}</Text>
-                            <Text style={styles.subtitle}>Compañía N° {item.number}</Text>
+                            <Text style={styles.subtitle}>
+                                {item.number}ª Compañía{item.comuna ? ` · ${item.comuna}` : ''}
+                            </Text>
                         </View>
-                    </View>
+                        <Ionicons name="chevron-forward" size={22} color={colors.textMuted} />
+                    </TouchableOpacity>
                 )}
+                ListEmptyComponent={
+                    <View style={styles.vacio}>
+                        <Ionicons name="business-outline" size={48} color={colors.textDisabled} />
+                        <Text style={styles.vacioTitulo}>Sin compañías cargadas</Text>
+                        <Text style={styles.vacioTexto}>
+                            Toca el botón + para agregar la primera compañía de este cuerpo.
+                        </Text>
+                    </View>
+                }
                 contentContainerStyle={styles.listContent}
             />
+
+            {/* Detalle de la compañía */}
+            <Modal visible={!!detalle} animationType="slide" transparent
+                   onRequestClose={() => setDetalle(null)}>
+                <View style={styles.detalleFondo}>
+                    <View style={styles.detalleCaja}>
+                        <View style={styles.detalleHeader}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.detalleTitulo}>{detalle?.name}</Text>
+                                <Text style={styles.subtitle}>{detalle?.number}ª Compañía</Text>
+                            </View>
+                            <TouchableOpacity onPress={() => setDetalle(null)}
+                                              style={styles.cerrar} hitSlop={12}>
+                                <Ionicons name="close" size={26} color={colors.text} />
+                            </TouchableOpacity>
+                        </View>
+
+                        {[
+                            ['location', 'Comuna', detalle?.comuna],
+                            ['home', 'Cuartel', detalle?.address],
+                            ['call', 'Teléfono', detalle?.phone],
+                        ].map(([ic, et, va]: any) => (
+                            <View key={et} style={styles.detalleFila}>
+                                <Ionicons name={ic} size={20} color={colors.textMuted} />
+                                <View style={{ flex: 1, marginLeft: spacing.md }}>
+                                    <Text style={styles.detalleEtiqueta}>{et}</Text>
+                                    <Text style={styles.detalleValor}>{va || 'Sin registrar'}</Text>
+                                </View>
+                            </View>
+                        ))}
+
+                        <View style={styles.detalleFila}>
+                            <Ionicons name="map" size={20}
+                                      color={detalle?.latitude ? colors.success : colors.warning} />
+                            <View style={{ flex: 1, marginLeft: spacing.md }}>
+                                <Text style={styles.detalleEtiqueta}>En el mapa</Text>
+                                <Text style={styles.detalleValor}>
+                                    {detalle?.latitude
+                                        ? 'Ubicada'
+                                        : 'Sin coordenadas: no aparece en el mapa'}
+                                </Text>
+                            </View>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
 
             <TouchableOpacity
                 style={styles.fab}
@@ -195,6 +258,21 @@ export default function ManageCompaniesScreen() {
 }
 
 const styles = StyleSheet.create({
+    cardPressed: { backgroundColor: colors.surfaceRaised },
+    vacio: { alignItems: 'center', paddingVertical: 64, paddingHorizontal: 32, gap: 12 },
+    vacioTitulo: { fontSize: 20, fontWeight: '700', color: colors.text },
+    vacioTexto: { fontSize: 16, color: colors.textMuted, textAlign: 'center', lineHeight: 22 },
+    detalleFondo: { flex: 1, backgroundColor: colors.scrim, justifyContent: 'flex-end' },
+    detalleCaja: { backgroundColor: colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20,
+                   padding: 24, paddingBottom: 40, gap: 4 },
+    detalleHeader: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 16 },
+    detalleTitulo: { fontSize: 24, fontWeight: '700', color: colors.text },
+    cerrar: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+    detalleFila: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14,
+                   borderTopWidth: 1, borderTopColor: colors.border },
+    detalleEtiqueta: { fontSize: 13, color: colors.textMuted, textTransform: 'uppercase',
+                       letterSpacing: 0.6, fontWeight: '700' },
+    detalleValor: { fontSize: 17, color: colors.text, marginTop: 2 },
     container: { flex: 1, backgroundColor: colors.background },
     listContent: { padding: spacing.md },
     card: {
@@ -228,7 +306,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         elevation: 6,
     },
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: spacing.lg },
+    modalOverlay: { flex: 1, backgroundColor: colors.scrim, justifyContent: 'center', padding: spacing.lg },
     modalContent: { backgroundColor: colors.surface, borderRadius: borderRadius.lg, padding: spacing.xl },
     modalTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: spacing.lg, textAlign: 'center' },
     input: { backgroundColor: colors.gray[100], padding: spacing.md, borderRadius: borderRadius.md, marginBottom: spacing.md },

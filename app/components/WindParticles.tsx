@@ -1,6 +1,7 @@
 import React, { Component, useEffect, useState } from 'react';
 import { View, StyleSheet, Dimensions, Animated } from 'react-native';
 import Svg, { Line } from 'react-native-svg';
+import { colors } from '../theme/colors';
 
 // Wrapper to support Animated.createAnimatedComponent with functional components
 class LineWrapper extends Component<any> {
@@ -114,9 +115,9 @@ export const WindParticles: React.FC<WindParticlesProps> = ({ weatherData }) => 
 
     // Color based on wind speed
     const getWindColor = () => {
-        if (weatherData.wind.speed > 10) return '#FF0000';
+        if (weatherData.wind.speed > 10) return colors.sevCritica;
         if (weatherData.wind.speed > 5) return '#FFA500';
-        return '#00FF00';
+        return colors.success;
     };
 
     const windColor = getWindColor();

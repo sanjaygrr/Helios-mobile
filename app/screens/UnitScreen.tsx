@@ -179,6 +179,18 @@ export default function UnitScreen() {
   };
 
   // --- COMANDANTE DASHBOARD ---
+  // Los hooks van siempre antes de cualquier return condicional: si no, React
+  // cuenta distinta cantidad entre renders y la pantalla queda en blanco.
+  useEffect(() => {
+    if (assignment?.incident) {
+      api.get(`/incidents/${assignment.incident}/`).then(res => {
+        setIncidentDetails(res.data);
+      }).catch(() => setIncidentDetails(null));
+    } else {
+      setIncidentDetails(null);
+    }
+  }, [assignment]);
+
   if (!loading && role === 'SUPER_ADMIN' && !viewedUnit) {
     return (
       <View style={styles.container}>
@@ -276,7 +288,7 @@ export default function UnitScreen() {
           <View style={{ marginLeft: 16, flex: 1 }}>
             <Text style={[styles.unitName, { fontSize: 20 }]}>Puesto de Mando</Text>
             <Text style={styles.unitType}>{myCommand.title}</Text>
-            <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12 }}>{myCommand.incident_type}</Text>
+            <Text style={{ color: colors.textMuted, fontSize: 12 }}>{myCommand.incident_type}</Text>
           </View>
         </View>
 
@@ -300,7 +312,7 @@ export default function UnitScreen() {
                   } catch (e) { Alert.alert("Error"); }
                 }}
               >
-                <Text style={[styles.unitChipText, myCommand.status === s && { color: 'white' }]}>
+                <Text style={[styles.unitChipText, myCommand.status === s && { color: colors.white }]}>
                   {s.replace('_', ' ')}
                 </Text>
               </TouchableOpacity>
@@ -382,16 +394,6 @@ export default function UnitScreen() {
 
   const statusConfig = getStatusConfig(status);
   const unit = assignment.unit_details || {};
-  useEffect(() => {
-    if (assignment?.incident) {
-      api.get(`/incidents/${assignment.incident}/`).then(res => {
-        setIncidentDetails(res.data);
-      }).catch(() => setIncidentDetails(null));
-    } else {
-      setIncidentDetails(null);
-    }
-  }, [assignment]);
-
   // --- ACTIVE UNIT VIEW (For Unit Chiefs & Super Admin Detail View) ---
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={loading} onRefresh={fetchUserUnit} />}>
@@ -430,7 +432,7 @@ export default function UnitScreen() {
               >
                 <Text style={[
                   styles.unitChipText,
-                  assignment?.id === asg.id && { color: 'white' }
+                  assignment?.id === asg.id && { color: colors.white }
                 ]}>{asg.unit_name}</Text>
               </TouchableOpacity>
             ))}
@@ -542,21 +544,21 @@ export default function UnitScreen() {
       {/* Quick Stats */}
       <View style={styles.statsContainer}>
         <View style={styles.statCard}>
-          <View style={[styles.statIcon, { backgroundColor: 'rgba(170, 43, 29, 0.1)' }]}>
+          <View style={[styles.statIcon, { backgroundColor: colors.dangerFill }]}>
             <Ionicons name="people" size={20} color={colors.primary} />
           </View>
           <Text style={styles.statValue}>{unit.members_count || 0}</Text>
           <Text style={styles.statLabel}>Miembros</Text>
         </View>
         <View style={styles.statCard}>
-          <View style={[styles.statIcon, { backgroundColor: 'rgba(204, 86, 30, 0.1)' }]}>
+          <View style={[styles.statIcon, { backgroundColor: colors.surfaceRaised }]}>
             <Ionicons name="water" size={20} color={colors.secondary} />
           </View>
           <Text style={styles.statValue}>{unit.capacity || 'N/A'}</Text>
           <Text style={styles.statLabel}>Capacidad</Text>
         </View>
         <View style={styles.statCard}>
-          <View style={[styles.statIcon, { backgroundColor: 'rgba(190, 202, 92, 0.1)' }]}>
+          <View style={[styles.statIcon, { backgroundColor: colors.surfaceRaised }]}>
             <Ionicons name="speedometer" size={20} color={colors.highlight} />
           </View>
           <Text style={styles.statValue}>100%</Text>
@@ -774,7 +776,7 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: colors.pressOverlay,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -790,7 +792,7 @@ const styles = StyleSheet.create({
   },
   unitType: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
+    color: colors.textMuted,
     marginTop: 4,
     fontWeight: '500',
   },
@@ -1017,7 +1019,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   ticketId: {
-    color: 'rgba(255,255,255,0.9)',
+    color: colors.textMuted,
     fontWeight: '700',
     fontSize: 16,
   },

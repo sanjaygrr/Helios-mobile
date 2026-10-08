@@ -33,10 +33,10 @@ const createMarkerIcon = (color: string, size: number, border: string = 'white',
 };
 
 const getFireColor = (brightness: number): string => {
-    if (brightness < 320) return '#00FF00';
-    if (brightness < 340) return '#FFFF00';
+    if (brightness < 320) return colors.success;
+    if (brightness < 340) return colors.sevMedia;
     if (brightness < 360) return '#FFA500';
-    return '#FF0000';
+    return colors.sevCritica;
 };
 
 // Internal Controller to access map instance

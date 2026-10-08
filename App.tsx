@@ -150,7 +150,7 @@ function MenuModal({ navigation }: { navigation: any }) {
 const menuStyles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: colors.scrim,
   },
   container: {
     width: 280,
@@ -181,7 +181,7 @@ const menuStyles = StyleSheet.create({
   userInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: colors.pressOverlay,
     padding: spacing.md,
     borderRadius: borderRadius.lg,
     marginBottom: spacing.lg,
@@ -233,7 +233,7 @@ const menuStyles = StyleSheet.create({
     alignItems: 'center',
     padding: spacing.md,
     borderRadius: borderRadius.md,
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    backgroundColor: colors.dangerFill,
   },
   logoutText: {
     fontSize: 15,

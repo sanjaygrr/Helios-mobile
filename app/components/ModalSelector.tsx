@@ -66,7 +66,7 @@ export default function ModalSelector({ visible, title, options, onSelect, onClo
 }
 
 const styles = StyleSheet.create({
-    overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+    overlay: { flex: 1, backgroundColor: colors.scrim, justifyContent: 'flex-end' },
     container: { backgroundColor: colors.surface, borderTopLeftRadius: borderRadius.lg, borderTopRightRadius: borderRadius.lg, padding: spacing.md, maxHeight: '80%' },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md },
     title: { fontSize: 18, fontWeight: 'bold' },

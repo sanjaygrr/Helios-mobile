@@ -66,6 +66,6 @@ const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     map: { width: '100%', height: '100%' },
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    personButton: { position: 'absolute', top: 16, left: 16, right: 16, backgroundColor: 'white', borderRadius: 12, padding: 14 },
+    personButton: { position: 'absolute', top: 16, left: 16, right: 16, backgroundColor: colors.surface, borderRadius: 12, padding: 14 },
     personButtonText: { color: colors.text, fontWeight: '700' },
 });

@@ -1,95 +1,133 @@
 // Lumbre — sistema visual
 //
-// Oscuro por defecto: la app se usa de noche y el blanco encandila.
-// El rojo de marca (#FF1E00) NO se usa como relleno: con texto blanco da 3.86:1
-// y reprueba WCAG AA. Queda como riel de severidad crítica y marca.
+// Regla de jerarquía (lo que estaba roto antes): competían cinco rojos y naranjas
+// al mismo peso, así que botón, ícono, severidad y marca gritaban igual.
+//   · un solo relleno de acción .......... primary
+//   · un solo acento de lectura .......... accent
+//   · brand solo para el logo y la severidad crítica
 //
-// `primary` es el relleno de acción (texto blanco encima, 5.52:1).
-// `accent`  es el mismo gesto para texto, íconos y bordes sobre lienzo oscuro (6.96:1).
-// La rampa `gray` está INVERTIDA respecto a la convención web: gray[50] es la más
-// oscura. Así el código existente (fondos en gray[50]/[100], texto en gray[500])
-// queda correcto sin tocarlo.
+// Oscuro siempre: se usa de noche y el blanco encandila.
+// La rampa `gray` está INVERTIDA: gray[50] es la más oscura.
 
 export const colors = {
-  // Marca
-  brand: '#FF1E00',        // solo logo y riel de severidad crítica
+  brand: '#FF1E00',            // logo y severidad crítica, nada más
 
   // Acción
-  primary: '#C4320A',      // relleno de botón — blanco encima 5.52:1
-  accent: '#FF7A18',       // texto / ícono / borde sobre oscuro — 6.96:1
-  secondary: '#5EE0A0',    // confirmación
-  highlight: '#FF7A18',
+  primary: '#B82E0A',          // relleno de botón — blanco encima 6.12:1
+  primaryPressed: '#8F2408',
+  accent: '#FF8A3D',           // texto, íconos y bordes sobre oscuro — 8.01:1
+  accentMuted: '#C45A18',
+  secondary: '#3DDC97',
+  highlight: '#FF8A3D',
 
-  // Neutros (INVERTIDOS: 50 = más oscuro)
-  white: '#FFFFFF',        // texto sobre rellenos de color
+  // Superficies
+  canvas: '#0E1217',
+  background: '#0E1217',
+  surface: '#161C24',
+  surfaceRaised: '#1C232B',
+  surfaceOverlay: '#141A21',   // base de lo que flota sobre el mapa
+  backgroundDark: '#0A0D11',
+  surfaceDark: '#1C232B',
+
+  // Bordes
+  border: '#3A4550',
+  borderSubtle: 'rgba(255,255,255,0.14)',
+
+  // Texto
+  text: '#F5F7FA',             // 17.51:1 sobre canvas
+  textMuted: '#A8B0BA',        // 8.58:1
+  textLight: '#A8B0BA',
+  textDisabled: '#6B7380',
+  textOnPrimary: '#FFFFFF',
+  textOnAccent: '#0E1217',
+  white: '#FFFFFF',            // solo texto sobre rellenos de color
   black: '#000000',
-  gray: {
-    50: '#12161B',   // lienzo
-    100: '#1A1F26',  // superficie
-    200: '#222B33',  // superficie elevada
-    300: '#2E3942',  // separadores
-    400: '#7D8794',  // bordes · 4.99:1
-    500: '#AEB6C0',  // texto secundario · 8.87:1
-    600: '#C4CBD3',
-    700: '#D5DBE2',  // texto fuerte · 13.02:1
-    800: '#E6EAEE',
-    900: '#F3F5F7',  // texto principal · 16.62:1
-  },
 
-  // Semánticos — ya no colapsan en dos colores
-  danger: '#FFB4A2',       // 10.64:1
-  dangerFill: '#C4320A',
-  warning: '#FFD36A',      // 12.78:1
+  // Semánticos — cada uno su color, ya no colapsan de a dos
+  danger: '#FFB4A2',
+  dangerFill: '#B82E0A',
+  warning: '#FFD36A',
   warningFill: '#7A4A00',
-  success: '#5EE0A0',      // 9.61:1
-  successFill: '#085D3A',
-  info: '#8EBEF5',         // 8.49:1
+  success: '#3DDC97',
+  successFill: '#0A5C3A',
+  info: '#7EB6F0',
   infoFill: '#0B3D82',
 
-  // Severidad de emergencia — cuatro peldaños distinguibles
+  // Severidad de emergencia
   sevCritica: '#FF1E00',
   sevAlta: '#FF8A3D',
   sevMedia: '#FFD36A',
-  sevBaja: '#8EBEF5',
+  sevBaja: '#7EB6F0',
 
-  // Superficies
-  background: '#12161B',
-  backgroundDark: '#0C1013',
-  surface: '#1A1F26',
-  surfaceDark: '#222B33',
-  border: '#7D8794',
+  // Capas
+  scrim: 'rgba(14,18,23,0.72)',
+  pressOverlay: 'rgba(255,255,255,0.08)',
+  disabledOverlay: 'rgba(14,18,23,0.55)',
 
-  // Texto
-  text: '#F3F5F7',
-  textLight: '#AEB6C0',
-  textOnPrimary: '#FFFFFF',
-  textOnAccent: '#12161B',
+  // Rampa invertida: 50 = más oscura
+  gray: {
+    50: '#0E1217',
+    100: '#161C24',
+    200: '#1C232B',
+    300: '#2A333D',
+    400: '#3A4550',
+    500: '#6B7380',
+    600: '#A8B0BA',
+    700: '#C9D0D8',
+    800: '#E2E6EB',
+    900: '#F5F7FA',
+  },
 };
 
-// Estado del carro — par texto/fondo por estado de UnitAssignment
+// Lo que flota sobre el mapa. Antes era blanco con texto claro: 1.09:1, ilegible.
+// Esta receta se lee sobre cualquier tesela porque no depende del mapa.
+export const overlay = {
+  backgroundColor: colors.surfaceOverlay,
+  opacity: 0.94,
+  borderWidth: 1,
+  borderColor: colors.borderSubtle,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 4 },
+  shadowOpacity: 0.45,
+  shadowRadius: 12,
+  elevation: 8,
+};
+
+// Marcadores: la forma distingue el tipo, no solo el color.
+// Antes se coloreaban por hash del id, así que no se leía ni rol ni estado.
+export const marcador = {
+  bombero:    { forma: 'circulo' as const, tam: 40, sel: 48, relleno: colors.accent },
+  carro:      { forma: 'cuadrado' as const, tam: 44, sel: 52, relleno: colors.primary },
+  emergencia: { forma: 'diamante' as const, tam: 44, sel: 52, relleno: colors.brand },
+  anillo: colors.white,
+  anilloAncho: 3,
+  opacidadNoSeleccionado: 0.85,
+};
+
+// Estado del carro en un despacho
 export const unitStatus = {
-  DISPATCHED: { text: '#FF8A3D', bg: '#3A1C0C', label: 'Despachado' },
-  EN_ROUTE:   { text: '#8EBEF5', bg: '#102033', label: 'En camino' },
-  ON_SCENE:   { text: '#FFB4A2', bg: '#3A1614', label: 'En el lugar' },
-  RETURNING:  { text: '#C9A6EE', bg: '#241833', label: 'Regresando' },
-  RELEASED:   { text: '#5EE0A0', bg: '#10261C', label: 'Liberado' },
+  DISPATCHED:     { text: '#FF8A3D', bg: '#3A1C0C', label: 'Despachado' },
+  EN_ROUTE:       { text: '#7EB6F0', bg: '#102033', label: 'En camino' },
+  ON_SCENE:       { text: '#FFB4A2', bg: '#3A1614', label: 'En el lugar' },
+  RETURNING:      { text: '#C9A6EE', bg: '#241833', label: 'Regresando' },
+  RECONDITIONING: { text: '#FFD36A', bg: '#3B2A10', label: 'Reacondicionando' },
+  RELEASED:       { text: '#3DDC97', bg: '#0A2A1E', label: 'Liberado' },
 } as const;
 
-// En oscuro la sombra no se ve: la elevación es salto de superficie + borde.
+// En oscuro la sombra casi no se ve: la elevación es salto de superficie + borde.
 export const shadows = {
-  sm: { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.3, shadowRadius: 2, elevation: 1 },
-  md: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.4, shadowRadius: 6, elevation: 3 },
-  lg: { shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.5, shadowRadius: 14, elevation: 6 },
+  sm: { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.35, shadowRadius: 3, elevation: 2 },
+  md: { shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.45, shadowRadius: 8, elevation: 5 },
+  lg: { shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.5, shadowRadius: 16, elevation: 9 },
 };
 
 export const spacing = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, xxl: 48 };
 
 export const borderRadius = { sm: 8, md: 12, lg: 16, xl: 20, full: 9999 };
 
-// Altura mínima de toque: con guantes, en movimiento.
+// Con guantes, de noche, en movimiento.
 export const touch = 56;
 
-// Mínimo que decide una acción: 18px. Usuarios mayores leyendo dentro del carro.
 export const typography = {
   h1:        { fontSize: 32, fontWeight: '700' as const, lineHeight: 38 },
   h2:        { fontSize: 26, fontWeight: '700' as const, lineHeight: 32 },

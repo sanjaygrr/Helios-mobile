@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, Dimensions } from 'react-native';
 import Svg, { Defs, RadialGradient, Stop, Circle } from 'react-native-svg';
+import { colors } from '../theme/colors';
 
 interface FirePoint {
     latitude: number;
@@ -40,11 +41,11 @@ export const HeatMapOverlay: React.FC<HeatMapOverlayProps> = ({
         const intensity = Math.min((brightness - 300) / 100, 1);
 
         if (intensity < 0.3) {
-            return { color: '#00FF00', opacity: 0.4 + intensity * 0.3 };
+            return { color: colors.success, opacity: 0.4 + intensity * 0.3 };
         } else if (intensity < 0.6) {
-            return { color: '#FFFF00', opacity: 0.5 + intensity * 0.3 };
+            return { color: colors.sevMedia, opacity: 0.5 + intensity * 0.3 };
         } else {
-            return { color: '#FF0000', opacity: 0.6 + intensity * 0.4 };
+            return { color: colors.sevCritica, opacity: 0.6 + intensity * 0.4 };
         }
     };
 

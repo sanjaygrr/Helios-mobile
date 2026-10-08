@@ -69,10 +69,10 @@ const UserMarker = ({ coordinate, role, person, isSelf = false, onPress }: any) 
 // --- Helpers ---
 
 const getFireColor = (brightness: number): string => {
-    if (brightness < 320) return '#00FF00';
-    if (brightness < 340) return '#FFFF00';
+    if (brightness < 320) return colors.success;
+    if (brightness < 340) return colors.sevMedia;
     if (brightness < 360) return '#FFA500';
-    return '#FF0000';
+    return colors.sevCritica;
 };
 
 // --- Main Component ---
@@ -159,7 +159,7 @@ const styles = StyleSheet.create({
     myLocationMarker: {
         width: 48, height: 48, borderRadius: 24,
         backgroundColor: colors.primary,
-        borderWidth: 3, borderColor: 'white',
+        borderWidth: 3, borderColor: colors.border,
         alignItems: 'center', justifyContent: 'center',
         overflow: 'visible',
         padding: 4,
@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
     otherUserMarker: {
         width: 44, height: 44, borderRadius: 22,
         backgroundColor: colors.secondary,
-        borderWidth: 2, borderColor: 'white',
+        borderWidth: 2, borderColor: colors.border,
         alignItems: 'center', justifyContent: 'center',
         overflow: 'visible',
         padding: 4,
@@ -180,7 +180,7 @@ const styles = StyleSheet.create({
         maxWidth: 110,
         marginTop: 2,
         paddingHorizontal: 5,
-        backgroundColor: 'white',
+        backgroundColor: colors.surface,
         borderRadius: 4,
         color: colors.text,
         fontSize: 11,

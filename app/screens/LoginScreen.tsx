@@ -286,7 +286,7 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: 'rgba(255,255,255,0.95)',
+    backgroundColor: colors.surfaceOverlay,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.md,
@@ -314,11 +314,11 @@ const styles = StyleSheet.create({
   taglineLine: {
     width: 30,
     height: 1,
-    backgroundColor: 'rgba(255,255,255,0.5)',
+    backgroundColor: colors.surfaceRaised,
   },
   taglineText: {
     fontSize: 13,
-    color: 'rgba(255,255,255,0.8)',
+    color: colors.textMuted,
     letterSpacing: 2,
     textTransform: 'uppercase',
   },
@@ -352,7 +352,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   errorText: {
-    color: '#FFFFFF',
+    color: colors.white,
     fontSize: 14,
     fontWeight: '500',
     flex: 1,

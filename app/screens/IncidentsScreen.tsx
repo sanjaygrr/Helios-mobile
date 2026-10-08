@@ -410,7 +410,7 @@ export default function IncidentsScreen() {
                             onPress={() => handleTakeCommand(item.id)}
                         >
                             <Ionicons name="flag" size={16} color="white" />
-                            <Text style={[styles.actionBtnText, { color: 'white' }]}>Tomar Mando</Text>
+                            <Text style={[styles.actionBtnText, { color: colors.white }]}>Tomar Mando</Text>
                         </TouchableOpacity>
                     )}
 
@@ -420,7 +420,7 @@ export default function IncidentsScreen() {
                             onPress={() => handleCloseIncident(item.id)}
                         >
                             <Ionicons name="checkmark-done" size={16} color="white" />
-                            <Text style={[styles.actionBtnText, { color: 'white' }]}>Finalizar</Text>
+                            <Text style={[styles.actionBtnText, { color: colors.white }]}>Finalizar</Text>
                         </TouchableOpacity>
                     )}
 
@@ -585,19 +585,19 @@ export default function IncidentsScreen() {
                                                         onPress={() => setNewIncident({ ...newIncident, commander: newIncident.commander === item.id ? null : item.id })}
                                                     >
                                                         <View style={{ alignItems: 'center' }}>
-                                                            <View style={[styles.chiefAvatar, newIncident.commander === item.id && { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+                                                            <View style={[styles.chiefAvatar, newIncident.commander === item.id && { backgroundColor: colors.pressOverlay }]}>
                                                                 <Ionicons name="person" size={20} color={newIncident.commander === item.id ? 'white' : colors.primary} />
                                                             </View>
                                                             <Text
                                                                 numberOfLines={1}
                                                                 style={[
                                                                     styles.chiefName,
-                                                                    newIncident.commander === item.id && { color: 'white' }
+                                                                    newIncident.commander === item.id && { color: colors.white }
                                                                 ]}
                                                             >
                                                                 {item.first_name || item.last_name ? `${item.first_name || ''} ${item.last_name || ''}`.trim() : (item.email || '').split('@')[0]}
                                                             </Text>
-                                                            <Text style={[styles.chiefRole, newIncident.commander === item.id && { color: 'rgba(255,255,255,0.8)' }]}>
+                                                            <Text style={[styles.chiefRole, newIncident.commander === item.id && { color: colors.textMuted }]}>
                                                                 Disponible
                                                             </Text>
                                                         </View>
@@ -650,7 +650,7 @@ export default function IncidentsScreen() {
                                                     >
                                                         <Text style={[
                                                             styles.unitChipText,
-                                                            selectedInitialUnit?.id === item.id && { color: 'white' }
+                                                            selectedInitialUnit?.id === item.id && { color: colors.white }
                                                         ]}>{item.name}</Text>
                                                     </TouchableOpacity>
                                                 )}
@@ -681,7 +681,7 @@ export default function IncidentsScreen() {
                                                             >
                                                                 <Text style={[
                                                                     styles.unitChipText,
-                                                                    selectedVehicle?.id === item.id && { color: 'white' }
+                                                                    selectedVehicle?.id === item.id && { color: colors.white }
                                                                 ]}>{item.name}</Text>
                                                             </TouchableOpacity>
                                                         )}
@@ -741,7 +741,7 @@ export default function IncidentsScreen() {
                                                 >
                                                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                                                         <Ionicons name="bus" size={20} color={selectedUnit?.id === item.id ? colors.white : colors.primary} />
-                                                        <Text style={[styles.unitItemText, selectedUnit?.id === item.id && { color: 'white' }]}>
+                                                        <Text style={[styles.unitItemText, selectedUnit?.id === item.id && { color: colors.white }]}>
                                                             {item.name} ({item.type_display})
                                                         </Text>
                                                     </View>
@@ -978,7 +978,7 @@ const styles = StyleSheet.create({
         backgroundColor: colors.danger, alignItems: 'center', justifyContent: 'center',
         shadowColor: colors.danger, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 8
     },
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+    modalOverlay: { flex: 1, backgroundColor: colors.scrim, justifyContent: 'flex-end' },
     modalContent: {
         backgroundColor: colors.surface,
         borderTopLeftRadius: 24,

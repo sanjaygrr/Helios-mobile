@@ -16,7 +16,7 @@ import api from '../services/api';
 import { isLocationSharingEnabled, setLocationSharingEnabled } from '../services/locationSharing';
 import { getDeviceId } from '../services/deviceIdentity';
 import { resumeBackgroundTracking, stopBackgroundTracking } from '../services/backgroundTracking';
-import { colors, spacing, borderRadius, shadows } from '../theme/colors';
+import { colors, spacing, borderRadius, shadows, overlay, touch } from '../theme/colors';
 
 // New MapWidget import
 import MapWidget from '../components/MapWidget';
@@ -431,26 +431,26 @@ const styles = StyleSheet.create({
 
   // Cards
   statusCard: {
-    position: 'absolute', top: 50, left: 20,
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: 'white', padding: 10, borderRadius: 20,
-    ...shadows.md
+    position: 'absolute', top: 56, left: 16, right: 16,
+    flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 10,
+    paddingVertical: 12, paddingHorizontal: 16, borderRadius: borderRadius.lg,
+    ...overlay,
   },
-  statusDot: { width: 10, height: 10, borderRadius: 5 },
-  statusLabel: { fontSize: 12, fontWeight: 'bold', color: colors.text },
-  statusDivider: { width: 1, height: 16, backgroundColor: '#ddd', marginHorizontal: 5 },
+  statusDot: { width: 12, height: 12, borderRadius: 6 },
+  statusLabel: { fontSize: 15, fontWeight: '700', color: colors.text },
+  statusDivider: { width: 1, height: 16, backgroundColor: colors.border, marginHorizontal: 5 },
 
   infoCard: {
-    position: 'absolute', bottom: 100, left: 20, right: 20,
-    backgroundColor: 'white', padding: 15, borderRadius: 15,
-    maxHeight: 250,
-    ...shadows.lg
+    position: 'absolute', bottom: 100, left: 16, right: 16,
+    padding: 18, borderRadius: borderRadius.lg,
+    maxHeight: 280,
+    ...overlay,
   },
   infoHeader: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10
   },
-  infoTitle: { fontSize: 16, fontWeight: 'bold', color: colors.text },
-  infoSubtitle: { fontSize: 12, color: colors.textLight },
+  infoTitle: { fontSize: 19, fontWeight: '700', color: colors.text },
+  infoSubtitle: { fontSize: 15, color: colors.textMuted },
   infoGrid: { marginTop: 5 },
   incidentRow: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
@@ -464,8 +464,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 8,
     marginVertical: 2, paddingHorizontal: 4
   },
-  detailText: { fontSize: 13, color: colors.text },
-  detailSubText: { fontSize: 12, color: colors.textLight, marginLeft: 0 },
+  detailText: { fontSize: 16, color: colors.text },
+  detailSubText: { fontSize: 15, color: colors.textMuted, marginLeft: 0 },
   coordsText: { fontSize: 12, fontFamily: 'monospace', color: colors.gray[500], marginTop: 8 },
 
   // FABs
@@ -479,10 +479,9 @@ const styles = StyleSheet.create({
     ...shadows.lg
   },
   fabSmall: {
-    width: 44, height: 44, borderRadius: 22,
-    backgroundColor: 'white',
+    width: touch, height: touch, borderRadius: touch / 2,
     alignItems: 'center', justifyContent: 'center',
-    ...shadows.md
+    ...overlay,
   },
   fabActive: {
     backgroundColor: colors.primary
@@ -491,11 +490,11 @@ const styles = StyleSheet.create({
   // Wind Widget
   windWidget: {
     position: 'absolute',
-    top: 60,
-    right: 20,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    padding: 10,
-    borderRadius: 12,
+    top: 128,
+    right: 16,
+    padding: 12,
+    borderRadius: borderRadius.md,
+    ...overlay,
     minWidth: 100,
     alignItems: 'center',
     ...shadows.md

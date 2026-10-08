@@ -162,7 +162,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: borderRadius.lg,
-    backgroundColor: 'rgba(239, 141, 50, 0.2)',
+    backgroundColor: colors.surfaceRaised,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
   userInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: colors.pressOverlay,
     padding: spacing.md,
     borderRadius: borderRadius.lg,
   },
@@ -249,7 +249,7 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: colors.pressOverlay,
     marginHorizontal: spacing.lg,
   },
   footer: {
@@ -263,7 +263,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: spacing.md,
     borderRadius: borderRadius.md,
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    backgroundColor: colors.dangerFill,
   },
   logoutText: {
     fontSize: 15,

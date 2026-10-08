@@ -175,7 +175,7 @@ const styles = StyleSheet.create({
         padding: spacing.md
     },
     formHeaderBlock: {
-        backgroundColor: '#f9f9f9',
+        backgroundColor: colors.surfaceRaised,
         padding: 10,
         marginBottom: 15,
         borderRadius: 6,

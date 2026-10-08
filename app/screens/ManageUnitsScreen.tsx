@@ -213,7 +213,7 @@ export default function ManageUnitsScreen() {
                                 <Text>Cancelar</Text>
                             </TouchableOpacity>
                             <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-                                <Text style={{ color: 'white', fontWeight: 'bold' }}>Guardar</Text>
+                                <Text style={{ color: colors.white, fontWeight: 'bold' }}>Guardar</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -243,7 +243,7 @@ const styles = StyleSheet.create({
     list: { padding: spacing.md, paddingBottom: 100 },
     empty: { textAlign: 'center', marginTop: 50, color: colors.gray[500], fontSize: 15 },
     card: {
-        backgroundColor: 'white',
+        backgroundColor: colors.surface,
         padding: spacing.lg,
         marginBottom: spacing.md,
         borderRadius: borderRadius.lg,
@@ -347,9 +347,9 @@ const styles = StyleSheet.create({
         shadowRadius: 8,
         elevation: 8,
     },
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+    modalOverlay: { flex: 1, backgroundColor: colors.scrim, justifyContent: 'flex-end' },
     modalContent: {
-        backgroundColor: 'white',
+        backgroundColor: colors.surface,
         padding: spacing.xl,
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,

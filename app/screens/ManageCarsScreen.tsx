@@ -254,7 +254,7 @@ export default function ManageCarsScreen({ navigation }: any) {
                   style={[styles.chip, unitType === t.id && styles.chipSelected]}
                   onPress={() => setUnitType(t.id)}
                 >
-                  <Text style={[styles.chipText, unitType === t.id && { color: 'white' }]}>{t.label}</Text>
+                  <Text style={[styles.chipText, unitType === t.id && { color: colors.white }]}>{t.label}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -267,7 +267,7 @@ export default function ManageCarsScreen({ navigation }: any) {
                   style={[styles.chip, status === s.id && styles.chipSelected]}
                   onPress={() => setStatus(s.id)}
                 >
-                  <Text style={[styles.chipText, status === s.id && { color: 'white' }]}>{s.label}</Text>
+                  <Text style={[styles.chipText, status === s.id && { color: colors.white }]}>{s.label}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -366,7 +366,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textTransform: 'uppercase',
   },
-  statusText: { fontSize: 10, color: 'white', fontWeight: 'bold' },
+  statusText: { fontSize: 10, color: colors.white, fontWeight: 'bold' },
   detailsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -419,7 +419,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 8,
   },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+  modalOverlay: { flex: 1, backgroundColor: colors.scrim, justifyContent: 'flex-end' },
   modalContent: {
     backgroundColor: colors.surface,
     borderTopLeftRadius: 24,
@@ -482,5 +482,5 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 4,
   },
-  saveButtonText: { color: 'white', fontWeight: '700', fontSize: 15 }
+  saveButtonText: { color: colors.white, fontWeight: '700', fontSize: 15 }
 });
