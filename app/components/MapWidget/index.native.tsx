@@ -259,7 +259,13 @@ const MapWidget = forwardRef<MapWidgetHandle, MapWidgetProps>(({
             showsUserLocation={false}
             showsCompass={true}
             mapType="standard"
+            // Android: Google respeta el estilo. iOS usa Apple Maps y lo ignora
+            // por completo, por eso seguian apareciendo tiendas y museos.
             customMapStyle={estiloMapa}
+            // La prop lleva una "s" de mas: asi se llama en la libreria.
+            showsPointsOfInterests={false}
+            // En iOS manda sobre la anterior: lista vacia = ninguna categoria.
+            pointsOfInterestFilter={[]}
             showsBuildings={false}
             toolbarEnabled={false}
             onLayout={onLayout}
