@@ -20,14 +20,14 @@ const startIcon = L.divIcon({
 
 const endIcon = L.divIcon({
     className: 'end-marker',
-    html: `<div style="background-color: ${colors.danger}; width: 24px; height: 24px; border-radius: 4px; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>`,
+    html: `<div style="background-color: ${colors.danger}; width: 24px; height: 24px; border-radius: 4px; border: 2px solid ${colors.white};"></div>`,
     iconSize: [24, 24],
     iconAnchor: [12, 12],
 });
 
 const startDivIcon = L.divIcon({
     className: 'start-marker',
-    html: `<div style="background-color: ${colors.success}; width: 24px; height: 24px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>`,
+    html: `<div style="background-color: ${colors.success}; width: 24px; height: 24px; border-radius: 50%; border: 2px solid ${colors.white};"></div>`,
     iconSize: [24, 24],
     iconAnchor: [12, 12],
 });

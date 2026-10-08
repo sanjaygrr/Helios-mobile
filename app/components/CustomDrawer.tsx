@@ -100,7 +100,7 @@ export default function CustomDrawer(props: CustomDrawerProps) {
             >
               <Ionicons
                 name={item.icon as any}
-                size={22}
+                size={24}
                 color={isActive ? colors.white : colors.gray[400]}
               />
               <Text style={[styles.menuLabel, isActive && styles.menuLabelActive]}>
@@ -120,12 +120,12 @@ export default function CustomDrawer(props: CustomDrawerProps) {
         <Text style={styles.menuSection}>OPCIONES</Text>
 
         <TouchableOpacity style={styles.menuItem}>
-          <Ionicons name="settings-outline" size={22} color={colors.gray[400]} />
+          <Ionicons name="settings-outline" size={24} color={colors.gray[400]} />
           <Text style={styles.menuLabel}>Configuracion</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.menuItem}>
-          <Ionicons name="help-circle-outline" size={22} color={colors.gray[400]} />
+          <Ionicons name="help-circle-outline" size={24} color={colors.gray[400]} />
           <Text style={styles.menuLabel}>Ayuda</Text>
         </TouchableOpacity>
       </View>
@@ -133,7 +133,7 @@ export default function CustomDrawer(props: CustomDrawerProps) {
       {/* Footer */}
       <View style={styles.footer}>
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={22} color={colors.danger} />
+          <Ionicons name="log-out-outline" size={24} color={colors.danger} />
           <Text style={styles.logoutText}>Cerrar Sesion</Text>
         </TouchableOpacity>
 
@@ -190,8 +190,8 @@ const styles = StyleSheet.create({
   avatar: {
     width: 44,
     height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.secondary,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.surfaceRaised,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -244,7 +244,7 @@ const styles = StyleSheet.create({
     right: spacing.md,
     width: 6,
     height: 6,
-    borderRadius: 3,
+    borderRadius: borderRadius.sm,
     backgroundColor: colors.accent,
   },
   divider: {

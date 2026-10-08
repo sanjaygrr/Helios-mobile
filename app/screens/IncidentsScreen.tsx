@@ -373,12 +373,12 @@ export default function IncidentsScreen() {
                 {/* Info row */}
                 <View style={styles.infoRow}>
                     <View style={styles.infoItem}>
-                        <Ionicons name="time-outline" size={14} color={colors.gray[500]} />
+                        <Ionicons name="time-outline" size={18} color={colors.gray[500]} />
                         <Text style={styles.infoText}>{timeString} • {dateString}</Text>
                     </View>
                     {item.commander_name ? (
                         <View style={styles.infoItem}>
-                            <Ionicons name="person" size={14} color={colors.primary} />
+                            <Ionicons name="person" size={18} color={colors.primary} />
                             <Text style={[styles.infoText, { color: colors.accent, fontWeight: '600' }]}>{item.commander_name}</Text>
                         </View>
                     ) : (
@@ -399,17 +399,17 @@ export default function IncidentsScreen() {
                             style={[styles.actionBtn, styles.actionBtnOutline]}
                             onPress={() => openDispatchModal(item)}
                         >
-                            <Ionicons name="send" size={16} color={colors.primary} />
+                            <Ionicons name="send" size={18} color={colors.primary} />
                             <Text style={[styles.actionBtnText, { color: colors.accent }]}>Despachar</Text>
                         </TouchableOpacity>
                     )}
 
                     {(role === 'COMPANY_CHIEF' || role === 'SUPER_ADMIN') && !item.commander && item.is_active && (
                         <TouchableOpacity
-                            style={[styles.actionBtn, { backgroundColor: colors.secondary }]}
+                            style={[styles.actionBtn, { backgroundColor: colors.surfaceRaised }]}
                             onPress={() => handleTakeCommand(item.id)}
                         >
-                            <Ionicons name="flag" size={16} color="white" />
+                            <Ionicons name="flag" size={18} color="white" />
                             <Text style={[styles.actionBtnText, { color: colors.white }]}>Tomar Mando</Text>
                         </TouchableOpacity>
                     )}
@@ -419,7 +419,7 @@ export default function IncidentsScreen() {
                             style={[styles.actionBtn, { backgroundColor: colors.danger }]}
                             onPress={() => handleCloseIncident(item.id)}
                         >
-                            <Ionicons name="checkmark-done" size={16} color="white" />
+                            <Ionicons name="checkmark-done" size={18} color="white" />
                             <Text style={[styles.actionBtnText, { color: colors.white }]}>Finalizar</Text>
                         </TouchableOpacity>
                     )}
@@ -859,13 +859,13 @@ const styles = StyleSheet.create({
         paddingVertical: 4,
         paddingHorizontal: 8,
         paddingLeft: 4,
-        borderRadius: 20,
+        borderRadius: borderRadius.lg,
         gap: 6,
     },
     typeIconBox: {
         width: 28,
         height: 28,
-        borderRadius: 14,
+        borderRadius: borderRadius.md,
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -880,13 +880,13 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingVertical: 4,
         paddingHorizontal: 10,
-        borderRadius: 12,
+        borderRadius: borderRadius.md,
         gap: 5,
     },
     statusDot: {
         width: 6,
         height: 6,
-        borderRadius: 3,
+        borderRadius: borderRadius.sm,
     },
     statusLabel: {
         fontSize: 11,
@@ -924,7 +924,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingVertical: 3,
         paddingHorizontal: 8,
-        borderRadius: 10,
+        borderRadius: borderRadius.md,
         gap: 4,
     },
     cardDivider: {
@@ -943,7 +943,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         paddingVertical: 8,
         paddingHorizontal: 14,
-        borderRadius: 8,
+        borderRadius: borderRadius.sm,
         gap: 6,
     },
     actionBtnOutline: {
@@ -961,20 +961,20 @@ const styles = StyleSheet.create({
     },
     iconBtn: {
         padding: 8,
-        borderRadius: 8,
+        borderRadius: borderRadius.sm,
         backgroundColor: colors.gray[50],
     },
 
     // Legacy styles
-    iconBox: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+    iconBox: { width: 40, height: 40, borderRadius: borderRadius.lg, alignItems: 'center', justifyContent: 'center' },
     title: { fontSize: 16, fontWeight: 'bold' },
     subtitle: { fontSize: 12, color: colors.gray[600] },
     desc: { fontSize: 12, color: colors.gray[500], fontStyle: 'italic' },
     statusBadge: { padding: spacing.xs },
-    dot: { width: 8, height: 8, borderRadius: 4 },
+    dot: { width: 8, height: 8, borderRadius: borderRadius.sm },
     emptyText: { textAlign: 'center', marginTop: spacing.xl, color: colors.gray[500] },
     fab: {
-        position: 'absolute', bottom: spacing.xl, right: spacing.md, width: 60, height: 60, borderRadius: 30,
+        position: 'absolute', bottom: spacing.xl, right: spacing.md, width: 60, height: 60, borderRadius: borderRadius.full,
         backgroundColor: colors.danger, alignItems: 'center', justifyContent: 'center',
         shadowColor: colors.danger, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 8
     },
@@ -1044,12 +1044,12 @@ const styles = StyleSheet.create({
     dispatchButtonSmall: {
         flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8,
         paddingVertical: 4, paddingHorizontal: 8,
-        backgroundColor: colors.gray[100], borderRadius: 4, alignSelf: 'flex-start'
+        backgroundColor: colors.gray[100], borderRadius: borderRadius.sm, alignSelf: 'flex-start'
     },
     dispatchButtonText: { fontSize: 12, fontWeight: '600', color: colors.accent },
     unitItem: {
         flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-        padding: 14, borderRadius: 12, backgroundColor: colors.gray[50], marginBottom: 8,
+        padding: 14, borderRadius: borderRadius.md, backgroundColor: colors.gray[50], marginBottom: 8,
         borderWidth: 1.5, borderColor: colors.gray[200]
     },
     unitItemSelected: {
@@ -1057,7 +1057,7 @@ const styles = StyleSheet.create({
     },
     unitItemText: { fontWeight: '600', color: colors.text },
     unitChip: {
-        paddingVertical: 10, paddingHorizontal: 16, borderRadius: 25,
+        paddingVertical: 10, paddingHorizontal: 16, borderRadius: borderRadius.full,
         backgroundColor: colors.gray[50], marginRight: 8, borderWidth: 1.5, borderColor: colors.gray[200]
     },
     unitChipSelected: {
@@ -1067,14 +1067,14 @@ const styles = StyleSheet.create({
 
     // Chief Cards mejorados
     chiefCard: {
-        width: 90, padding: 10, backgroundColor: colors.gray[50], borderRadius: 12, marginRight: 10,
+        width: 90, padding: 10, backgroundColor: colors.gray[50], borderRadius: borderRadius.md, marginRight: 10,
         borderWidth: 1.5, borderColor: colors.gray[200], alignItems: 'center', justifyContent: 'center'
     },
     chiefCardSelected: {
         backgroundColor: colors.primary, borderColor: colors.accent
     },
     chiefAvatar: {
-        width: 44, height: 44, borderRadius: 22, backgroundColor: colors.gray[200],
+        width: 44, height: 44, borderRadius: borderRadius.full, backgroundColor: colors.gray[200],
         alignItems: 'center', justifyContent: 'center', marginBottom: 8
     },
     chiefName: { fontSize: 11, fontWeight: '700', color: colors.text, textAlign: 'center', marginBottom: 2 },

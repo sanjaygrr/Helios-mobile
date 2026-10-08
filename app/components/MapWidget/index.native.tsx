@@ -1,81 +1,162 @@
-import React, { useState, useEffect, useImperativeHandle, forwardRef, useRef } from 'react';
-import { StyleSheet, View, Platform, Text } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE, PROVIDER_DEFAULT } from 'react-native-maps';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { colors, shadows } from '../../theme/colors';
-import { MapWidgetProps, FirePoint, MapWidgetHandle } from './types';
+import React, { useEffect, useImperativeHandle, useMemo, useRef, useState, forwardRef } from 'react';
+import { StyleSheet, View, Platform, Text, LayoutChangeEvent } from 'react-native';
+import MapView, { Marker, PROVIDER_GOOGLE, PROVIDER_DEFAULT, Region } from 'react-native-maps';
+import { colors, marcador, shadows, spacing, unitStatus } from '../../theme/colors';
+import {
+    MapWidgetProps,
+    MapWidgetHandle,
+    MapPoint,
+    MapRegion,
+    buildMapPoints,
+    captionFor,
+    clusterMarkers,
+    markerFill,
+    markerOpacity,
+    markerSize,
+} from './types';
 
-// --- Sub-components (Copied from MapScreen for encapsulation) ---
+const SQUARE_RADIUS = 10;
 
-const FireMarker = React.memo(({ fire, color }: { fire: FirePoint; color: string }) => {
-    const [tracksViewChanges, setTracksViewChanges] = useState(true);
-
+function useTrackChanges(signature: string) {
+    const [tracking, setTracking] = useState(true);
     useEffect(() => {
-        if (tracksViewChanges) {
-            const timer = setTimeout(() => {
-                setTracksViewChanges(false);
-            }, 1000);
-            return () => clearTimeout(timer);
+        setTracking(true);
+        const timer = setTimeout(() => setTracking(false), 800);
+        return () => clearTimeout(timer);
+    }, [signature]);
+    return tracking;
+}
+
+function MarkerShape({
+    point,
+    selected,
+}: {
+    point: MapPoint;
+    selected: boolean;
+}) {
+    const size = markerSize(point.kind, selected);
+    const shape = marcador[point.kind].forma;
+    const fill = markerFill(point.kind, point.status);
+    const outer = size + (selected ? spacing.xs * 2 : 0);
+    const ring = selected
+        ? {
+            width: outer,
+            height: outer,
+            borderWidth: spacing.xs,
+            borderColor: colors.accent,
+            alignItems: 'center' as const,
+            justifyContent: 'center' as const,
         }
-    }, [tracksViewChanges]);
-
-    return (
-        <Marker
-            coordinate={{ latitude: fire.latitude, longitude: fire.longitude }}
-            zIndex={1}
-            tracksViewChanges={tracksViewChanges}
-        >
-            <Ionicons name="flame" size={24} color={color} />
-        </Marker>
-    );
-});
-
-const markerColors = ['#2563EB', '#7C3AED', '#0891B2', '#BE185D', '#B45309', '#047857'];
-
-const UserMarker = ({ coordinate, role, person, isSelf = false, onPress }: any) => {
-    const [tracksViewChanges, setTracksViewChanges] = React.useState(false);
-
-    React.useEffect(() => { }, []);
-
-    const getIcon = () => {
-        if (role === 'COMPANY_CHIEF') {
-            return <MaterialCommunityIcons name="fire-truck" size={isSelf ? 32 : 28} color={colors.white} />;
-        }
-        if (role === 'SUPER_ADMIN' || role === 'COMPANY_ADMIN') {
-            return <MaterialCommunityIcons name="hard-hat" size={isSelf ? 32 : 28} color={colors.white} />;
-        }
-        return <MaterialCommunityIcons name="account-hard-hat" size={isSelf ? 32 : 28} color={colors.white} />;
+        : {
+            alignItems: 'center' as const,
+            justifyContent: 'center' as const,
+        };
+    const body = {
+        width: size,
+        height: size,
+        backgroundColor: fill,
+        borderWidth: marcador.anilloAncho,
+        borderColor: marcador.anillo,
     };
 
+    if (shape === 'circulo') {
+        return (
+            <View style={[ring, selected && { borderRadius: outer / 2 }]}>
+                <View style={[body, { borderRadius: size / 2 }]} />
+            </View>
+        );
+    }
+    if (shape === 'cuadrado') {
+        return (
+            <View style={[ring, selected && { borderRadius: SQUARE_RADIUS + spacing.xs }]}>
+                <View style={[body, { borderRadius: SQUARE_RADIUS }]} />
+            </View>
+        );
+    }
+    return (
+        <View style={[ring, { transform: [{ rotate: '45deg' }] }]}>
+            <View style={body} />
+        </View>
+    );
+}
+
+function UnitMarker({
+    point,
+    selected,
+    somethingSelected,
+    now,
+    onPress,
+}: {
+    point: MapPoint;
+    selected: boolean;
+    somethingSelected: boolean;
+    now: number;
+    onPress: () => void;
+}) {
+    const caption = captionFor(point, now);
+    const opacity = markerOpacity(selected, somethingSelected, caption.stale);
+    const size = markerSize(point.kind, selected);
+    const shapeHeight = size + (selected ? spacing.xs * 2 : 0);
+    const labelHeight = 44;
+    const gap = marcador[point.kind].forma === 'diamante' ? spacing.md : spacing.xs;
+    const anchorY = (shapeHeight / 2) / (shapeHeight + gap + labelHeight);
+    const tracking = useTrackChanges(`${point.key}|${selected}|${caption.text}|${opacity}|${point.status || ''}`);
+    const chipColor = point.status ? unitStatus[point.status].text : (caption.stale ? colors.warning : colors.text);
+    const chipBg = point.status ? unitStatus[point.status].bg : colors.surface;
+
     return (
         <Marker
-            coordinate={coordinate}
-            zIndex={isSelf ? 999 : 990}
-            tracksViewChanges={tracksViewChanges}
+            coordinate={{ latitude: point.latitude, longitude: point.longitude }}
+            zIndex={selected ? 1000 : caption.stale ? 1 : 10}
+            tracksViewChanges={tracking}
+            onPress={onPress}
+            anchor={{ x: 0.5, y: anchorY }}
+        >
+            <View style={[styles.pin, { opacity }]} collapsable={false}>
+                {caption.stale && <View style={[styles.staleMark, { width: size, backgroundColor: colors.warning }]} />}
+                <MarkerShape point={point} selected={selected} />
+                <View style={[styles.caption, { marginTop: gap, backgroundColor: chipBg }]}>
+                    <Text style={[styles.captionText, { color: chipColor }]} numberOfLines={3}>
+                        {caption.text}
+                    </Text>
+                </View>
+            </View>
+        </Marker>
+    );
+}
+
+function ClusterBubble({
+    count,
+    latitude,
+    longitude,
+    faded,
+    onPress,
+}: {
+    count: number;
+    latitude: number;
+    longitude: number;
+    faded: boolean;
+    onPress: () => void;
+}) {
+    const size = marcador.carro.tam;
+    const tracking = useTrackChanges(`cluster-${count}-${latitude}-${longitude}-${faded}`);
+    return (
+        <Marker
+            coordinate={{ latitude, longitude }}
+            zIndex={50}
+            tracksViewChanges={tracking}
             onPress={onPress}
             anchor={{ x: 0.5, y: 0.5 }}
         >
-            <View style={[isSelf ? styles.myLocationMarker : styles.otherUserMarker, !isSelf && { backgroundColor: markerColors[Math.abs(Number(person?.id) || 0) % markerColors.length] }]}>
-                {getIcon()}
+            <View
+                style={[styles.cluster, { minWidth: size, height: size, borderRadius: size / 2, opacity: faded ? marcador.opacidadNoSeleccionado : 1 }]}
+                accessibilityLabel={`${count} marcadores juntos`}
+            >
+                <Text style={styles.clusterText}>{count}</Text>
             </View>
-            {!isSelf && <Text style={styles.markerName} numberOfLines={1}>
-                {person?.user_first_name || person?.email?.split('@')[0] || `#${person?.id}`}
-                {person?.device_id ? ` · ${person.device_id.slice(0, 4)}` : ''}
-            </Text>}
         </Marker>
     );
-};
-
-// --- Helpers ---
-
-const getFireColor = (brightness: number): string => {
-    if (brightness < 320) return colors.success;
-    if (brightness < 340) return colors.sevMedia;
-    if (brightness < 360) return '#FFA500';
-    return colors.sevCritica;
-};
-
-// --- Main Component ---
+}
 
 const MapWidget = forwardRef<MapWidgetHandle, MapWidgetProps>(({
     style,
@@ -86,15 +167,68 @@ const MapWidget = forwardRef<MapWidgetHandle, MapWidgetProps>(({
     showFires,
     onSelectMarker,
     onMapPress,
-    onRegionChange
+    onRegionChange,
+    selectedId,
 }, ref) => {
     const mapRef = useRef<MapView>(null);
+    const ignoreMapPress = useRef(false);
+    const [now, setNow] = useState(() => Date.now());
+    const [localSelected, setLocalSelected] = useState<string | null>(null);
+    const [layout, setLayout] = useState({ width: 0, height: 0 });
+    const [region, setRegion] = useState<MapRegion>({
+        latitude: currentLocation.latitude,
+        longitude: currentLocation.longitude,
+        latitudeDelta: 0.1,
+        longitudeDelta: 0.1,
+    });
+
+    useEffect(() => {
+        const timer = setInterval(() => setNow(Date.now()), 15000);
+        return () => clearInterval(timer);
+    }, []);
+
+    const selectedKey = selectedId !== undefined
+        ? (selectedId == null ? null : String(selectedId))
+        : localSelected;
 
     useImperativeHandle(ref, () => ({
-        animateToRegion: (region, duration) => {
-            mapRef.current?.animateToRegion(region, duration);
+        animateToRegion: (next, duration) => {
+            mapRef.current?.animateToRegion(next, duration);
         }
     }));
+
+    const points = useMemo(() => buildMapPoints({
+        selfUser,
+        currentLocation,
+        otherUsers,
+        fires,
+        showFires,
+        now,
+    }), [selfUser, currentLocation, otherUsers, fires, showFires, now]);
+
+    const groups = useMemo(
+        () => clusterMarkers(points, region, layout.width, layout.height, selectedKey),
+        [points, region, layout.width, layout.height, selectedKey],
+    );
+
+    const onLayout = (event: LayoutChangeEvent) => {
+        const { width, height } = event.nativeEvent.layout;
+        setLayout({ width, height });
+    };
+
+    const onRegion = (next: Region) => {
+        setRegion(next);
+        onRegionChange?.(next);
+    };
+
+    const zoomTo = (latitude: number, longitude: number) => {
+        mapRef.current?.animateToRegion({
+            latitude,
+            longitude,
+            latitudeDelta: Math.max(region.latitudeDelta / 2, 0.002),
+            longitudeDelta: Math.max(region.longitudeDelta / 2, 0.002),
+        }, 350);
+    };
 
     return (
         <MapView
@@ -110,42 +244,50 @@ const MapWidget = forwardRef<MapWidgetHandle, MapWidgetProps>(({
             showsUserLocation={false}
             showsCompass={true}
             mapType="hybrid"
-            onPress={onMapPress}
-            onRegionChangeComplete={onRegionChange}
+            onLayout={onLayout}
+            onPress={() => {
+                if (ignoreMapPress.current) {
+                    ignoreMapPress.current = false;
+                    return;
+                }
+                if (selectedId === undefined) setLocalSelected(null);
+                onMapPress();
+            }}
+            onRegionChangeComplete={onRegion}
         >
-            {/* Self Marker */}
-            {selfUser && <UserMarker
-                key="self-marker"
-                coordinate={{
-                    latitude: currentLocation.latitude,
-                    longitude: currentLocation.longitude,
-                }}
-                role={selfUser?.role}
-                person={selfUser}
-                isSelf={true}
-                onPress={() => onSelectMarker({ ...selfUser, ...currentLocation, isSelf: true })}
-            />}
-
-            {/* Other Users */}
-            {otherUsers.map((u) => (
-                <UserMarker
-                    key={`user-${u.id}-${u.device_id || 'legacy'}`}
-                    coordinate={{ latitude: u.latitude, longitude: u.longitude }}
-                    role={u.role}
-                    person={u}
-                    isSelf={false}
-                    onPress={() => onSelectMarker(u)}
-                />
-            ))}
-
-            {/* Fires */}
-            {showFires && fires.map((fire, index) => (
-                <FireMarker
-                    key={`fire-${index}-${fire.latitude}`}
-                    fire={fire}
-                    color={getFireColor(fire.brightness)}
-                />
-            ))}
+            {groups.map((group) => {
+                if (group.members.length > 1) {
+                    return (
+                        <ClusterBubble
+                            key={group.key}
+                            count={group.members.length}
+                            latitude={group.latitude}
+                            longitude={group.longitude}
+                            faded={selectedKey != null}
+                            onPress={() => {
+                                ignoreMapPress.current = true;
+                                zoomTo(group.latitude, group.longitude);
+                            }}
+                        />
+                    );
+                }
+                const point = group.members[0];
+                const selected = point.key === selectedKey;
+                return (
+                    <UnitMarker
+                        key={point.key}
+                        point={point}
+                        selected={selected}
+                        somethingSelected={selectedKey != null}
+                        now={now}
+                        onPress={() => {
+                            ignoreMapPress.current = true;
+                            if (selectedId === undefined) setLocalSelected(point.key);
+                            onSelectMarker(point.raw);
+                        }}
+                    />
+                );
+            })}
         </MapView>
     );
 });
@@ -156,34 +298,36 @@ const styles = StyleSheet.create({
     map: {
         flex: 1,
     },
-    myLocationMarker: {
-        width: 48, height: 48, borderRadius: 24,
-        backgroundColor: colors.primary,
-        borderWidth: 3, borderColor: colors.border,
-        alignItems: 'center', justifyContent: 'center',
-        overflow: 'visible',
-        padding: 4,
-        marginLeft: 2,
-        ...shadows.lg
+    pin: {
+        alignItems: 'center',
     },
-    otherUserMarker: {
-        width: 44, height: 44, borderRadius: 22,
-        backgroundColor: colors.secondary,
-        borderWidth: 2, borderColor: colors.border,
-        alignItems: 'center', justifyContent: 'center',
-        overflow: 'visible',
-        padding: 4,
-        marginLeft: 2,
-        ...shadows.md
+    staleMark: {
+        height: spacing.xs,
+        marginBottom: spacing.xs,
     },
-    markerName: {
-        maxWidth: 110,
-        marginTop: 2,
-        paddingHorizontal: 5,
-        backgroundColor: colors.surface,
-        borderRadius: 4,
-        color: colors.text,
+    caption: {
+        paddingHorizontal: spacing.xs,
+        paddingVertical: spacing.xs,
+        maxWidth: 128,
+        ...shadows.sm,
+    },
+    captionText: {
         fontSize: 11,
+        fontWeight: '700',
+        textAlign: 'center',
+    },
+    cluster: {
+        paddingHorizontal: spacing.sm,
+        backgroundColor: colors.surface,
+        borderWidth: marcador.anilloAncho,
+        borderColor: marcador.anillo,
+        alignItems: 'center',
+        justifyContent: 'center',
+        ...shadows.md,
+    },
+    clusterText: {
+        color: colors.text,
+        fontSize: 16,
         fontWeight: '700',
         textAlign: 'center',
     },

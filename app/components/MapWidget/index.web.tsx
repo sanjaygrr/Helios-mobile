@@ -1,50 +1,119 @@
-import React, { useMemo, forwardRef, useImperativeHandle } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, forwardRef, useImperativeHandle, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { MapWidgetProps, MapWidgetHandle } from './types';
-import { colors } from '../../theme/colors';
+import { colors, marcador, spacing, unitStatus } from '../../theme/colors';
+import {
+    MapWidgetProps,
+    MapWidgetHandle,
+    MapPoint,
+    MapRegion,
+    buildMapPoints,
+    captionFor,
+    clusterMarkers,
+    markerFill,
+    markerOpacity,
+    markerSize,
+} from './types';
 
-// --- Styles for DivIcons ---
-const PRIMARY_COLOR = colors.primary;
-const SECONDARY_COLOR = colors.secondary;
+const SQUARE_RADIUS = 10;
 
-const createMarkerIcon = (color: string, size: number, border: string = 'white', isSelf: boolean = false) => {
+function escapeHtml(value: string): string {
+    return value
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+function readView(map: L.Map): MapRegion & { width: number; height: number } {
+    const bounds = map.getBounds();
+    const size = map.getSize();
+    return {
+        latitude: map.getCenter().lat,
+        longitude: map.getCenter().lng,
+        latitudeDelta: Math.max(bounds.getNorth() - bounds.getSouth(), 0.0001),
+        longitudeDelta: Math.max(bounds.getEast() - bounds.getWest(), 0.0001),
+        width: size.x,
+        height: size.y,
+    };
+}
+
+function shapeHtml(point: MapPoint, selected: boolean): string {
+    const size = markerSize(point.kind, selected);
+    const shape = marcador[point.kind].forma;
+    const fill = markerFill(point.kind, point.status);
+    const radius = shape === 'circulo' ? size / 2 : shape === 'cuadrado' ? SQUARE_RADIUS : 0;
+    const rotate = shape === 'diamante' ? 'transform:rotate(45deg);' : '';
+    const body = `
+        <div style="box-sizing:border-box;width:${size}px;height:${size}px;background:${fill};border:${marcador.anilloAncho}px solid ${marcador.anillo};border-radius:${radius}px;"></div>
+    `;
+    if (!selected) {
+        return `<div style="${rotate}display:flex;align-items:center;justify-content:center;">${body}</div>`;
+    }
+    const outer = size + spacing.xs * 2;
+    const outerRadius = shape === 'circulo' ? outer / 2 : shape === 'cuadrado' ? SQUARE_RADIUS + spacing.xs : 0;
+    return `
+        <div style="${rotate}box-sizing:border-box;width:${outer}px;height:${outer}px;border:${spacing.xs}px solid ${colors.accent};border-radius:${outerRadius}px;display:flex;align-items:center;justify-content:center;">
+            ${body}
+        </div>
+    `;
+}
+
+function pinIcon(point: MapPoint, selected: boolean, now: number, somethingSelected: boolean): L.DivIcon {
+    const caption = captionFor(point, now);
+    const opacity = markerOpacity(selected, somethingSelected, caption.stale);
+    const size = markerSize(point.kind, selected);
+    const shapeHeight = size + (selected ? spacing.xs * 2 : 0);
+    const chipColor = point.status ? unitStatus[point.status].text : (caption.stale ? colors.warning : colors.text);
+    const chipBg = point.status ? unitStatus[point.status].bg : colors.surface;
+    const gap = marcador[point.kind].forma === 'diamante' ? spacing.md : spacing.xs;
+    const staleBar = caption.stale
+        ? `<div style="width:${size}px;height:${spacing.xs}px;background:${colors.warning};margin-bottom:${spacing.xs}px;"></div>`
+        : '';
+    const html = `
+        <div style="opacity:${opacity};display:flex;flex-direction:column;align-items:center;width:max-content;">
+            ${staleBar}
+            ${shapeHtml(point, selected)}
+            <div style="margin-top:${gap}px;max-width:128px;padding:${spacing.xs}px;background:${chipBg};color:${chipColor};font-size:11px;font-weight:700;text-align:center;white-space:pre-line;line-height:14px;">
+                ${escapeHtml(caption.text)}
+            </div>
+        </div>
+    `;
+    const height = shapeHeight + gap + 48;
     return L.divIcon({
-        className: 'custom-marker',
-        html: `
-      <div style="
-        background-color: ${color};
-        width: ${size}px;
-        height: ${size}px;
-        border-radius: 50%;
-        border: ${isSelf ? '3px' : '2px'} solid ${border};
-        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      ">
-      </div>
-    `,
-        iconSize: [size, size],
-        iconAnchor: [size / 2, size / 2],
+        className: 'lumbre-pin',
+        html,
+        iconSize: [140, height],
+        iconAnchor: [70, shapeHeight / 2],
     });
-};
+}
 
-const getFireColor = (brightness: number): string => {
-    if (brightness < 320) return colors.success;
-    if (brightness < 340) return colors.sevMedia;
-    if (brightness < 360) return '#FFA500';
-    return colors.sevCritica;
-};
+function clusterIcon(count: number, faded: boolean): L.DivIcon {
+    const size = marcador.carro.tam;
+    const opacity = faded ? marcador.opacidadNoSeleccionado : 1;
+    const html = `
+        <div style="box-sizing:border-box;opacity:${opacity};min-width:${size}px;height:${size}px;padding:0 ${spacing.sm}px;border-radius:${size}px;background:${colors.surface};border:${marcador.anilloAncho}px solid ${marcador.anillo};color:${colors.text};display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;">
+            ${count}
+        </div>
+    `;
+    return L.divIcon({
+        className: 'lumbre-pin',
+        html,
+        iconSize: [size + spacing.lg, size],
+        iconAnchor: [(size + spacing.lg) / 2, size / 2],
+    });
+}
 
-// Internal Controller to access map instance
-const MapController = forwardRef<MapWidgetHandle, any>((_, ref) => {
+const MapController = forwardRef<MapWidgetHandle, {
+    onView: (view: MapRegion & { width: number; height: number }) => void;
+    onMapPress: () => void;
+    armIgnore: React.MutableRefObject<boolean>;
+}>(({ onView, onMapPress, armIgnore }, ref) => {
     const map = useMap();
 
-    React.useEffect(() => {
-        // Inject Leaflet CSS if not already present
+    useEffect(() => {
         const linkId = 'leaflet-css';
         if (!document.getElementById(linkId)) {
             const link = document.createElement('link');
@@ -53,15 +122,32 @@ const MapController = forwardRef<MapWidgetHandle, any>((_, ref) => {
             link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
             document.head.appendChild(link);
         }
+        const styleId = 'lumbre-pin-style';
+        if (!document.getElementById(styleId)) {
+            const style = document.createElement('style');
+            style.id = styleId;
+            style.textContent = '.lumbre-pin.leaflet-div-icon{background:none;border:none;}';
+            document.head.appendChild(style);
+        }
+        const timer = setTimeout(() => map.invalidateSize(), 100);
+        onView(readView(map));
+        return () => clearTimeout(timer);
+    }, [map, onView]);
 
-        // Force map invalidation after a short delay to ensure rendering
-        setTimeout(() => {
-            map.invalidateSize();
-        }, 100);
-    }, [map]);
+    useMapEvents({
+        moveend: () => onView(readView(map)),
+        zoomend: () => onView(readView(map)),
+        click: () => {
+            if (armIgnore.current) {
+                armIgnore.current = false;
+                return;
+            }
+            onMapPress();
+        },
+    });
 
     useImperativeHandle(ref, () => ({
-        animateToRegion: (region, duration) => { // duration ignored for now or used in options
+        animateToRegion: (region, duration) => {
             const southWest = L.latLng(
                 region.latitude - region.latitudeDelta / 2,
                 region.longitude - region.longitudeDelta / 2
@@ -76,6 +162,78 @@ const MapController = forwardRef<MapWidgetHandle, any>((_, ref) => {
     return null;
 });
 
+function MarkerLayer({
+    points,
+    selectedKey,
+    now,
+    onSelect,
+    armIgnore,
+}: {
+    points: MapPoint[];
+    selectedKey: string | null;
+    now: number;
+    onSelect: (point: MapPoint) => void;
+    armIgnore: React.MutableRefObject<boolean>;
+}) {
+    const map = useMap();
+    const [view, setView] = useState<(MapRegion & { width: number; height: number }) | null>(null);
+
+    useMapEvents({
+        moveend: () => setView(readView(map)),
+        zoomend: () => setView(readView(map)),
+    });
+
+    useEffect(() => {
+        setView(readView(map));
+    }, [map]);
+
+    const groups = useMemo(
+        () => clusterMarkers(points, view, view?.width ?? 0, view?.height ?? 0, selectedKey),
+        [points, view, selectedKey],
+    );
+
+    return (
+        <>
+            {groups.map((group) => {
+                if (group.members.length > 1) {
+                    return (
+                        <Marker
+                            key={group.key}
+                            position={[group.latitude, group.longitude]}
+                            icon={clusterIcon(group.members.length, selectedKey != null)}
+                            zIndexOffset={100}
+                            eventHandlers={{
+                                click: (event) => {
+                                    armIgnore.current = true;
+                                    L.DomEvent.stopPropagation(event.originalEvent);
+                                    map.flyTo([group.latitude, group.longitude], Math.min(map.getZoom() + 2, 18));
+                                },
+                            }}
+                        />
+                    );
+                }
+                const point = group.members[0];
+                const selected = point.key === selectedKey;
+                return (
+                    <Marker
+                        key={point.key}
+                        position={[point.latitude, point.longitude]}
+                        icon={pinIcon(point, selected, now, selectedKey != null)}
+                        zIndexOffset={selected ? 1000 : 0}
+                        eventHandlers={{
+                            click: (event) => {
+                                armIgnore.current = true;
+                                L.DomEvent.stopPropagation(event.originalEvent);
+                                onSelect(point);
+                            },
+                        }}
+                    />
+                );
+            })}
+        </>
+    );
+}
+
 const MapWidget = forwardRef<MapWidgetHandle, MapWidgetProps>(({
     style,
     currentLocation,
@@ -85,15 +243,36 @@ const MapWidget = forwardRef<MapWidgetHandle, MapWidgetProps>(({
     showFires,
     onSelectMarker,
     onMapPress,
-    onRegionChange
+    onRegionChange,
+    selectedId,
 }, ref) => {
+    const [now, setNow] = useState(() => Date.now());
+    const [localSelected, setLocalSelected] = useState<string | null>(null);
+    const armIgnore = useRef(false);
 
-    const selfIcon = useMemo(() => createMarkerIcon(PRIMARY_COLOR, 20, 'white', true), []);
-    const userIcon = useMemo(() => createMarkerIcon(SECONDARY_COLOR, 16, 'white', false), []);
+    useEffect(() => {
+        const timer = setInterval(() => setNow(Date.now()), 15000);
+        return () => clearInterval(timer);
+    }, []);
 
-    // Note: we set initial center but allow map to move.
-    // Reactive updates to center (forcing map to move on prop change) are avoided unless we add logic.
-    // The animateToRegion handle covers the "Recenter" use case.
+    const selectedKey = selectedId !== undefined
+        ? (selectedId == null ? null : String(selectedId))
+        : localSelected;
+
+    const points = useMemo(() => buildMapPoints({
+        selfUser,
+        currentLocation,
+        otherUsers,
+        fires,
+        showFires,
+        now,
+    }), [selfUser, currentLocation, otherUsers, fires, showFires, now]);
+
+    const onRegionChangeRef = useRef(onRegionChange);
+    onRegionChangeRef.current = onRegionChange;
+    const publishView = useCallback((view: MapRegion) => {
+        onRegionChangeRef.current?.(view);
+    }, []);
 
     return (
         <View style={[styles.container, style]}>
@@ -102,53 +281,29 @@ const MapWidget = forwardRef<MapWidgetHandle, MapWidgetProps>(({
                 zoom={13}
                 style={{ height: '100%', width: '100%' }}
             >
-                <MapController ref={ref} />
-
+                <MapController
+                    ref={ref}
+                    onView={publishView}
+                    armIgnore={armIgnore}
+                    onMapPress={() => {
+                        if (selectedId === undefined) setLocalSelected(null);
+                        onMapPress();
+                    }}
+                />
                 <TileLayer
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
-
-                {/* Helper to capture map clicks if strictly needed, but Leaflet markers handle their own clicks well */}
-
-                {/* Self Marker */}
-                {selfUser && <Marker
-                    position={[currentLocation.latitude, currentLocation.longitude]}
-                    icon={selfIcon}
-                    eventHandlers={{
-                        click: () => onSelectMarker({ ...selfUser, ...currentLocation, isSelf: true })
+                <MarkerLayer
+                    points={points}
+                    selectedKey={selectedKey}
+                    now={now}
+                    armIgnore={armIgnore}
+                    onSelect={(point) => {
+                        if (selectedId === undefined) setLocalSelected(point.key);
+                        onSelectMarker(point.raw);
                     }}
-                />}
-
-                {/* Other Users */}
-                {otherUsers.map((u) => (
-                    <Marker
-                        key={`user-${u.id}-${u.device_id || 'legacy'}`}
-                        position={[u.latitude, u.longitude]}
-                        icon={userIcon}
-                        eventHandlers={{
-                            click: () => onSelectMarker(u)
-                        }}
-                    />
-                ))}
-
-                {/* Fires */}
-                {showFires && fires.map((fire, index) => (
-                    <Marker
-                        key={`fire-${index}-${fire.latitude}`}
-                        position={[fire.latitude, fire.longitude]}
-                        icon={L.divIcon({
-                            className: 'fire-marker',
-                            html: `<div style="background-color: ${getFireColor(fire.brightness)}; width: 10px; height: 10px; border-radius: 50%; border: 1px solid white;"></div>`,
-                            iconSize: [10, 10],
-                            iconAnchor: [5, 5]
-                        })}
-                        eventHandlers={{
-                            click: () => onSelectMarker(fire)
-                        }}
-                    />
-                ))}
-
+                />
             </MapContainer>
         </View>
     );

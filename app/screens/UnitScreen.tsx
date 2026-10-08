@@ -194,7 +194,7 @@ export default function UnitScreen() {
   if (!loading && role === 'SUPER_ADMIN' && !viewedUnit) {
     return (
       <View style={styles.container}>
-        <View style={[styles.headerCard, { backgroundColor: colors.secondary }]}>
+        <View style={[styles.headerCard, { backgroundColor: colors.surfaceRaised }]}>
           <Ionicons name="apps" size={32} color={colors.white} />
           <View style={{ marginLeft: 16 }}>
             <Text style={[styles.unitName, { fontSize: 22 }]}>Panel de Comando</Text>
@@ -244,7 +244,7 @@ export default function UnitScreen() {
                       <Text style={{ color: colors.textLight, fontSize: 12 }}>{item.incident_title || `Incidente #${item.incident}`}</Text>
                     </View>
                     <View style={[styles.statusBadge, { backgroundColor: statusConf.bgColor }]}>
-                      <Ionicons name={statusConf.icon as any} size={14} color={statusConf.color} />
+                      <Ionicons name={statusConf.icon as any} size={18} color={statusConf.color} />
                       <Text style={[styles.statusText, { color: statusConf.color }]}>{statusConf.label}</Text>
                     </View>
                   </View>
@@ -449,7 +449,7 @@ export default function UnitScreen() {
           <Text style={styles.unitType}>{unit.type_display || unit.unit_type}</Text>
         </View>
         <View style={[styles.statusBadge, { backgroundColor: statusConfig.bgColor }]}>
-          <Ionicons name={statusConfig.icon} size={16} color={statusConfig.color} />
+          <Ionicons name={statusConfig.icon} size={18} color={statusConfig.color} />
           <Text style={[styles.statusText, { color: statusConfig.color }]}>
             {statusConfig.label}
           </Text>
@@ -576,11 +576,11 @@ export default function UnitScreen() {
           <Text style={styles.vehicleName}>{unit.vehicle || 'Sin Vehículo'}</Text>
           <View style={styles.vehicleDetails}>
             <View style={styles.vehicleDetail}>
-              <Ionicons name="water-outline" size={16} color={colors.textLight} />
+              <Ionicons name="water-outline" size={18} color={colors.textLight} />
               <Text style={styles.vehicleDetailText}>{unit.capacity || 'N/A'} agua</Text>
             </View>
             <View style={styles.vehicleDetail}>
-              <Ionicons name="checkmark-circle-outline" size={16} color={colors.success} />
+              <Ionicons name="checkmark-circle-outline" size={18} color={colors.success} />
               <Text style={styles.vehicleDetailText}>Operativo</Text>
             </View>
           </View>
@@ -746,7 +746,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     paddingVertical: 14,
     paddingHorizontal: 28,
-    borderRadius: 12,
+    borderRadius: borderRadius.md,
     shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
@@ -762,7 +762,7 @@ const styles = StyleSheet.create({
   headerCard: {
     backgroundColor: colors.primary,
     margin: spacing.md,
-    borderRadius: 20,
+    borderRadius: borderRadius.lg,
     padding: spacing.lg,
     flexDirection: 'row',
     alignItems: 'center',
@@ -775,7 +775,7 @@ const styles = StyleSheet.create({
   unitIconContainer: {
     width: 60,
     height: 60,
-    borderRadius: 16,
+    borderRadius: borderRadius.lg,
     backgroundColor: colors.pressOverlay,
     alignItems: 'center',
     justifyContent: 'center',
@@ -801,7 +801,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: 25,
+    borderRadius: borderRadius.full,
     gap: 6,
   },
   statusText: {
@@ -819,7 +819,7 @@ const styles = StyleSheet.create({
   statCard: {
     flex: 1,
     backgroundColor: colors.surface,
-    borderRadius: 16,
+    borderRadius: borderRadius.lg,
     padding: spacing.md,
     alignItems: 'center',
     shadowColor: '#000',
@@ -831,7 +831,7 @@ const styles = StyleSheet.create({
   statIcon: {
     width: 48,
     height: 48,
-    borderRadius: 14,
+    borderRadius: borderRadius.md,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.sm,
@@ -852,7 +852,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     margin: spacing.md,
     marginTop: spacing.md,
-    borderRadius: 16,
+    borderRadius: borderRadius.lg,
     padding: spacing.lg,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -915,7 +915,7 @@ const styles = StyleSheet.create({
   memberAvatar: {
     width: 36,
     height: 36,
-    borderRadius: 18,
+    borderRadius: borderRadius.lg,
     backgroundColor: colors.gray[400],
     alignItems: 'center',
     justifyContent: 'center',
@@ -938,7 +938,7 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   unitChip: {
-    paddingVertical: 8, paddingHorizontal: 12, borderRadius: 20,
+    paddingVertical: 8, paddingHorizontal: 12, borderRadius: borderRadius.lg,
     backgroundColor: colors.gray[100], marginRight: 8, borderWidth: 1, borderColor: colors.gray[300]
   },
   unitChipSelected: {
@@ -965,7 +965,7 @@ const styles = StyleSheet.create({
   actionButton: {
     width: '48%',
     backgroundColor: colors.gray[50],
-    borderRadius: 14,
+    borderRadius: borderRadius.md,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.sm,
     alignItems: 'center',
@@ -996,7 +996,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     marginHorizontal: spacing.md,
     marginVertical: spacing.md,
-    borderRadius: 20,
+    borderRadius: borderRadius.lg,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -1074,7 +1074,7 @@ const styles = StyleSheet.create({
   closeIncidentButton: {
     backgroundColor: colors.danger,
     paddingVertical: 16,
-    borderRadius: 12,
+    borderRadius: borderRadius.md,
     alignItems: 'center',
     marginTop: spacing.lg,
     shadowColor: colors.danger,

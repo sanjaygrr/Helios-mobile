@@ -289,7 +289,7 @@ export default function MapScreen() {
         <View style={styles.infoCard}>
           <View style={styles.infoHeader}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <View style={{ backgroundColor: colors.secondary, borderRadius: 20, padding: 4 }}>
+              <View style={{ backgroundColor: colors.surfaceRaised, borderRadius: borderRadius.lg, padding: 4 }}>
                 <MaterialCommunityIcons name={
                   selectedItem.role === 'COMPANY_CHIEF' ? 'fire-truck' :
                     (selectedItem.brightness ? 'fire' :  // Handle Fire Item
@@ -320,7 +320,7 @@ export default function MapScreen() {
             {/* Fire Data */}
             {selectedItem.brightness && (
               <View style={styles.incidentRow}>
-                <Ionicons name="flame" size={16} color={colors.danger} />
+                <Ionicons name="flame" size={18} color={colors.danger} />
                 <Text style={styles.incidentText}>
                   Detectado: {selectedItem.acq_date || 'N/A'} {selectedItem.acq_time || ''}
                 </Text>
@@ -330,7 +330,7 @@ export default function MapScreen() {
             {/* Last confirmed position */}
             {!selectedItem.brightness && selectedItem.timestamp && (
               <View style={[styles.incidentRow, { backgroundColor: colors.gray[200] }]}>
-                <Ionicons name="time-outline" size={16} color={colors.gray[600]} />
+                <Ionicons name="time-outline" size={18} color={colors.gray[600]} />
                 <Text style={[styles.incidentText, { color: colors.gray[600] }]}>Última señal: {new Date(selectedItem.timestamp).toLocaleTimeString()}</Text>
               </View>
             )}
@@ -338,7 +338,7 @@ export default function MapScreen() {
             {/* Incident Info (User only) */}
             {selectedItem.assigned_incident && (
               <View style={styles.incidentRow}>
-                <Ionicons name="alert-circle" size={16} color={colors.danger} />
+                <Ionicons name="alert-circle" size={18} color={colors.danger} />
                 <Text style={styles.incidentText}>
                   Mando: {selectedItem.assigned_incident.title}
                 </Text>
@@ -348,7 +348,7 @@ export default function MapScreen() {
             {/* Vehicle for Chief */}
             {selectedItem.role === 'COMPANY_CHIEF' && selectedItem.assigned_vehicle && (
               <View style={styles.detailRow}>
-                <MaterialCommunityIcons name="fire-truck" size={16} color={colors.primary} />
+                <MaterialCommunityIcons name="fire-truck" size={18} color={colors.primary} />
                 <Text style={styles.detailText}>Carro: {selectedItem.assigned_vehicle}</Text>
               </View>
             )}
@@ -356,7 +356,7 @@ export default function MapScreen() {
             {/* Companions for Chief */}
             {selectedItem.role === 'COMPANY_CHIEF' && selectedItem.companions && selectedItem.companions.length > 0 && (
               <View style={[styles.detailRow, { alignItems: 'flex-start' }]}>
-                <MaterialCommunityIcons name="account-group" size={16} color={colors.text} style={{ marginTop: 2 }} />
+                <MaterialCommunityIcons name="account-group" size={18} color={colors.text} style={{ marginTop: 2 }} />
                 <View>
                   <Text style={[styles.detailText, { fontWeight: 'bold' }]}>Tripulación:</Text>
                   {selectedItem.companions.map((companion: string, idx: number) => (
@@ -412,7 +412,7 @@ const styles = StyleSheet.create({
   },
   locationNotice: {
     position: 'absolute', top: 72, left: 16, right: 16,
-    backgroundColor: colors.surface, borderRadius: 12, padding: 12,
+    backgroundColor: colors.surface, borderRadius: borderRadius.md, padding: 12,
     flexDirection: 'row', alignItems: 'center', gap: 8,
     ...shadows.md,
   },
@@ -436,7 +436,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12, paddingHorizontal: 16, borderRadius: borderRadius.lg,
     ...overlay,
   },
-  statusDot: { width: 12, height: 12, borderRadius: 6 },
+  statusDot: { width: 12, height: 12, borderRadius: borderRadius.sm },
   statusLabel: { fontSize: 15, fontWeight: '700', color: colors.text },
   statusDivider: { width: 1, height: 16, backgroundColor: colors.border, marginHorizontal: 5 },
 
@@ -455,7 +455,7 @@ const styles = StyleSheet.create({
   incidentRow: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     marginVertical: 4,
-    backgroundColor: colors.gray[50], padding: 6, borderRadius: 6
+    backgroundColor: colors.gray[50], padding: 6, borderRadius: borderRadius.sm
   },
   incidentText: {
     fontSize: 13, fontWeight: '600', color: colors.text
@@ -474,7 +474,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', gap: 15
   },
   fab: {
-    width: 56, height: 56, borderRadius: 28,
+    width: 56, height: 56, borderRadius: borderRadius.full,
     alignItems: 'center', justifyContent: 'center',
     ...shadows.lg
   },

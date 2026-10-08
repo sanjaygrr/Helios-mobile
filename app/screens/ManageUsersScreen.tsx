@@ -90,7 +90,7 @@ export default function ManageUsersScreen() {
                         <View style={styles.userCard}>
                             {/* Avatar */}
                             <View style={[styles.avatar, { backgroundColor: roleInfo.color + '20' }]}>
-                                <Ionicons name={roleInfo.icon as any} size={22} color={roleInfo.color} />
+                                <Ionicons name={roleInfo.icon as any} size={24} color={roleInfo.color} />
                             </View>
 
                             {/* Info */}
@@ -238,7 +238,7 @@ const styles = StyleSheet.create({
     avatar: {
         width: 50,
         height: 50,
-        borderRadius: 14,
+        borderRadius: borderRadius.md,
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -260,7 +260,7 @@ const styles = StyleSheet.create({
     roleBadge: {
         paddingVertical: 3,
         paddingHorizontal: 8,
-        borderRadius: 6,
+        borderRadius: borderRadius.sm,
     },
     roleText: {
         fontSize: 11,
@@ -275,13 +275,13 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingVertical: 5,
         paddingHorizontal: 10,
-        borderRadius: 20,
+        borderRadius: borderRadius.lg,
         gap: 5,
     },
     statusDot: {
         width: 6,
         height: 6,
-        borderRadius: 3,
+        borderRadius: borderRadius.sm,
     },
     statusText: {
         fontSize: 10,
@@ -294,14 +294,14 @@ const styles = StyleSheet.create({
         fontSize: 15,
     },
     activeBadge: { padding: spacing.xs },
-    dot: { width: 8, height: 8, borderRadius: 4 },
+    dot: { width: 8, height: 8, borderRadius: borderRadius.sm },
     fab: {
         position: 'absolute',
         bottom: spacing.xl,
         right: spacing.md,
         width: 60,
         height: 60,
-        borderRadius: 30,
+        borderRadius: borderRadius.full,
         backgroundColor: colors.primary,
         alignItems: 'center',
         justifyContent: 'center',
@@ -349,7 +349,7 @@ const styles = StyleSheet.create({
     roleButton: {
         paddingHorizontal: 16,
         paddingVertical: 10,
-        borderRadius: 12,
+        borderRadius: borderRadius.md,
         borderWidth: 1.5,
         borderColor: colors.accent,
         backgroundColor: colors.surface,

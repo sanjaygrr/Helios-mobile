@@ -134,7 +134,7 @@ export default function LoginScreen({ navigation }: any) {
                 ]}>
                   <Ionicons
                     name="mail-outline"
-                    size={22}
+                    size={24}
                     color={focusedInput === 'email' ? colors.primary : colors.gray[400]}
                   />
                 </View>
@@ -166,7 +166,7 @@ export default function LoginScreen({ navigation }: any) {
                 ]}>
                   <Ionicons
                     name="lock-closed-outline"
-                    size={22}
+                    size={24}
                     color={focusedInput === 'password' ? colors.primary : colors.gray[400]}
                   />
                 </View>
@@ -189,7 +189,7 @@ export default function LoginScreen({ navigation }: any) {
                 >
                   <Ionicons
                     name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                    size={22}
+                    size={24}
                     color={colors.gray[400]}
                   />
                 </TouchableOpacity>
@@ -249,7 +249,7 @@ const styles = StyleSheet.create({
     width: 300,
     height: 300,
     borderRadius: 150,
-    backgroundColor: colors.secondary,
+    backgroundColor: colors.surfaceRaised,
     opacity: 0.15,
   },
   backgroundCircle2: {
@@ -259,7 +259,7 @@ const styles = StyleSheet.create({
     width: 200,
     height: 200,
     borderRadius: 100,
-    backgroundColor: colors.secondary,
+    backgroundColor: colors.surfaceRaised,
     opacity: 0.1,
   },
   backgroundCircle3: {
@@ -324,7 +324,7 @@ const styles = StyleSheet.create({
   },
   formCard: {
     backgroundColor: colors.surface,
-    borderRadius: 24,
+    borderRadius: borderRadius.lg,
     padding: spacing.xl,
     ...shadows.lg,
   },
@@ -408,7 +408,7 @@ const styles = StyleSheet.create({
   loginButtonIconContainer: {
     width: 32,
     height: 32,
-    borderRadius: 16,
+    borderRadius: borderRadius.lg,
     backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',

@@ -103,7 +103,7 @@ export default function ManageCompaniesScreen() {
                                 {item.number}ª Compañía{item.comuna ? ` · ${item.comuna}` : ''}
                             </Text>
                         </View>
-                        <Ionicons name="chevron-forward" size={22} color={colors.textMuted} />
+                        <Ionicons name="chevron-forward" size={24} color={colors.textMuted} />
                     </TouchableOpacity>
                 )}
                 ListEmptyComponent={
@@ -130,7 +130,7 @@ export default function ManageCompaniesScreen() {
                             </View>
                             <TouchableOpacity onPress={() => setDetalle(null)}
                                               style={styles.cerrar} hitSlop={12}>
-                                <Ionicons name="close" size={26} color={colors.text} />
+                                <Ionicons name="close" size={24} color={colors.text} />
                             </TouchableOpacity>
                         </View>
 
@@ -202,7 +202,7 @@ export default function ManageCompaniesScreen() {
                                         <Ionicons name="chevron-down" size={20} color={colors.gray[500]} />
                                     </TouchableOpacity>
                                     <TouchableOpacity
-                                        style={[styles.selectButton, { backgroundColor: colors.secondary, width: 50, justifyContent: 'center', padding: 0 }]}
+                                        style={[styles.selectButton, { backgroundColor: colors.surfaceRaised, width: 50, justifyContent: 'center', padding: 0 }]}
                                         onPress={() => setShowCreateDept(true)}
                                     >
                                         <Ionicons name="add" size={24} color="white" />
@@ -289,7 +289,7 @@ const styles = StyleSheet.create({
         elevation: 2,
     },
     iconBox: {
-        width: 48, height: 48, borderRadius: 24,
+        width: 48, height: 48, borderRadius: borderRadius.lg,
         backgroundColor: colors.gray[100], alignItems: 'center', justifyContent: 'center'
     },
     title: { fontSize: 16, fontWeight: '600', color: colors.text },
@@ -300,7 +300,7 @@ const styles = StyleSheet.create({
         right: spacing.md,
         width: 56,
         height: 56,
-        borderRadius: 28,
+        borderRadius: borderRadius.full,
         backgroundColor: colors.primary,
         alignItems: 'center',
         justifyContent: 'center',

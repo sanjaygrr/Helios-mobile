@@ -133,7 +133,7 @@ export default function ManageUnitsScreen() {
                 {/* Header */}
                 <View style={styles.cardHeader}>
                     <View style={[styles.iconBox, { backgroundColor: colors.primary }]}>
-                        <Ionicons name={getTypeIcon(item.unit_type) as any} size={22} color={colors.white} />
+                        <Ionicons name={getTypeIcon(item.unit_type) as any} size={24} color={colors.white} />
                     </View>
                     <View style={styles.cardInfo}>
                         <Text style={styles.cardTitle}>{item.name}</Text>
@@ -148,7 +148,7 @@ export default function ManageUnitsScreen() {
                 {/* Company info */}
                 {item.company_name && (
                     <View style={styles.companyRow}>
-                        <Ionicons name="business-outline" size={14} color={colors.gray[500]} />
+                        <Ionicons name="business-outline" size={18} color={colors.gray[500]} />
                         <Text style={styles.companyText}>{item.company_name}</Text>
                     </View>
                 )}
@@ -260,7 +260,7 @@ const styles = StyleSheet.create({
     iconBox: {
         width: 48,
         height: 48,
-        borderRadius: 12,
+        borderRadius: borderRadius.md,
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -283,13 +283,13 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingVertical: 5,
         paddingHorizontal: 10,
-        borderRadius: 20,
+        borderRadius: borderRadius.lg,
         gap: 5,
     },
     statusDot: {
         width: 7,
         height: 7,
-        borderRadius: 4,
+        borderRadius: borderRadius.sm,
     },
     statusText: {
         fontSize: 11,
@@ -324,7 +324,7 @@ const styles = StyleSheet.create({
         gap: 5,
         paddingVertical: 6,
         paddingHorizontal: 12,
-        borderRadius: 8,
+        borderRadius: borderRadius.sm,
         backgroundColor: colors.gray[50],
     },
     actionText: {
@@ -337,7 +337,7 @@ const styles = StyleSheet.create({
         right: 20,
         width: 60,
         height: 60,
-        borderRadius: 30,
+        borderRadius: borderRadius.full,
         backgroundColor: colors.primary,
         alignItems: 'center',
         justifyContent: 'center',
@@ -364,7 +364,7 @@ const styles = StyleSheet.create({
     input: {
         backgroundColor: colors.gray[50],
         padding: 14,
-        borderRadius: 12,
+        borderRadius: borderRadius.md,
         marginBottom: 15,
         fontSize: 15,
         borderWidth: 1,
@@ -373,7 +373,7 @@ const styles = StyleSheet.create({
     selectBtn: {
         backgroundColor: colors.gray[50],
         padding: 14,
-        borderRadius: 12,
+        borderRadius: borderRadius.md,
         marginBottom: 15,
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -385,7 +385,7 @@ const styles = StyleSheet.create({
     cancelButton: {
         flex: 1,
         padding: 14,
-        borderRadius: 12,
+        borderRadius: borderRadius.md,
         backgroundColor: colors.gray[100],
         alignItems: 'center',
     },
@@ -393,7 +393,7 @@ const styles = StyleSheet.create({
         flex: 2,
         backgroundColor: colors.primary,
         padding: 14,
-        borderRadius: 12,
+        borderRadius: borderRadius.md,
         alignItems: 'center',
         shadowColor: colors.primary,
         shadowOffset: { width: 0, height: 2 },

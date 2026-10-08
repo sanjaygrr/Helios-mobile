@@ -178,7 +178,7 @@ const styles = StyleSheet.create({
         backgroundColor: colors.surfaceRaised,
         padding: 10,
         marginBottom: 15,
-        borderRadius: 6,
+        borderRadius: borderRadius.sm,
         borderLeftWidth: 4,
         borderLeftColor: colors.secondary
     },
@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
         backgroundColor: colors.surface,
         borderWidth: 1,
         borderColor: colors.gray[200],
-        borderRadius: 8,
+        borderRadius: borderRadius.sm,
         padding: 10,
         marginBottom: 10,
         elevation: 1
@@ -236,7 +236,7 @@ const styles = StyleSheet.create({
         backgroundColor: colors.gray[50], // Very light gray
         borderWidth: 1,
         borderColor: colors.gray[300],
-        borderRadius: 4,
+        borderRadius: borderRadius.sm,
         paddingHorizontal: 8,
         paddingVertical: 4,
         fontSize: 13,
@@ -248,7 +248,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         backgroundColor: colors.success,
         padding: 10,
-        borderRadius: 8,
+        borderRadius: borderRadius.sm,
         marginTop: 5,
         gap: 8
     },

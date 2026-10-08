@@ -168,7 +168,7 @@ export default function ManageCarsScreen({ navigation }: any) {
         <View style={styles.cardHeader}>
           <View style={styles.vehicleInfo}>
             <View style={[styles.iconContainer, { backgroundColor: colors.primary }]}>
-              <Ionicons name={getVehicleIcon(item.unit_type) as any} size={22} color={colors.white} />
+              <Ionicons name={getVehicleIcon(item.unit_type) as any} size={24} color={colors.white} />
             </View>
             <View style={styles.vehicleDetails}>
               <Text style={styles.cardTitle}>{item.name}</Text>
@@ -185,13 +185,13 @@ export default function ManageCarsScreen({ navigation }: any) {
         <View style={styles.detailsRow}>
           {item.members_count > 0 && (
             <View style={styles.detailItem}>
-              <Ionicons name="people-outline" size={14} color={colors.gray[500]} />
+              <Ionicons name="people-outline" size={18} color={colors.gray[500]} />
               <Text style={styles.detailText}>{item.members_count} tripulantes</Text>
             </View>
           )}
           {item.observations && (
             <View style={styles.detailItem}>
-              <Ionicons name="document-text-outline" size={14} color={colors.gray[500]} />
+              <Ionicons name="document-text-outline" size={18} color={colors.gray[500]} />
               <Text style={styles.detailText} numberOfLines={1}>{item.observations}</Text>
             </View>
           )}
@@ -330,7 +330,7 @@ const styles = StyleSheet.create({
   iconContainer: {
     width: 50,
     height: 50,
-    borderRadius: 14,
+    borderRadius: borderRadius.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -353,13 +353,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 5,
     paddingHorizontal: 10,
-    borderRadius: 20,
+    borderRadius: borderRadius.lg,
     gap: 5,
   },
   statusDot: {
     width: 7,
     height: 7,
-    borderRadius: 4,
+    borderRadius: borderRadius.sm,
   },
   statusLabel: {
     fontSize: 11,
@@ -398,7 +398,7 @@ const styles = StyleSheet.create({
     gap: 5,
     paddingVertical: 6,
     paddingHorizontal: 12,
-    borderRadius: 8,
+    borderRadius: borderRadius.sm,
     backgroundColor: colors.gray[50],
   },
   actionText: { fontSize: 13, fontWeight: '600' },
@@ -409,7 +409,7 @@ const styles = StyleSheet.create({
     right: 20,
     width: 60,
     height: 60,
-    borderRadius: 30,
+    borderRadius: borderRadius.full,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
@@ -452,7 +452,7 @@ const styles = StyleSheet.create({
   chip: {
     paddingVertical: 10,
     paddingHorizontal: 14,
-    borderRadius: 12,
+    borderRadius: borderRadius.md,
     backgroundColor: colors.gray[50],
     borderWidth: 1.5,
     borderColor: colors.gray[200],

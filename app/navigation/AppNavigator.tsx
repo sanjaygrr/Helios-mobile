@@ -1,0 +1,547 @@
+import React from 'react';
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import {
+  CommonActions,
+  NavigationContainer,
+  useNavigation,
+} from '@react-navigation/native';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import {
+  createStackNavigator,
+  type StackNavigationProp,
+} from '@react-navigation/stack';
+
+import LoginScreen from '../screens/LoginScreen';
+import MapScreen from '../screens/MapScreen';
+import UnitScreen from '../screens/UnitScreen';
+import ManageUnitsScreen from '../screens/ManageUnitsScreen';
+import ManageCarsScreen from '../screens/ManageCarsScreen';
+import ManageUsersScreen from '../screens/ManageUsersScreen';
+import ManageCompaniesScreen from '../screens/ManageCompaniesScreen';
+import IncidentsScreen from '../screens/IncidentsScreen';
+import SettingsScreen from '../screens/SettingsScreen';
+import MiEstadoScreen from '../screens/MiEstadoScreen';
+import EstadoVacio from '../components/EstadoVacio';
+import { useAuth } from '../context/AuthContext';
+import {
+  borderRadius,
+  colors,
+  shadows,
+  spacing,
+  touch,
+} from '../theme/colors';
+import type {
+  BomberoStackParamList,
+  GestionStackParamList,
+  MandoRole,
+  MandoTabParamList,
+  RecursosStackParamList,
+  RootStackParamList,
+} from './types';
+
+const RootStack = createStackNavigator<RootStackParamList>();
+const MandoTabs = createBottomTabNavigator<MandoTabParamList>();
+const RecursosStack = createStackNavigator<RecursosStackParamList>();
+const GestionStack = createStackNavigator<GestionStackParamList>();
+const BomberoStack = createStackNavigator<BomberoStackParamList>();
+
+type IconName = React.ComponentProps<typeof Ionicons>['name'];
+
+type HubItem = {
+  key: string;
+  title: string;
+  description: string;
+  icon: IconName;
+  onPress: () => void;
+};
+
+const mandoRoles: MandoRole[] = [
+  'SUPER_ADMIN',
+  'COMPANY_ADMIN',
+  'COMPANY_CHIEF',
+];
+
+function isMandoRole(role: string | null): role is MandoRole {
+  return role !== null && mandoRoles.includes(role as MandoRole);
+}
+
+function canAdministrate(role: string | null) {
+  return role === 'SUPER_ADMIN' || role === 'COMPANY_ADMIN';
+}
+
+function ProfileButton() {
+  const navigation = useNavigation();
+
+  return (
+    <Pressable
+      accessibilityLabel="Abrir ajustes"
+      accessibilityRole="button"
+      hitSlop={spacing.sm}
+      onPress={() => navigation.dispatch(CommonActions.navigate('Ajustes'))}
+      style={({ pressed }) => [
+        styles.headerButton,
+        pressed && styles.headerButtonPressed,
+      ]}
+    >
+      <Ionicons name="person-circle-outline" size={spacing.xl} color={colors.white} />
+    </Pressable>
+  );
+}
+
+function BackButton({ onPress }: { onPress: () => void }) {
+  return (
+    <Pressable
+      accessibilityLabel="Volver"
+      accessibilityRole="button"
+      hitSlop={spacing.sm}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.headerButton,
+        pressed && styles.headerButtonPressed,
+      ]}
+    >
+      <Ionicons name="arrow-back" size={spacing.xl} color={colors.white} />
+    </Pressable>
+  );
+}
+
+// Se evalua al llamarla, no al definirla, asi que `styles` ya existe.
+function getSharedHeaderOptions() {
+  return {
+    headerStyle: styles.header,
+    headerTintColor: colors.white,
+    headerRight: () => <ProfileButton />,
+    headerRightContainerStyle: styles.headerRight,
+  };
+}
+
+function NavigationHub({
+  title,
+  description,
+  items,
+}: {
+  title: string;
+  description: string;
+  items: HubItem[];
+}) {
+  return (
+    <ScrollView
+      style={styles.hub}
+      contentContainerStyle={styles.hubContent}
+      showsVerticalScrollIndicator={false}
+    >
+      <Text accessibilityRole="header" style={styles.hubTitle}>
+        {title}
+      </Text>
+      <Text style={styles.hubDescription}>{description}</Text>
+
+      <View style={styles.cardList}>
+        {items.map((item) => (
+          <Pressable
+            accessibilityHint={item.description}
+            accessibilityRole="button"
+            key={item.key}
+            onPress={item.onPress}
+            style={({ pressed }) => [
+              styles.card,
+              pressed && styles.cardPressed,
+            ]}
+          >
+            <View style={styles.cardIcon}>
+              <Ionicons name={item.icon} size={spacing.lg} color={colors.primary} />
+            </View>
+            <View style={styles.cardText}>
+              <Text style={styles.cardTitle}>{item.title}</Text>
+              <Text style={styles.cardDescription}>{item.description}</Text>
+            </View>
+            <Ionicons
+              name="chevron-forward"
+              size={spacing.lg}
+              color={colors.textMuted}
+            />
+          </Pressable>
+        ))}
+      </View>
+    </ScrollView>
+  );
+}
+
+function RecursosHubScreen() {
+  const navigation = useNavigation<
+    StackNavigationProp<RecursosStackParamList, 'RecursosInicio'>
+  >();
+  const { role } = useAuth();
+  const items: HubItem[] = [
+    {
+      key: 'unidad',
+      title: 'Unidad activa',
+      description: 'Revisa la dotación y el estado operativo.',
+      icon: 'people-outline',
+      onPress: () => navigation.navigate('Unidad'),
+    },
+  ];
+
+  if (canAdministrate(role)) {
+    items.push(
+      {
+        key: 'unidades',
+        title: 'Unidades',
+        description: 'Administra las unidades disponibles.',
+        icon: 'albums-outline',
+        onPress: () => navigation.navigate('Unidades'),
+      },
+      {
+        key: 'carros',
+        title: 'Carros',
+        description: 'Administra los carros y su compañía.',
+        icon: 'bus-outline',
+        onPress: () => navigation.navigate('Carros'),
+      },
+    );
+  }
+
+  return (
+    <NavigationHub
+      title="Recursos"
+      description="Personas y carros disponibles para la operación."
+      items={items}
+    />
+  );
+}
+
+function GestionHubScreen() {
+  const navigation = useNavigation<
+    StackNavigationProp<GestionStackParamList, 'GestionInicio'>
+  >();
+  const { role } = useAuth();
+  const items: HubItem[] = [
+    {
+      key: 'emergencias',
+      title: 'Emergencias',
+      description: 'Revisa incidentes y despachos activos.',
+      icon: 'flame-outline',
+      onPress: () => navigation.navigate('Emergencias'),
+    },
+  ];
+
+  if (canAdministrate(role)) {
+    items.unshift(
+      {
+        key: 'usuarios',
+        title: 'Usuarios',
+        description: 'Administra bomberos, mandos y permisos.',
+        icon: 'people-outline',
+        onPress: () => navigation.navigate('Usuarios'),
+      },
+      {
+        key: 'companias',
+        title: 'Compañías',
+        description: 'Administra la estructura del cuerpo.',
+        icon: 'business-outline',
+        onPress: () => navigation.navigate('Companias'),
+      },
+    );
+  }
+
+  return (
+    <NavigationHub
+      title="Gestión"
+      description="Herramientas operativas según tu responsabilidad."
+      items={items}
+    />
+  );
+}
+
+function RecursosNavigator() {
+  const { role } = useAuth();
+  const showAdministrativeRoutes = canAdministrate(role);
+
+  return (
+    <RecursosStack.Navigator screenOptions={getSharedHeaderOptions()}>
+      <RecursosStack.Screen
+        name="RecursosInicio"
+        component={RecursosHubScreen}
+        options={{ title: 'Recursos' }}
+      />
+      <RecursosStack.Screen
+        name="Unidad"
+        component={UnitScreen}
+        options={{ title: 'Unidad activa' }}
+      />
+      {showAdministrativeRoutes && (
+        <>
+          <RecursosStack.Screen
+            name="Unidades"
+            component={ManageUnitsScreen}
+            options={{ title: 'Unidades' }}
+          />
+          <RecursosStack.Screen
+            name="Carros"
+            component={ManageCarsScreen}
+            options={{ title: 'Carros' }}
+          />
+        </>
+      )}
+    </RecursosStack.Navigator>
+  );
+}
+
+function GestionNavigator() {
+  const { role } = useAuth();
+  const showAdministrativeRoutes = canAdministrate(role);
+
+  return (
+    <GestionStack.Navigator screenOptions={getSharedHeaderOptions()}>
+      <GestionStack.Screen
+        name="GestionInicio"
+        component={GestionHubScreen}
+        options={{ title: 'Gestión' }}
+      />
+      {showAdministrativeRoutes && (
+        <>
+          <GestionStack.Screen
+            name="Usuarios"
+            component={ManageUsersScreen}
+            options={{ title: 'Usuarios' }}
+          />
+          <GestionStack.Screen
+            name="Companias"
+            component={ManageCompaniesScreen}
+            options={{ title: 'Compañías' }}
+          />
+        </>
+      )}
+      <GestionStack.Screen
+        name="Emergencias"
+        component={IncidentsScreen}
+        options={{ title: 'Emergencias' }}
+      />
+    </GestionStack.Navigator>
+  );
+}
+
+function getTabIcon(routeName: keyof MandoTabParamList, focused: boolean): IconName {
+  switch (routeName) {
+    case 'Mapa':
+      return focused ? 'map' : 'map-outline';
+    case 'Recursos':
+      return focused ? 'people' : 'people-outline';
+    case 'Gestion':
+      return focused ? 'construct' : 'construct-outline';
+  }
+}
+
+function MandoTabsNavigator() {
+  return (
+    <MandoTabs.Navigator
+      screenOptions={({ route }) => ({
+        headerStyle: styles.header,
+        headerTintColor: colors.white,
+        headerRight: () => <ProfileButton />,
+        headerRightContainerStyle: styles.headerRight,
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textMuted,
+        tabBarStyle: styles.tabBar,
+        tabBarItemStyle: styles.tabBarItem,
+        tabBarIcon: ({ color, focused, size }) => (
+          <Ionicons name={getTabIcon(route.name, focused)} size={size} color={color} />
+        ),
+      })}
+    >
+      <MandoTabs.Screen
+        name="Mapa"
+        component={MapScreen}
+        options={{ title: 'Mapa' }}
+      />
+      <MandoTabs.Screen
+        name="Recursos"
+        component={RecursosNavigator}
+        options={{ headerShown: false, title: 'Recursos' }}
+      />
+      <MandoTabs.Screen
+        name="Gestion"
+        component={GestionNavigator}
+        options={{ headerShown: false, title: 'Gestión' }}
+      />
+    </MandoTabs.Navigator>
+  );
+}
+
+function BomberoNavigator() {
+  return (
+    <BomberoStack.Navigator screenOptions={getSharedHeaderOptions()}>
+      <BomberoStack.Screen
+        name="MiEstado"
+        component={MiEstadoScreen}
+        options={{ title: 'Mi estado' }}
+      />
+    </BomberoStack.Navigator>
+  );
+}
+
+function RoleNavigator() {
+  const { role } = useAuth();
+
+  if (role === 'FIREFIGHTER') {
+    return <BomberoNavigator />;
+  }
+
+  if (isMandoRole(role)) {
+    return <MandoTabsNavigator />;
+  }
+
+  return (
+    <EstadoVacio
+      icono="alert-circle-outline"
+      titulo="Perfil sin acceso"
+      texto="No pudimos determinar qué navegación corresponde a tu cuenta."
+    />
+  );
+}
+
+function RootNavigator() {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <View style={styles.loading}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.loadingText}>Cargando tu cuenta…</Text>
+      </View>
+    );
+  }
+
+  return (
+    <RootStack.Navigator
+      initialRouteName={user ? 'Main' : 'Login'}
+      screenOptions={{ headerShown: false }}
+    >
+      <RootStack.Screen name="Login" component={LoginScreen} />
+      <RootStack.Screen name="Main" component={RoleNavigator} />
+      <RootStack.Screen
+        name="Ajustes"
+        component={SettingsScreen}
+        options={({ navigation }) => ({
+          headerShown: true,
+          headerStyle: styles.header,
+          headerTintColor: colors.white,
+          title: 'Ajustes',
+          headerLeft: () => <BackButton onPress={() => navigation.goBack()} />,
+          headerLeftContainerStyle: styles.headerLeft,
+        })}
+      />
+    </RootStack.Navigator>
+  );
+}
+
+export default function AppNavigator() {
+  return (
+    <NavigationContainer>
+      <RootNavigator />
+    </NavigationContainer>
+  );
+}
+
+const styles = StyleSheet.create({
+  header: {
+    backgroundColor: colors.primary,
+  },
+  headerButton: {
+    alignItems: 'center',
+    borderRadius: borderRadius.md,
+    height: touch,
+    justifyContent: 'center',
+    width: touch,
+  },
+  headerButtonPressed: {
+    backgroundColor: colors.pressOverlay,
+  },
+  headerRight: {
+    paddingRight: spacing.sm,
+  },
+  headerLeft: {
+    paddingLeft: spacing.sm,
+  },
+  tabBar: {
+    backgroundColor: colors.surface,
+    borderTopColor: colors.border,
+    minHeight: touch,
+  },
+  tabBarItem: {
+    minHeight: touch,
+  },
+  hub: {
+    backgroundColor: colors.background,
+    flex: 1,
+  },
+  hubContent: {
+    padding: spacing.lg,
+    paddingBottom: spacing.xl,
+  },
+  hubTitle: {
+    color: colors.text,
+    fontWeight: '700',
+  },
+  hubDescription: {
+    color: colors.textMuted,
+    marginTop: spacing.xs,
+  },
+  cardList: {
+    gap: spacing.md,
+    marginTop: spacing.lg,
+  },
+  card: {
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    flexDirection: 'row',
+    minHeight: touch,
+    padding: spacing.md,
+    ...shadows.sm,
+  },
+  cardPressed: {
+    backgroundColor: colors.pressOverlay,
+  },
+  cardIcon: {
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    borderRadius: borderRadius.md,
+    height: touch,
+    justifyContent: 'center',
+    marginRight: spacing.md,
+    width: touch,
+  },
+  cardText: {
+    flex: 1,
+    marginRight: spacing.sm,
+  },
+  cardTitle: {
+    color: colors.text,
+    fontWeight: '700',
+  },
+  cardDescription: {
+    color: colors.textMuted,
+    marginTop: spacing.xs,
+  },
+  loading: {
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    flex: 1,
+    justifyContent: 'center',
+    padding: spacing.xl,
+  },
+  loadingText: {
+    color: colors.textMuted,
+    marginTop: spacing.md,
+  },
+});

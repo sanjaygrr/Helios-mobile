@@ -52,7 +52,7 @@ export default function Button({
       },
       secondary: {
         container: {
-          backgroundColor: colors.secondary,
+          backgroundColor: colors.surfaceRaised,
           borderColor: colors.secondary,
         },
         text: { color: colors.white },
