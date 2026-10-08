@@ -11,6 +11,8 @@ export type MandoRole = Exclude<UserRole, 'FIREFIGHTER'>;
 export type RootStackParamList = {
   Login: undefined;
   Main: undefined;
+  Despacho: { incidentId?: number; returnToLive?: boolean } | undefined;
+  EmergenciaViva: { incidentId: number };
   Ajustes: undefined;
 };
 
@@ -35,5 +37,6 @@ export type GestionStackParamList = {
 };
 
 export type BomberoStackParamList = {
+  MiDespacho: undefined;
   MiEstado: undefined;
 };

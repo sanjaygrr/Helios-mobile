@@ -27,7 +27,8 @@ const config = {
         "NSLocationAlwaysAndWhenInUseUsageDescription": "Lumbre necesita acceso a tu ubicacion para rastrear la posicion de tu unidad en tiempo real.",
         "ITSAppUsesNonExemptEncryption": false,
         "UIBackgroundModes": [
-          "location"
+          "location",
+          "remote-notification"
         ]
       }
     },
@@ -67,6 +68,14 @@ const config = {
           "image": "./assets/splash.png",
           "resizeMode": "contain",
           "backgroundColor": "#12161B"
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#E8B17A",
+          "defaultChannel": "despachos"
         }
       ],
       "expo-asset",

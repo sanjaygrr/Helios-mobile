@@ -28,7 +28,10 @@ import ManageUsersScreen from '../screens/ManageUsersScreen';
 import ManageCompaniesScreen from '../screens/ManageCompaniesScreen';
 import IncidentsScreen from '../screens/IncidentsScreen';
 import SettingsScreen from '../screens/SettingsScreen';
+import MiDespachoScreen from '../screens/MiDespachoScreen';
 import MiEstadoScreen from '../screens/MiEstadoScreen';
+import DespachoScreen from '../screens/DespachoScreen';
+import EmergenciaVivaScreen from '../screens/EmergenciaVivaScreen';
 import EstadoVacio from '../components/EstadoVacio';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -466,8 +469,15 @@ function MandoTabsNavigator() {
 }
 
 function BomberoNavigator() {
+  // Abre en Mi despacho: cuando a un bombero lo mandan a una emergencia, eso es
+  // lo unico que tiene que ver al desbloquear el telefono.
   return (
     <BomberoStack.Navigator screenOptions={getSharedHeaderOptions()}>
+      <BomberoStack.Screen
+        name="MiDespacho"
+        component={MiDespachoScreen}
+        options={{ title: 'Mi despacho' }}
+      />
       <BomberoStack.Screen
         name="MiEstado"
         component={MiEstadoScreen}
@@ -521,6 +531,8 @@ function RootNavigator() {
     >
       <RootStack.Screen name="Login" component={LoginScreen} />
       <RootStack.Screen name="Main" component={RoleNavigator} />
+      <RootStack.Screen name="Despacho" component={DespachoScreen} />
+      <RootStack.Screen name="EmergenciaViva" component={EmergenciaVivaScreen} />
       <RootStack.Screen
         name="Ajustes"
         component={SettingsScreen}

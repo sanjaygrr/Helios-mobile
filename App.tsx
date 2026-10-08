@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import AppNavigator from './app/navigation/AppNavigator';
+import RegistroPush from './app/components/RegistroPush';
 import TrackingService from './app/components/TrackingService';
 import { AuthProvider } from './app/context/AuthContext';
 
@@ -22,6 +23,7 @@ export default function App() {
     <GestureHandlerRootView style={styles.container}>
       <AuthProvider>
         <TrackingService />
+        <RegistroPush />
         <StatusBar style="light" />
         <AppNavigator />
       </AuthProvider>
