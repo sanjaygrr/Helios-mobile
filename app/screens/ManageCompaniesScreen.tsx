@@ -5,6 +5,7 @@ import { colors, spacing, borderRadius } from '../theme/colors';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import ModalSelector from '../components/ModalSelector';
+import ListaAgrupada from '../components/ListaAgrupada';
 
 export default function ManageCompaniesScreen() {
     const { user, role } = useAuth();
@@ -18,6 +19,10 @@ export default function ManageCompaniesScreen() {
     const [showDeptSelector, setShowDeptSelector] = useState(false);
     const [showCreateDept, setShowCreateDept] = useState(false);
     const [newDeptName, setNewDeptName] = useState('');
+    const deptNameById: Record<number, string> = React.useMemo(
+        () => Object.fromEntries((departments || []).map((d: any) => [d.id, d.label])),
+        [departments]);
+
 
     useEffect(() => {
         fetchCompanies();
@@ -85,10 +90,17 @@ export default function ManageCompaniesScreen() {
 
     return (
         <View style={styles.container}>
-            <FlatList
-                data={companies}
-                keyExtractor={(item: any) => item.id.toString()}
-                renderItem={({ item }) => (
+            <ListaAgrupada
+                datos={companies}
+                criterios={[
+                    { clave: 'comuna', etiqueta: 'Ciudad',
+                      grupo: (c: any) => c.comuna || 'Sin ciudad' },
+                    { clave: 'cuerpo', etiqueta: 'Cuerpo',
+                      grupo: (c: any) => deptNameById[c.fire_department] || 'Sin cuerpo' },
+                ]}
+                claveItem={(c: any) => String(c.id)}
+                buscarEn={(c: any) => `${c.name} ${c.number} ${c.comuna || ''} ${c.address || ''}`}
+                render={(item: any) => (
                     <TouchableOpacity
                         style={styles.card}
                         activeOpacity={0.7}
@@ -106,7 +118,7 @@ export default function ManageCompaniesScreen() {
                         <Ionicons name="chevron-forward" size={24} color={colors.textMuted} />
                     </TouchableOpacity>
                 )}
-                ListEmptyComponent={
+                vacio={
                     <View style={styles.vacio}>
                         <Ionicons name="business-outline" size={48} color={colors.textDisabled} />
                         <Text style={styles.vacioTitulo}>Sin compañías cargadas</Text>
@@ -115,7 +127,6 @@ export default function ManageCompaniesScreen() {
                         </Text>
                     </View>
                 }
-                contentContainerStyle={styles.listContent}
             />
 
             {/* Detalle de la compañía */}
@@ -241,6 +252,7 @@ export default function ManageCompaniesScreen() {
                             placeholder="Nombre del Cuerpo (ej: Ñuñoa)"
                             value={newDeptName}
                             onChangeText={setNewDeptName}
+                            placeholderTextColor={colors.textDisabled}
                         />
                         <View style={styles.modalButtons}>
                             <TouchableOpacity style={styles.cancelButton} onPress={() => setShowCreateDept(false)}>
@@ -309,7 +321,7 @@ const styles = StyleSheet.create({
     modalOverlay: { flex: 1, backgroundColor: colors.scrim, justifyContent: 'center', padding: spacing.lg },
     modalContent: { backgroundColor: colors.surface, borderRadius: borderRadius.lg, padding: spacing.xl },
     modalTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: spacing.lg, textAlign: 'center' },
-    input: { backgroundColor: colors.gray[100], padding: spacing.md, borderRadius: borderRadius.md, marginBottom: spacing.md },
+    input: { backgroundColor: colors.gray[100], padding: spacing.md, borderRadius: borderRadius.md, marginBottom: spacing.md, color: colors.text,},
     modalButtons: { flexDirection: 'row', justifyContent: 'flex-end', gap: spacing.md, marginTop: spacing.md },
     cancelButton: { padding: spacing.md },
     createButton: { backgroundColor: colors.primary, padding: spacing.md, borderRadius: borderRadius.md },

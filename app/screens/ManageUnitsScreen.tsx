@@ -368,8 +368,7 @@ const styles = StyleSheet.create({
         marginBottom: 15,
         fontSize: 15,
         borderWidth: 1,
-        borderColor: colors.gray[200],
-    },
+        borderColor: colors.gray[200], color: colors.text,},
     selectBtn: {
         backgroundColor: colors.gray[50],
         padding: 14,

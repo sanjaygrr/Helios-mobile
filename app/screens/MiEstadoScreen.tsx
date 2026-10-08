@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   ActivityIndicator,
   AppState,
@@ -49,11 +55,11 @@ function getAssignedVehicle(assignment: unknown): string | null {
   if (!data) return null;
 
   const candidates = [
-    data.unit_details?.name,
-    data.unit_name,
     data.unit_details?.vehicle,
     data.vehicle_name,
     data.vehicle_details?.name,
+    data.unit_details?.name,
+    data.unit_name,
     typeof data.unit === 'object' ? data.unit?.name : null,
   ];
 
@@ -74,7 +80,21 @@ function getLatestTransmission(positions: unknown, userId: number): number | nul
   }, null);
 }
 
-function formatElapsed(timestamp: number | null, now: number): string {
+function getLatestHistoryTransmission(positions: unknown): number | null {
+  if (!Array.isArray(positions)) return null;
+
+  return positions.reduce<number | null>((latest, position) => {
+    const timestamp = new Date(position?.timestamp).getTime();
+    if (!Number.isFinite(timestamp)) return latest;
+    return latest === null || timestamp > latest ? timestamp : latest;
+  }, null);
+}
+
+function formatElapsed(
+  timestamp: number | null | undefined,
+  now: number,
+): string {
+  if (timestamp === undefined) return 'No se pudo confirmar';
   if (timestamp === null) return 'Todavía sin transmisión';
 
   const elapsedSeconds = Math.max(0, Math.floor((now - timestamp) / 1000));
@@ -96,8 +116,13 @@ function formatElapsed(timestamp: number | null, now: number): string {
 export default function MiEstadoScreen() {
   const { user } = useAuth();
   const [locationState, setLocationState] = useState(initialLocationState);
-  const [assignedVehicle, setAssignedVehicle] = useState<string | null>(null);
-  const [lastTransmission, setLastTransmission] = useState<number | null>(null);
+  const [assignedVehicle, setAssignedVehicle] = useState<
+    string | null | undefined
+  >(undefined);
+  const [lastTransmission, setLastTransmission] = useState<
+    number | null | undefined
+  >(undefined);
+  const lastTransmissionRef = useRef<number | null | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
   const [isFixing, setIsFixing] = useState(false);
   const [refreshError, setRefreshError] = useState(false);
@@ -127,20 +152,47 @@ export default function MiEstadoScreen() {
       api.get('/tracking/history/live/'),
     ]);
 
+    let assignmentUnavailable = false;
     if (assignmentResult.status === 'fulfilled') {
       setAssignedVehicle(getAssignedVehicle(assignmentResult.value.data));
     } else {
-      setAssignedVehicle(null);
+      const status = (assignmentResult.reason as any)?.response?.status;
+      if (status === 404) {
+        setAssignedVehicle(null);
+      } else {
+        setAssignedVehicle(undefined);
+        assignmentUnavailable = true;
+      }
     }
 
-    if (positionsResult.status === 'fulfilled') {
-      setLastTransmission(
-        getLatestTransmission(positionsResult.value.data, user.id),
-      );
-      setRefreshError(false);
-    } else {
-      setRefreshError(true);
+    let positionsUnavailable = positionsResult.status === 'rejected';
+    const liveTransmission =
+      positionsResult.status === 'fulfilled'
+        ? getLatestTransmission(positionsResult.value.data, user.id)
+        : null;
+
+    if (liveTransmission !== null) {
+      lastTransmissionRef.current = liveTransmission;
+      setLastTransmission(liveTransmission);
+      positionsUnavailable = false;
+    } else if (lastTransmissionRef.current === undefined) {
+      try {
+        const historyResult = await api.get('/tracking/history/', {
+          params: { user: user.id },
+        });
+        const historyTransmission = getLatestHistoryTransmission(
+          historyResult.data,
+        );
+        lastTransmissionRef.current = historyTransmission;
+        setLastTransmission(historyTransmission);
+        positionsUnavailable = false;
+      } catch {
+        positionsUnavailable = true;
+      }
     }
+    setRefreshError(
+      assignmentUnavailable || positionsUnavailable,
+    );
 
     setNow(Date.now());
     setIsLoading(false);
@@ -150,13 +202,22 @@ export default function MiEstadoScreen() {
     refreshStatus().catch(() => {
       setRefreshError(true);
       setIsLoading(false);
+      setNow(Date.now());
     });
 
     const interval = setInterval(() => {
-      refreshStatus().catch(() => setRefreshError(true));
+      refreshStatus().catch(() => {
+        setRefreshError(true);
+        setNow(Date.now());
+      });
     }, REFRESH_INTERVAL_MS);
     const appStateSubscription = AppState.addEventListener('change', state => {
-      if (state === 'active') refreshStatus().catch(() => setRefreshError(true));
+      if (state === 'active') {
+        refreshStatus().catch(() => {
+          setRefreshError(true);
+          setNow(Date.now());
+        });
+      }
     });
 
     return () => {
@@ -172,11 +233,11 @@ export default function MiEstadoScreen() {
 
   const isVisible =
     !needsLocationFix &&
-    lastTransmission !== null &&
+    typeof lastTransmission === 'number' &&
     now - lastTransmission <= VISIBLE_WINDOW_MS;
 
   const permissionButtonLabel = useMemo(() => {
-    if (!locationState.servicesEnabled) return 'Abrir ajustes de ubicación';
+    if (!locationState.servicesEnabled) return 'Abrir ajustes';
     if (!locationState.granted && !locationState.canAskAgain) {
       return 'Abrir ajustes del teléfono';
     }
@@ -208,6 +269,8 @@ export default function MiEstadoScreen() {
         await resumeBackgroundTracking().catch(() => undefined);
       }
       await refreshStatus();
+    } catch {
+      setRefreshError(true);
     } finally {
       setIsFixing(false);
     }
@@ -267,7 +330,9 @@ export default function MiEstadoScreen() {
           <View style={styles.detailTextContainer}>
             <Text style={styles.detailLabel}>Carro asignado</Text>
             <Text style={styles.detailValue}>
-              {assignedVehicle ?? 'Sin carro asignado'}
+              {assignedVehicle === undefined
+                ? 'No se pudo confirmar'
+                : assignedVehicle ?? 'Sin carro asignado'}
             </Text>
           </View>
         </View>
@@ -304,6 +369,7 @@ export default function MiEstadoScreen() {
           activeOpacity={0.8}
           accessibilityRole="button"
           accessibilityLabel={permissionButtonLabel}
+          accessibilityState={{ busy: isFixing, disabled: isFixing }}
         >
           {isFixing ? (
             <ActivityIndicator color={colors.white} />

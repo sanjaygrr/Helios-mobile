@@ -5,12 +5,14 @@ import { colors, spacing, borderRadius, shadows } from '../theme/colors';
 import api from '../services/api';
 import ModalSelector from '../components/ModalSelector';
 import { useAuth } from '../context/AuthContext';
+import ListaAgrupada from '../components/ListaAgrupada';
 
 export default function ManageCarsScreen({ navigation }: any) {
   const { user } = useAuth();
   const [units, setUnits] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalVisible, setModalVisible] = useState(false);
+  const [detalleCarro, setDetalleCarro] = useState<any>(null);
   const [editingUnit, setEditingUnit] = useState<any>(null);
 
   // Form State
@@ -163,7 +165,11 @@ export default function ManageCarsScreen({ navigation }: any) {
     const statusInfo = getStatusInfo(item.status);
 
     return (
-      <View style={styles.card}>
+      <TouchableOpacity
+        style={styles.card}
+        activeOpacity={0.7}
+        onPress={() => setDetalleCarro(item)}
+      >
         {/* Header con icono y estado */}
         <View style={styles.cardHeader}>
           <View style={styles.vehicleInfo}>
@@ -208,7 +214,7 @@ export default function ManageCarsScreen({ navigation }: any) {
             <Text style={[styles.actionText, { color: colors.danger }]}>Eliminar</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -217,18 +223,77 @@ export default function ManageCarsScreen({ navigation }: any) {
       {loading ? (
         <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 50 }} />
       ) : (
-        <FlatList
-          data={units}
-          renderItem={renderItem}
-          keyExtractor={item => item.id.toString()}
-          contentContainerStyle={{ padding: spacing.md, paddingBottom: 100 }}
-          ListEmptyComponent={<Text style={styles.emptyText}>No hay carros registrados</Text>}
+        <ListaAgrupada
+          datos={units}
+          criterios={[
+            { clave: 'comuna', etiqueta: 'Ciudad',
+              grupo: (u: any) => u.comuna || 'Sin ciudad' },
+            { clave: 'compania', etiqueta: 'Compañía',
+              grupo: (u: any) => u.company_name || 'Sin compañía' },
+            { clave: 'cuerpo', etiqueta: 'Cuerpo',
+              grupo: (u: any) => u.fire_department_name || 'Sin cuerpo' },
+            { clave: 'tipo', etiqueta: 'Tipo',
+              grupo: (u: any) => u.type_display || 'Sin tipo' },
+          ]}
+          claveItem={(u: any) => String(u.id)}
+          buscarEn={(u: any) =>
+            `${u.name} ${u.company_name || ''} ${u.comuna || ''} ${u.type_display || ''}`}
+          render={(item: any) => renderItem({ item } as any)}
+          vacio={<Text style={styles.emptyText}>No hay carros registrados</Text>}
         />
       )}
 
       <TouchableOpacity style={styles.fab} onPress={() => handleOpenModal()}>
         <Ionicons name="add" size={24} color="white" />
       </TouchableOpacity>
+
+      {/* Detalle del carro */}
+      <Modal visible={!!detalleCarro} animationType="slide" transparent
+             onRequestClose={() => setDetalleCarro(null)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { gap: 0 }]}>
+            <View style={estilosDetalle.header}>
+              <View style={{ flex: 1 }}>
+                <Text style={estilosDetalle.titulo}>{detalleCarro?.name}</Text>
+                <Text style={estilosDetalle.sub}>
+                  {detalleCarro?.type_display || detalleCarro?.unit_type}
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => setDetalleCarro(null)} hitSlop={12}
+                                style={estilosDetalle.cerrar}>
+                <Ionicons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            {[
+              ['pulse', 'Estado', detalleCarro?.status_display],
+              ['business', 'Compañía', detalleCarro?.company_name],
+              ['location', 'Ciudad', detalleCarro?.comuna],
+              ['shield', 'Cuerpo', detalleCarro?.fire_department_name],
+              ['people', 'Dotación', detalleCarro?.members_count
+                ? `${detalleCarro.members_count} personas` : null],
+              ['document-text', 'Observaciones', detalleCarro?.observations],
+            ].map(([ic, et, va]: any) => (
+              <View key={et} style={estilosDetalle.fila}>
+                <Ionicons name={ic} size={20} color={colors.textMuted} />
+                <View style={{ flex: 1, marginLeft: spacing.md }}>
+                  <Text style={estilosDetalle.etiqueta}>{et}</Text>
+                  <Text style={estilosDetalle.valor}>{va || 'Sin registrar'}</Text>
+                </View>
+              </View>
+            ))}
+
+            <TouchableOpacity
+              style={estilosDetalle.editar}
+              activeOpacity={0.8}
+              onPress={() => { const c = detalleCarro; setDetalleCarro(null); handleOpenModal(c); }}
+            >
+              <Ionicons name="create-outline" size={20} color={colors.white} />
+              <Text style={estilosDetalle.editarTexto}>Editar carro</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       <Modal visible={isModalVisible} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
@@ -241,7 +306,8 @@ export default function ManageCarsScreen({ navigation }: any) {
               placeholder="Ej: B-1"
               value={name}
               onChangeText={setName}
-            />
+                placeholderTextColor={colors.textDisabled}
+                        />
 
             <Text style={styles.label}>Tipo</Text>
             <TouchableOpacity style={styles.input} onPress={() => setShowCompanySelector(true)}>
@@ -279,7 +345,8 @@ export default function ManageCarsScreen({ navigation }: any) {
               keyboardType="numeric"
               value={membersCount}
               onChangeText={setMembersCount}
-            />
+                placeholderTextColor={colors.textDisabled}
+                        />
 
             <View style={styles.modalButtons}>
               <TouchableOpacity style={styles.cancelButton} onPress={() => setModalVisible(false)}>
@@ -446,8 +513,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     fontSize: 15,
     borderWidth: 1,
-    borderColor: colors.gray[200],
-  },
+    borderColor: colors.gray[200], color: colors.text,},
   chipsRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
   chip: {
     paddingVertical: 10,
@@ -483,4 +549,20 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   saveButtonText: { color: colors.white, fontWeight: '700', fontSize: 15 }
+});
+
+const estilosDetalle = StyleSheet.create({
+  header: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: spacing.md },
+  titulo: { fontSize: 26, fontWeight: '700', color: colors.text },
+  sub: { fontSize: 16, color: colors.textMuted, marginTop: 2 },
+  cerrar: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  fila: { flexDirection: 'row', alignItems: 'center', paddingVertical: 13,
+          borderTopWidth: 1, borderTopColor: colors.border },
+  etiqueta: { fontSize: 13, fontWeight: '700', letterSpacing: 0.6,
+              textTransform: 'uppercase', color: colors.textMuted },
+  valor: { fontSize: 17, color: colors.text, marginTop: 2 },
+  editar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+            gap: spacing.sm, height: 56, borderRadius: borderRadius.md,
+            backgroundColor: colors.primary, marginTop: spacing.lg },
+  editarTexto: { fontSize: 18, fontWeight: '700', color: colors.white },
 });

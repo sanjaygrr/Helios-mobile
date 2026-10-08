@@ -544,7 +544,8 @@ export default function IncidentsScreen() {
                                                 value={addressQuery}
                                                 onChangeText={setAddressQuery}
                                                 onSubmitEditing={handleGeocode}
-                                            />
+                                                placeholderTextColor={colors.textDisabled}
+                        />
                                             <TouchableOpacity
                                                 style={{ backgroundColor: colors.gray[200], justifyContent: 'center', paddingHorizontal: 12, borderRadius: borderRadius.md }}
                                                 onPress={handleGeocode}
@@ -1002,8 +1003,7 @@ const styles = StyleSheet.create({
         marginBottom: spacing.md,
         fontSize: 15,
         borderWidth: 1,
-        borderColor: colors.gray[200],
-    },
+        borderColor: colors.gray[200], color: colors.text,},
     textArea: { height: 100, textAlignVertical: 'top' },
     loadingContainer: { alignItems: 'center', padding: spacing.xl },
     locationText: {

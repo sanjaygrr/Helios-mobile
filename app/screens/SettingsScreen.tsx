@@ -65,7 +65,8 @@ export default function SettingsScreen() {
         placeholder="https://tu-backend/api"
         autoCapitalize="none"
         autoCorrect={false}
-      />
+          placeholderTextColor={colors.textDisabled}
+                        />
       <View style={{ flexDirection: 'row', gap: spacing.md }}>
         <TouchableOpacity style={styles.btnPrimary} onPress={save}>
           <Text style={styles.btnText}>Guardar</Text>
@@ -93,7 +94,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background, padding: spacing.md },
   title: { fontSize: 20, fontWeight: '700', marginBottom: spacing.md, color: colors.text },
   label: { fontSize: 12, color: colors.gray[600], marginBottom: spacing.xs },
-  input: { backgroundColor: colors.surface, padding: spacing.md, borderRadius: borderRadius.md, borderWidth: 1, borderColor: colors.gray[200], marginBottom: spacing.md },
+  input: { backgroundColor: colors.surface, padding: spacing.md, borderRadius: borderRadius.md, borderWidth: 1, borderColor: colors.gray[200], marginBottom: spacing.md, color: colors.text,},
   btnPrimary: { backgroundColor: colors.primary, padding: spacing.md, borderRadius: borderRadius.md, alignItems: 'center', flex: 1 },
   btnSecondary: { backgroundColor: colors.gray[100], padding: spacing.md, borderRadius: borderRadius.md, alignItems: 'center', flex: 1, borderWidth: 1, borderColor: colors.gray[300] },
   btnText: { color: colors.white, fontWeight: '700' },

@@ -40,6 +40,7 @@ export default function ModalSelector({ visible, title, options, onSelect, onClo
                             placeholder="Buscar..."
                             value={search}
                             onChangeText={setSearch}
+                            placeholderTextColor={colors.textDisabled}
                         />
                     )}
 
@@ -70,7 +71,7 @@ const styles = StyleSheet.create({
     container: { backgroundColor: colors.surface, borderTopLeftRadius: borderRadius.lg, borderTopRightRadius: borderRadius.lg, padding: spacing.md, maxHeight: '80%' },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md },
     title: { fontSize: 18, fontWeight: 'bold' },
-    searchInput: { backgroundColor: colors.gray[100], padding: spacing.sm, borderRadius: borderRadius.md, marginBottom: spacing.sm },
+    searchInput: { backgroundColor: colors.gray[100], padding: spacing.sm, borderRadius: borderRadius.md, marginBottom: spacing.sm, color: colors.text,},
     list: { marginTop: spacing.xs },
     option: { paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.gray[200] },
     optionText: { fontSize: 16 },

@@ -113,6 +113,27 @@ function BackButton({ onPress }: { onPress: () => void }) {
   );
 }
 
+function LogoutButton() {
+  const { logout } = useAuth();
+
+  return (
+    <Pressable
+      accessibilityLabel="Cerrar sesión"
+      accessibilityRole="button"
+      hitSlop={spacing.sm}
+      onPress={() => {
+        logout().catch(() => undefined);
+      }}
+      style={({ pressed }) => [
+        styles.headerButton,
+        pressed && styles.headerButtonPressed,
+      ]}
+    >
+      <Ionicons name="log-out-outline" size={spacing.xl} color={colors.white} />
+    </Pressable>
+  );
+}
+
 // Se evalua al llamarla, no al definirla, asi que `styles` ya existe.
 function getSharedHeaderOptions() {
   return {
@@ -120,6 +141,13 @@ function getSharedHeaderOptions() {
     headerTintColor: colors.white,
     headerRight: () => <ProfileButton />,
     headerRightContainerStyle: styles.headerRight,
+  };
+}
+
+function getDetailHeaderOptions(navigation: { goBack: () => void }) {
+  return {
+    headerLeft: () => <BackButton onPress={() => navigation.goBack()} />,
+    headerLeftContainerStyle: styles.headerLeft,
   };
 }
 
@@ -274,19 +302,28 @@ function RecursosNavigator() {
       <RecursosStack.Screen
         name="Unidad"
         component={UnitScreen}
-        options={{ title: 'Unidad activa' }}
+        options={({ navigation }) => ({
+          title: 'Unidad activa',
+          ...getDetailHeaderOptions(navigation),
+        })}
       />
       {showAdministrativeRoutes && (
         <>
           <RecursosStack.Screen
             name="Unidades"
             component={ManageUnitsScreen}
-            options={{ title: 'Unidades' }}
+            options={({ navigation }) => ({
+              title: 'Unidades',
+              ...getDetailHeaderOptions(navigation),
+            })}
           />
           <RecursosStack.Screen
             name="Carros"
             component={ManageCarsScreen}
-            options={{ title: 'Carros' }}
+            options={({ navigation }) => ({
+              title: 'Carros',
+              ...getDetailHeaderOptions(navigation),
+            })}
           />
         </>
       )}
@@ -310,19 +347,28 @@ function GestionNavigator() {
           <GestionStack.Screen
             name="Usuarios"
             component={ManageUsersScreen}
-            options={{ title: 'Usuarios' }}
+            options={({ navigation }) => ({
+              title: 'Usuarios',
+              ...getDetailHeaderOptions(navigation),
+            })}
           />
           <GestionStack.Screen
             name="Companias"
             component={ManageCompaniesScreen}
-            options={{ title: 'Compañías' }}
+            options={({ navigation }) => ({
+              title: 'Compañías',
+              ...getDetailHeaderOptions(navigation),
+            })}
           />
         </>
       )}
       <GestionStack.Screen
         name="Emergencias"
         component={IncidentsScreen}
-        options={{ title: 'Emergencias' }}
+        options={({ navigation }) => ({
+          title: 'Emergencias',
+          ...getDetailHeaderOptions(navigation),
+        })}
       />
     </GestionStack.Navigator>
   );
@@ -388,7 +434,7 @@ function BomberoNavigator() {
 }
 
 function RoleNavigator() {
-  const { role } = useAuth();
+  const { role, logout } = useAuth();
 
   if (role === 'FIREFIGHTER') {
     return <BomberoNavigator />;
@@ -403,6 +449,10 @@ function RoleNavigator() {
       icono="alert-circle-outline"
       titulo="Perfil sin acceso"
       texto="No pudimos determinar qué navegación corresponde a tu cuenta."
+      botonTexto="Cerrar sesión"
+      onPressBoton={() => {
+        logout().catch(() => undefined);
+      }}
     />
   );
 }
@@ -421,6 +471,7 @@ function RootNavigator() {
 
   return (
     <RootStack.Navigator
+      key={user ? 'authenticated' : 'anonymous'}
       initialRouteName={user ? 'Main' : 'Login'}
       screenOptions={{ headerShown: false }}
     >
@@ -436,6 +487,8 @@ function RootNavigator() {
           title: 'Ajustes',
           headerLeft: () => <BackButton onPress={() => navigation.goBack()} />,
           headerLeftContainerStyle: styles.headerLeft,
+          headerRight: () => <LogoutButton />,
+          headerRightContainerStyle: styles.headerRight,
         })}
       />
     </RootStack.Navigator>

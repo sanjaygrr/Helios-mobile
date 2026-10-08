@@ -69,7 +69,8 @@ export default function PersonnelForm({ onChange, initialMembers = [] }: Personn
                     {/* Header Info Block simulation */}
                     <View style={styles.formHeaderBlock}>
                         <Text style={styles.formLabel}>Lider del Grupo:</Text>
-                        <TextInput style={styles.headerInput} placeholder="Nombre del oficial a cargo" />
+                        <TextInput style={styles.headerInput} placeholder="Nombre del oficial a cargo"     placeholderTextColor={colors.textDisabled}
+                        />
                     </View>
 
                     <Text style={styles.sectionTitle}>Personal Concurrente ({members.length})</Text>
@@ -193,8 +194,7 @@ const styles = StyleSheet.create({
         borderBottomWidth: 1,
         borderBottomColor: colors.gray[300],
         paddingVertical: 4,
-        fontSize: 14
-    },
+        fontSize: 14, color: colors.text,},
     sectionTitle: {
         fontSize: 14,
         fontWeight: 'bold',
@@ -240,8 +240,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 8,
         paddingVertical: 4,
         fontSize: 13,
-        height: 36
-    },
+        height: 36, color: colors.text,},
     addButton: {
         flexDirection: 'row',
         alignItems: 'center',

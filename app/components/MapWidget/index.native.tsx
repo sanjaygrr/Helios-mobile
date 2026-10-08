@@ -2,6 +2,7 @@ import React, { useEffect, useImperativeHandle, useMemo, useRef, useState, forwa
 import { StyleSheet, View, Platform, Text, LayoutChangeEvent } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE, PROVIDER_DEFAULT, Region } from 'react-native-maps';
 import { colors, marcador, shadows, spacing, unitStatus } from '../../theme/colors';
+import { estiloMapa } from './estiloMapa';
 import {
     MapWidgetProps,
     MapWidgetHandle,
@@ -243,7 +244,10 @@ const MapWidget = forwardRef<MapWidgetHandle, MapWidgetProps>(({
             }}
             showsUserLocation={false}
             showsCompass={true}
-            mapType="hybrid"
+            mapType="terrain"
+            customMapStyle={estiloMapa}
+            showsBuildings={false}
+            toolbarEnabled={false}
             onLayout={onLayout}
             onPress={() => {
                 if (ignoreMapPress.current) {

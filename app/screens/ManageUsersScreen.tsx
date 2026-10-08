@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius } from '../theme/colors';
 import api from '../services/api';
 import ModalSelector from '../components/ModalSelector';
+import ListaAgrupada from '../components/ListaAgrupada';
 
 export default function ManageUsersScreen() {
     const [users, setUsers] = useState([]);
@@ -71,10 +72,25 @@ export default function ManageUsersScreen() {
 
     return (
         <View style={styles.container}>
-            <FlatList
-                data={users}
-                keyExtractor={(item: any) => item.id.toString()}
-                renderItem={({ item }) => {
+            <ListaAgrupada
+                datos={users}
+                criterios={[
+                    { clave: 'compania', etiqueta: 'Compañía',
+                      grupo: (u: any) => u.company_details?.name || 'Sin compañía' },
+                    { clave: 'comuna', etiqueta: 'Ciudad',
+                      grupo: (u: any) => u.company_details?.comuna || 'Sin ciudad' },
+                    { clave: 'cuerpo', etiqueta: 'Cuerpo',
+                      grupo: (u: any) => u.fire_department_details?.name || 'Sin cuerpo' },
+                    { clave: 'rol', etiqueta: 'Rol',
+                      grupo: (u: any) => ({
+                          SUPER_ADMIN: 'Super Admin', COMPANY_ADMIN: 'Comandante',
+                          COMPANY_CHIEF: 'Jefe de Compañía', FIREFIGHTER: 'Bombero',
+                      } as any)[u.role] || u.role },
+                ]}
+                claveItem={(u: any) => String(u.id)}
+                buscarEn={(u: any) =>
+                    `${u.first_name || ''} ${u.last_name || ''} ${u.email} ${u.company_details?.name || ''}`}
+                render={(item: any) => {
                     const getRoleInfo = (role: string) => {
                         switch (role) {
                             case 'SUPER_ADMIN': return { label: 'Super Admin', color: colors.danger, icon: 'shield' };
@@ -116,8 +132,7 @@ export default function ManageUsersScreen() {
                         </View>
                     );
                 }}
-                contentContainerStyle={styles.listContent}
-                ListEmptyComponent={<Text style={styles.emptyText}>No hay usuarios registrados</Text>}
+                vacio={<Text style={styles.emptyText}>No hay usuarios registrados</Text>}
             />
 
             <TouchableOpacity
@@ -337,8 +352,7 @@ const styles = StyleSheet.create({
         marginBottom: spacing.md,
         fontSize: 15,
         borderWidth: 1,
-        borderColor: colors.gray[200],
-    },
+        borderColor: colors.gray[200], color: colors.text,},
     label: {
         fontWeight: '600',
         marginBottom: spacing.sm,

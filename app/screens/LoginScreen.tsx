@@ -368,8 +368,7 @@ const styles = StyleSheet.create({
   },
   inputContainerFocused: {
     borderColor: colors.accent,
-    backgroundColor: colors.surface,
-  },
+    backgroundColor: colors.surface, color: colors.text,},
   inputIcon: {
     paddingLeft: spacing.md,
     paddingRight: spacing.sm,

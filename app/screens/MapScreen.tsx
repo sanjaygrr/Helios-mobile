@@ -438,7 +438,7 @@ const styles = StyleSheet.create({
   },
   statusDot: { width: 12, height: 12, borderRadius: borderRadius.sm },
   statusLabel: { fontSize: 15, fontWeight: '700', color: colors.text },
-  statusDivider: { width: 1, height: 16, backgroundColor: colors.border, marginHorizontal: 5 },
+  statusDivider: { width: 1, height: 12, backgroundColor: colors.border, marginHorizontal: 2 },
 
   infoCard: {
     position: 'absolute', bottom: 100, left: 16, right: 16,
@@ -490,22 +490,23 @@ const styles = StyleSheet.create({
   // Wind Widget
   windWidget: {
     position: 'absolute',
-    top: 128,
-    right: 16,
-    padding: 12,
-    borderRadius: borderRadius.md,
-    ...overlay,
-    minWidth: 100,
+    top: 52,
+    right: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: borderRadius.full,
+    flexDirection: 'row',
     alignItems: 'center',
-    ...shadows.md
+    gap: 8,
+    ...overlay,
   },
   windText: {
-    color: colors.white,
-    fontSize: 14,
-    fontWeight: '600'
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: '700'
   },
   windSubtext: {
-    color: colors.white,
+    color: colors.textMuted,
     fontSize: 11,
     marginTop: 4,
     opacity: 0.9
