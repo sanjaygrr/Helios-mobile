@@ -12,14 +12,16 @@
 export const colors = {
   brand: '#FF1E00',            // logo y severidad crítica, nada más
 
-  // Acción. Deliberadamente NO es rojo: si el rojo pinta los botones, deja de
-  // significar emergencia. Acá el rojo es solo severidad, y la interfaz es cian.
-  primary: '#22D3EE',          // relleno de botón — texto oscuro encima 10.40:1
-  primaryPressed: '#0E9FB8',
-  accent: '#22D3EE',           // texto, íconos y bordes sobre oscuro — 10.40:1
-  accentMuted: '#0E7490',
-  secondary: '#3DDC97',
-  highlight: '#22D3EE',
+  // Acción. No es rojo a propósito: si el rojo pinta los botones, deja de
+  // significar emergencia. Es el ámbar de la brasa, la marca misma.
+  // Saturación 47% contra el 86% del cian anterior: se lee igual de bien pero
+  // no grita, que importa en una pantalla que se mira de noche.
+  primary: '#E8B17A',          // relleno de botón — texto oscuro encima 9.84:1
+  primaryPressed: '#C98F58',
+  accent: '#E8B17A',           // texto, íconos y bordes sobre oscuro — 9.84:1
+  accentMuted: '#9A7047',
+  secondary: '#7FC8A9',        // confirmación, también bajado de saturación
+  highlight: '#E8B17A',
 
   // Superficies
   canvas: '#0E1217',
@@ -39,7 +41,7 @@ export const colors = {
   textMuted: '#A8B0BA',        // 8.58:1
   textLight: '#A8B0BA',
   textDisabled: '#6B7380',
-  textOnPrimary: '#06232B',   // oscuro sobre el cian, no blanco
+  textOnPrimary: '#241607',   // oscuro cálido sobre el ámbar, no blanco
   textOnAccent: '#0E1217',
   white: '#FFFFFF',            // solo texto sobre rellenos de color
   black: '#000000',
@@ -47,7 +49,7 @@ export const colors = {
   // Semánticos — cada uno su color, ya no colapsan de a dos
   danger: '#FFB4A2',
   dangerFill: '#B82E0A',
-  warning: '#FFD36A',
+  warning: '#FFC43D',
   warningFill: '#7A4A00',
   success: '#3DDC97',
   successFill: '#0A5C3A',
@@ -57,7 +59,7 @@ export const colors = {
   // Severidad de emergencia
   sevCritica: '#FF1E00',
   sevAlta: '#FF8A3D',
-  sevMedia: '#FFD36A',
+  sevMedia: '#FFC43D',
   sevBaja: '#7EB6F0',
 
   // Capas
