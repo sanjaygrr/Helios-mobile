@@ -6,6 +6,7 @@ import { colors, spacing, borderRadius } from '../theme/colors';
 
 import ModalSelector from '../components/ModalSelector';
 import PersonnelForm, { SectionMember } from '../components/PersonnelForm';
+import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import LocationPicker from '../components/LocationPicker';
@@ -22,6 +23,7 @@ const getIncidentColor = (type: string) => {
 };
 
 export default function IncidentsScreen() {
+    const navigation = useNavigation<any>();
     const { user, role } = useAuth();
     const [incidents, setIncidents] = useState<any[]>([]);
 
@@ -397,10 +399,20 @@ export default function IncidentsScreen() {
                     {(role === 'SUPER_ADMIN' || role === 'COMPANY_CHIEF') && item.is_active && (
                         <TouchableOpacity
                             style={[styles.actionBtn, styles.actionBtnOutline]}
-                            onPress={() => openDispatchModal(item)}
+                            onPress={() => navigation.navigate('Despacho', { incidentId: item.id })}
                         >
-                            <Ionicons name="send" size={18} color={colors.primary} />
+                            <Ionicons name="send" size={18} color={colors.accent} />
                             <Text style={[styles.actionBtnText, { color: colors.accent }]}>Despachar</Text>
+                        </TouchableOpacity>
+                    )}
+
+                    {item.is_active && (
+                        <TouchableOpacity
+                            style={[styles.actionBtn, styles.actionBtnOutline]}
+                            onPress={() => navigation.navigate('EmergenciaViva', { incidentId: item.id })}
+                        >
+                            <Ionicons name="pulse" size={18} color={colors.accent} />
+                            <Text style={[styles.actionBtnText, { color: colors.accent }]}>En vivo</Text>
                         </TouchableOpacity>
                     )}
 

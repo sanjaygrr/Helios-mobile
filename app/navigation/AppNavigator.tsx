@@ -512,7 +512,7 @@ function RoleNavigator() {
 }
 
 function RootNavigator() {
-  const { user, isLoading } = useAuth();
+  const { user, role, isLoading } = useAuth();
 
   if (isLoading) {
     return (
@@ -531,8 +531,12 @@ function RootNavigator() {
     >
       <RootStack.Screen name="Login" component={LoginScreen} />
       <RootStack.Screen name="Main" component={RoleNavigator} />
-      <RootStack.Screen name="Despacho" component={DespachoScreen} />
-      <RootStack.Screen name="EmergenciaViva" component={EmergenciaVivaScreen} />
+      {isMandoRole(role) ? (
+        <>
+          <RootStack.Screen name="Despacho" component={DespachoScreen} />
+          <RootStack.Screen name="EmergenciaViva" component={EmergenciaVivaScreen} />
+        </>
+      ) : null}
       <RootStack.Screen
         name="Ajustes"
         component={SettingsScreen}

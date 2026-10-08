@@ -288,7 +288,7 @@ function phaseIndex(phase: Phase): number {
 }
 
 function phaseLabel(phase: Phase): string {
-  if (phase === 'PREPARACION') return 'Preparación para despacho';
+  if (phase === 'PREPARACION') return 'Despacho';
   if (phase === 'COMBATE') return 'Combate';
   if (phase === 'REACONDICIONAMIENTO') return 'Reacondicionamiento';
   return 'Despacho';
@@ -665,9 +665,10 @@ export default function EmergenciaVivaScreen({ navigation, route }: Props) {
                     A cargo: {assignmentLeaderName(assignment, crew)}
                   </Text>
                 </View>
-                <View style={styles.statusBadge}>
-                  <Text style={styles.statusText}>{statusLabel(assignment)}</Text>
-                </View>
+              </View>
+
+              <View style={styles.statusBadge}>
+                <Text style={styles.statusText}>{statusLabel(assignment)}</Text>
               </View>
 
               <View style={styles.currentPhase}>
@@ -707,6 +708,15 @@ export default function EmergenciaVivaScreen({ navigation, route }: Props) {
                 <Text style={styles.crewTitle}>Tripulación</Text>
                 <Text style={styles.crewCount}>{confirmedCount}/{crew.length} confirmaron</Text>
               </View>
+
+              {snapshot.crewErrors[assignment.id] && crew.length > 0 ? (
+                <View style={styles.staleCrewNotice}>
+                  <Ionicons name="time-outline" size={spacing.lg} color={colors.text} />
+                  <Text style={styles.staleCrewNoticeText}>
+                    Mostrando la última confirmación disponible para esta tripulación.
+                  </Text>
+                </View>
+              ) : null}
 
               {snapshot.crewErrors[assignment.id] && crew.length === 0 ? (
                 <View style={styles.crewMessage}>
@@ -835,7 +845,7 @@ const styles = StyleSheet.create({
     width: 12,
   },
   severityText: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '800',
   },
   liveBadge: {
@@ -884,8 +894,8 @@ const styles = StyleSheet.create({
   refreshErrorText: {
     color: colors.text,
     flex: 1,
-    fontSize: 16,
-    lineHeight: 22,
+    fontSize: 18,
+    lineHeight: 25,
   },
   boardHeading: {
     alignItems: 'flex-end',
@@ -901,7 +911,7 @@ const styles = StyleSheet.create({
   },
   boardSubtitle: {
     color: colors.textMuted,
-    fontSize: 16,
+    fontSize: 18,
     marginTop: spacing.xs,
   },
   confirmedSummary: {
@@ -949,20 +959,21 @@ const styles = StyleSheet.create({
   },
   leaderName: {
     color: colors.textMuted,
-    fontSize: 16,
-    lineHeight: 22,
+    fontSize: 18,
+    lineHeight: 25,
     marginTop: spacing.xs,
   },
   statusBadge: {
+    alignSelf: 'flex-start',
     backgroundColor: colors.surfaceRaised,
     borderRadius: borderRadius.full,
-    maxWidth: 120,
+    marginTop: spacing.sm,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
   },
   statusText: {
     color: colors.text,
-    fontSize: 14,
+    fontSize: 18,
     fontWeight: '800',
     textAlign: 'center',
   },
@@ -1013,9 +1024,9 @@ const styles = StyleSheet.create({
   },
   phaseSegmentText: {
     color: colors.textMuted,
-    fontSize: 13,
+    fontSize: 18,
     fontWeight: '800',
-    lineHeight: 17,
+    lineHeight: 22,
     textAlign: 'center',
   },
   phaseSegmentTextActive: {
@@ -1040,7 +1051,7 @@ const styles = StyleSheet.create({
   },
   crewCount: {
     color: colors.textMuted,
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '700',
   },
   crewRow: {
@@ -1079,7 +1090,7 @@ const styles = StyleSheet.create({
     maxWidth: 112,
   },
   confirmationText: {
-    fontSize: 15,
+    fontSize: 18,
     fontWeight: '900',
     marginTop: spacing.xs,
     textAlign: 'right',
@@ -1094,7 +1105,22 @@ const styles = StyleSheet.create({
   crewMessageText: {
     color: colors.textMuted,
     flex: 1,
+    fontSize: 18,
+  },
+  staleCrewNotice: {
+    alignItems: 'center',
+    backgroundColor: colors.surfaceRaised,
+    borderRadius: borderRadius.md,
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+    padding: spacing.sm,
+  },
+  staleCrewNoticeText: {
+    color: colors.text,
+    flex: 1,
     fontSize: 16,
+    lineHeight: 22,
   },
   actionButton: {
     alignItems: 'center',

@@ -186,6 +186,19 @@ function belongsToBody(person: Person, body: BodyIdentity): boolean {
   return false;
 }
 
+function isCompatibleBody(candidate: BodyIdentity, target: BodyIdentity): boolean {
+  if (target.id === undefined && !target.name) return true;
+  if (candidate.id !== undefined && target.id !== undefined) {
+    return candidate.id === target.id;
+  }
+  if (candidate.name && target.name) {
+    return normalizeText(candidate.name) === normalizeText(target.name);
+  }
+  // Si alguno de los serializers no trae una identidad comparable, la API
+  // autenticada sigue siendo la autoridad de alcance y no ocultamos el carro.
+  return true;
+}
+
 function personName(person?: Person): string {
   if (!person) return 'Sin seleccionar';
   const composed = `${person.first_name || ''} ${person.last_name || ''}`.trim();
@@ -423,15 +436,19 @@ export default function DespachoScreen({ navigation, route }: Props) {
     () => incidents.slice().sort((a, b) => a.title.localeCompare(b.title, 'es-CL')),
     [incidents],
   );
-  const availableUnits = useMemo(
-    () => units.filter((unit) => (unit.status || '').toUpperCase() === 'AVAILABLE'),
-    [units],
-  );
-  const unavailableCount = units.length - availableUnits.length;
   const selectedIncident = incidents.find((incident) => incident.id === selectedIncidentId);
   const selectedUnit = units.find((unit) => unit.id === selectedUnitId);
   const selectedLeader = people.find((person) => person.id === leaderId);
   const selectedCrew = people.filter((person) => crewIds.includes(person.id));
+  const unitsForIncident = useMemo(() => {
+    const body = incidentBody(selectedIncident);
+    return units.filter((unit) => isCompatibleBody(unitBody(unit), body));
+  }, [selectedIncident, units]);
+  const availableUnits = useMemo(
+    () => unitsForIncident.filter((unit) => (unit.status || '').toUpperCase() === 'AVAILABLE'),
+    [unitsForIncident],
+  );
+  const unavailableCount = unitsForIncident.length - availableUnits.length;
 
   const targetBody = useMemo(() => {
     const fromIncident = incidentBody(selectedIncident);
@@ -1110,14 +1127,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceRaised,
     borderRadius: borderRadius.md,
     color: colors.text,
-    fontSize: 16,
-    lineHeight: 22,
+    fontSize: 18,
+    lineHeight: 25,
     marginTop: spacing.md,
     padding: spacing.md,
   },
   inlineError: {
     color: colors.text,
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '700',
     marginTop: spacing.sm,
   },
@@ -1133,8 +1150,8 @@ const styles = StyleSheet.create({
   noticeRowText: {
     color: colors.text,
     flex: 1,
-    fontSize: 16,
-    lineHeight: 22,
+    fontSize: 18,
+    lineHeight: 25,
   },
   searchField: {
     alignItems: 'center',
@@ -1184,8 +1201,8 @@ const styles = StyleSheet.create({
   },
   optionDetail: {
     color: colors.textMuted,
-    fontSize: 16,
-    lineHeight: 22,
+    fontSize: 18,
+    lineHeight: 25,
     marginTop: spacing.xs,
   },
   severityRow: {
@@ -1200,7 +1217,7 @@ const styles = StyleSheet.create({
     width: 12,
   },
   severityText: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '800',
   },
   unitIcon: {
@@ -1278,8 +1295,8 @@ const styles = StyleSheet.create({
   },
   summaryDetail: {
     color: colors.textMuted,
-    fontSize: 16,
-    lineHeight: 22,
+    fontSize: 18,
+    lineHeight: 25,
     marginTop: spacing.xs,
   },
   changeAction: {
@@ -1336,8 +1353,8 @@ const styles = StyleSheet.create({
   footerHintText: {
     color: colors.textMuted,
     flex: 1,
-    fontSize: 16,
-    lineHeight: 22,
+    fontSize: 18,
+    lineHeight: 25,
     textAlign: 'center',
   },
   actionButton: {
