@@ -66,7 +66,6 @@ export default function MapScreen() {
   const [fireData, setFireData] = useState<FirePoint[]>([]);
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
 
-  const [showFires, setShowFires] = useState(true);
   const [selectedItem, setSelectedItem] = useState<OtherUser | FirePoint | any>(null);
 
   const mapRef = useRef<MapWidgetHandle>(null);
@@ -86,7 +85,7 @@ export default function MapScreen() {
 
   // --- Optimization: Filter Fire Data ---
   const visibleFires = useMemo(() => {
-    if (!showFires || !currentRegion || !fireData.length) return [];
+    if (!currentRegion || !fireData.length) return [];
 
     // Broad phase filter
     const latDelta = currentRegion.latitudeDelta * 2;
@@ -109,7 +108,7 @@ export default function MapScreen() {
     });
 
     return inViewport.slice(0, 60);
-  }, [fireData, currentRegion, showFires]);
+  }, [fireData, currentRegion]);
 
   // --- Effects ---
 
@@ -265,7 +264,7 @@ export default function MapScreen() {
           {Object.keys(otherUsers).length === 1 ? '1 en mapa'
             : `${Object.keys(otherUsers).length} en mapa`}
         </Text>
-        {showFires && (
+        {visibleFires.length > 0 && (
           <>
             <View style={styles.statusDivider} />
             <Text style={styles.statusLabel}>
@@ -282,7 +281,7 @@ export default function MapScreen() {
         selfUser={location ? user : null}
         otherUsers={Object.values(otherUsers)}
         fires={visibleFires}
-        showFires={showFires}
+        showFires
         onSelectMarker={setSelectedItem}
         onMapPress={() => setSelectedItem(null)}
         onRegionChange={setCurrentRegion}
@@ -400,9 +399,7 @@ export default function MapScreen() {
       {/* Controls: Layers, Recenter, Tracking */}
       <View style={styles.controlsContainer}>
         {/* Toggle Fire */}
-        <TouchableOpacity style={[styles.fabSmall, showFires && styles.fabActive]} onPress={() => setShowFires(!showFires)}>
-          <Ionicons name="flame" size={20} color={showFires ? colors.white : colors.gray[600]} />
-        </TouchableOpacity>
+
 
         {/* Recenter Button */}
         <TouchableOpacity style={styles.fabSmall} onPress={centerOnUser}>
