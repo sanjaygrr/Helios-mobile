@@ -96,11 +96,14 @@ export const overlay = {
 // Marcadores: la forma distingue el tipo, no solo el color.
 // Antes se coloreaban por hash del id, así que no se leía ni rol ni estado.
 export const marcador = {
-  bombero:    { forma: 'circulo' as const, tam: 40, sel: 48, relleno: colors.accent },
-  carro:      { forma: 'cuadrado' as const, tam: 44, sel: 52, relleno: colors.primary },
-  emergencia: { forma: 'diamante' as const, tam: 44, sel: 52, relleno: colors.brand },
+  bombero:    { forma: 'circulo' as const,  tam: 30, sel: 38, relleno: colors.accent,
+                icono: 'account' as const },
+  carro:      { forma: 'cuadrado' as const, tam: 32, sel: 40, relleno: colors.primary,
+                icono: 'fire-truck' as const },
+  emergencia: { forma: 'diamante' as const, tam: 32, sel: 40, relleno: colors.brand,
+                icono: 'fire' as const },
   anillo: colors.white,
-  anilloAncho: 3,
+  anilloAncho: 2,
   opacidadNoSeleccionado: 0.85,
 };
 

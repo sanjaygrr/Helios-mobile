@@ -6,7 +6,8 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Platform,
-  ScrollView
+  ScrollView,
+  Alert
 } from 'react-native';
 import * as Location from 'expo-location';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -387,14 +388,39 @@ export default function MapScreen() {
         </TouchableOpacity>
 
         {/* Toggle Tracking */}
-        <TouchableOpacity style={[styles.fab, { backgroundColor: isTracking ? colors.secondary : colors.success }]} onPress={async () => {
-          const next = !isTracking;
-          await setLocationSharingEnabled(next);
-          setIsTracking(next);
-          if (next) resumeBackgroundTracking().catch(() => {});
-          else stopBackgroundTracking().catch(() => {});
-        }}>
-          <Ionicons name={isTracking ? "pause" : "play"} size={28} color="white" />
+        <TouchableOpacity
+          style={[styles.fabAncho, { backgroundColor: isTracking ? colors.surfaceRaised : colors.dangerFill }]}
+          activeOpacity={0.8}
+          onPress={() => {
+            const aplicar = async (next: boolean) => {
+              await setLocationSharingEnabled(next);
+              setIsTracking(next);
+              if (next) resumeBackgroundTracking().catch(() => {});
+              else stopBackgroundTracking().catch(() => {});
+            };
+            if (isTracking) {
+              // Dejar de compartir te saca del mapa de la central: no puede ser un toque suelto.
+              Alert.alert(
+                'Dejar de compartir tu ubicación',
+                'La central dejará de verte en el mapa hasta que la vuelvas a activar.',
+                [
+                  { text: 'Cancelar', style: 'cancel' },
+                  { text: 'Dejar de compartir', style: 'destructive', onPress: () => aplicar(false) },
+                ]
+              );
+            } else {
+              aplicar(true);
+            }
+          }}
+        >
+          <Ionicons
+            name={isTracking ? 'radio-button-on' : 'eye-off'}
+            size={20}
+            color={isTracking ? colors.success : colors.white}
+          />
+          <Text style={[styles.fabAnchoTexto, !isTracking && { color: colors.white }]}>
+            {isTracking ? 'Compartiendo' : 'No te ven'}
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -478,6 +504,13 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     ...shadows.lg
   },
+  fabAncho: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    height: touch, paddingHorizontal: spacing.md, borderRadius: borderRadius.full,
+    borderWidth: 1, borderColor: colors.border,
+    ...shadows.lg,
+  },
+  fabAnchoTexto: { fontSize: 15, fontWeight: '700', color: colors.text },
   fabSmall: {
     width: touch, height: touch, borderRadius: touch / 2,
     alignItems: 'center', justifyContent: 'center',
@@ -490,7 +523,7 @@ const styles = StyleSheet.create({
   // Wind Widget
   windWidget: {
     position: 'absolute',
-    top: 52,
+    top: 100,
     right: 12,
     paddingVertical: 8,
     paddingHorizontal: 12,

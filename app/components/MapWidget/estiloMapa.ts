@@ -52,4 +52,13 @@ export const estiloMapa = [
   // Ciudades y comunas sí, en tono bajo
   { featureType: 'administrative.locality', elementType: 'labels.text.fill',
     stylers: [{ color: '#7D8794' }] },
+  // Google reparte los POI en varias subcategorias: hay que apagarlas una a una,
+  // la regla general de 'poi' no alcanza para todas.
+  { featureType: 'poi.government', stylers: [{ visibility: 'off' }] },
+  { featureType: 'poi.medical', stylers: [{ visibility: 'off' }] },
+  { featureType: 'transit.station', stylers: [{ visibility: 'off' }] },
+  { featureType: 'transit.line', stylers: [{ visibility: 'off' }] },
+  { featureType: 'administrative.province', elementType: 'labels',
+    stylers: [{ visibility: 'off' }] },
+  { featureType: 'road', elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
 ];

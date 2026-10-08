@@ -70,6 +70,15 @@ export default function ListaAgrupada<T>({
   }, [datos, activo, busqueda, plegados, buscarEn]);
 
   const totalVisible = secciones.reduce((n, s) => n + s.total, 0);
+  const todosPlegados = secciones.length > 0 && secciones.every(s => plegados[s.titulo]);
+
+  const alternarTodos = () => {
+    if (todosPlegados) {
+      setPlegados({});
+    } else {
+      setPlegados(Object.fromEntries(secciones.map(s => [s.titulo, true])));
+    }
+  };
 
   return (
     <View style={estilos.contenedor}>
@@ -145,10 +154,29 @@ export default function ListaAgrupada<T>({
         }}
         ListHeaderComponent={
           totalVisible > 0 ? (
-            <Text style={estilos.resumen}>
-              {totalVisible} {totalVisible === 1 ? 'resultado' : 'resultados'} en{' '}
-              {secciones.length} {secciones.length === 1 ? 'grupo' : 'grupos'}
-            </Text>
+            <View style={estilos.resumenFila}>
+              <Text style={estilos.resumen}>
+                {totalVisible} {totalVisible === 1 ? 'resultado' : 'resultados'} en{' '}
+                {secciones.length} {secciones.length === 1 ? 'grupo' : 'grupos'}
+              </Text>
+              {secciones.length > 1 && (
+                <TouchableOpacity
+                  onPress={alternarTodos}
+                  activeOpacity={0.7}
+                  hitSlop={10}
+                  style={estilos.alternar}
+                >
+                  <Ionicons
+                    name={todosPlegados ? 'chevron-down' : 'chevron-up'}
+                    size={18}
+                    color={colors.accent}
+                  />
+                  <Text style={estilos.alternarTexto}>
+                    {todosPlegados ? 'Abrir todo' : 'Cerrar todo'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
           ) : null
         }
         ListEmptyComponent={vacio}
@@ -199,13 +227,23 @@ const estilos = StyleSheet.create({
   chipTexto: { fontSize: 15, fontWeight: '700', color: colors.textMuted },
   chipTextoActivo: { color: colors.white },
 
-  resumen: {
-    fontSize: 14,
-    color: colors.textMuted,
+  resumenFila: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
     paddingTop: spacing.md,
     paddingBottom: spacing.xs,
   },
+  resumen: { fontSize: 14, color: colors.textMuted, flex: 1 },
+  alternar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    paddingLeft: spacing.md,
+  },
+  alternarTexto: { fontSize: 15, fontWeight: '700', color: colors.accent },
 
   encabezado: {
     flexDirection: 'row',

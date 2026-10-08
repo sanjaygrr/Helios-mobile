@@ -2,6 +2,7 @@ import React, { useEffect, useImperativeHandle, useMemo, useRef, useState, forwa
 import { StyleSheet, View, Platform, Text, LayoutChangeEvent } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE, PROVIDER_DEFAULT, Region } from 'react-native-maps';
 import { colors, marcador, shadows, spacing, unitStatus } from '../../theme/colors';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { estiloMapa } from './estiloMapa';
 import {
     MapWidgetProps,
@@ -58,25 +59,38 @@ function MarkerShape({
         backgroundColor: fill,
         borderWidth: marcador.anilloAncho,
         borderColor: marcador.anillo,
+        alignItems: 'center' as const,
+        justifyContent: 'center' as const,
     };
+    // Un circulo de color no dice nada: el icono dice si es persona, carro o fuego.
+    const glifo = (
+        <MaterialCommunityIcons
+            name={marcador[point.kind].icono}
+            size={Math.round(size * 0.56)}
+            color={colors.white}
+        />
+    );
 
     if (shape === 'circulo') {
         return (
             <View style={[ring, selected && { borderRadius: outer / 2 }]}>
-                <View style={[body, { borderRadius: size / 2 }]} />
+                <View style={[body, { borderRadius: size / 2 }]}>{glifo}</View>
             </View>
         );
     }
     if (shape === 'cuadrado') {
         return (
             <View style={[ring, selected && { borderRadius: SQUARE_RADIUS + spacing.xs }]}>
-                <View style={[body, { borderRadius: SQUARE_RADIUS }]} />
+                <View style={[body, { borderRadius: SQUARE_RADIUS }]}>{glifo}</View>
             </View>
         );
     }
     return (
         <View style={[ring, { transform: [{ rotate: '45deg' }] }]}>
-            <View style={body} />
+            <View style={body}>
+                {/* el rombo se rota, el icono se desrota para que no quede chueco */}
+                <View style={{ transform: [{ rotate: '-45deg' }] }}>{glifo}</View>
+            </View>
         </View>
     );
 }
@@ -244,7 +258,7 @@ const MapWidget = forwardRef<MapWidgetHandle, MapWidgetProps>(({
             }}
             showsUserLocation={false}
             showsCompass={true}
-            mapType="terrain"
+            mapType="standard"
             customMapStyle={estiloMapa}
             showsBuildings={false}
             toolbarEnabled={false}
