@@ -10,6 +10,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import api, { asList } from '../services/api';
 import LocationPicker from '../components/LocationPicker';
+import ReportarEmergencia from '../components/ReportarEmergencia';
 
 
 const getIncidentColor = (type: string) => {
@@ -30,6 +31,7 @@ export default function IncidentsScreen() {
 
     // Incident Creation State
     const [isModalVisible, setModalVisible] = useState(false);
+    const [editando, setEditando] = useState<any>(null);
     const [editingIncidentId, setEditingIncidentId] = useState<number | null>(null);
     const [newIncident, setNewIncident] = useState({
         title: '',
@@ -131,6 +133,7 @@ export default function IncidentsScreen() {
     const [isGeocoding, setIsGeocoding] = useState(false);
 
     const handleOpenModal = async () => {
+        setEditando(null);
         setNewIncident({ title: '', dispatch_code: '', description: '', requested_units: '1', incident_type: 'OTRO', latitude: 0, longitude: 0, commander: null, fire_department: user?.fire_department || null });
         setModalVisible(true);
         setEditingIncidentId(null);
@@ -492,6 +495,7 @@ export default function IncidentsScreen() {
         });
         setSelectedVehicle(null);
         setSelectedInitialUnit(null);
+        setEditando(incident);
         setModalVisible(true);
         setEditingIncidentId(incident.id);
     };
@@ -543,240 +547,12 @@ export default function IncidentsScreen() {
                 </TouchableOpacity>
             )}
 
-            {/* Create Incident Modal */}
-            <Modal visible={isModalVisible} transparent animationType="slide">
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
-                        <Text style={styles.modalTitle}>Reportar Emergencia</Text>
-
-                        <ScrollView style={{ maxHeight: '80%' }}>
-                            {loadingLocation ? (
-                                <View style={styles.loadingContainer}>
-                                    <ActivityIndicator size="large" color={colors.primary} />
-                                    <Text style={{ color: colors.text, fontSize: 16, marginTop: 8 }}>Obteniendo ubicación...</Text>
-                                </View>
-                            ) : (
-                                <>
-                                    <TextInput
-                                        style={styles.input}
-                                        placeholder="Título (ej: Incendio en Sector 5)"
-                                        placeholderTextColor={colors.textMuted}
-                                        value={newIncident.title}
-                                        onChangeText={(t) => setNewIncident({ ...newIncident, title: t })}
-                                    />
-                                    <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-                                        <View style={{ flex: 1 }}>
-                                            <Text style={styles.fieldLabel}>Clave 10</Text>
-                                            <TextInput
-                                                style={styles.input}
-                                                placeholder="Ej: 10-0"
-                                                placeholderTextColor={colors.textMuted}
-                                                value={newIncident.dispatch_code}
-                                                onChangeText={(t) => setNewIncident({ ...newIncident, dispatch_code: t })}
-                                                autoCapitalize="characters"
-                                            />
-                                        </View>
-                                        <View style={{ width: 120 }}>
-                                            <Text style={styles.fieldLabel}>Carros</Text>
-                                            <TextInput
-                                                style={styles.input}
-                                                placeholder="1"
-                                                placeholderTextColor={colors.textMuted}
-                                                value={newIncident.requested_units}
-                                                onChangeText={(t) => setNewIncident({ ...newIncident, requested_units: t.replace(/[^0-9]/g, '') })}
-                                                keyboardType="number-pad"
-                                                maxLength={2}
-                                            />
-                                        </View>
-                                    </View>
-                                    {role === 'SUPER_ADMIN' && !editingIncidentId && <TouchableOpacity style={styles.selectButton} onPress={() => setShowDepartmentSelector(true)}>
-                                        <Text style={styles.selectText}>{departments.find(item => item.id === newIncident.fire_department)?.label || 'Seleccionar cuerpo de bomberos'}</Text>
-                                        <Ionicons name="chevron-down" size={20} color={colors.gray[500]} />
-                                    </TouchableOpacity>}
-                                    <TouchableOpacity style={styles.selectButton} onPress={() => setShowTypeSelector(true)}>
-                                        <Text style={styles.selectText}>{getTypeLabel()}</Text>
-                                        <Ionicons name="chevron-down" size={20} color={colors.gray[500]} />
-                                    </TouchableOpacity>
-
-                                    {/* Address Input */}
-                                    <View style={{ marginBottom: spacing.md }}>
-                                        <View style={{ flexDirection: 'row', gap: 8 }}>
-                                            <TextInput
-                                                style={[styles.input, { flex: 1, marginBottom: 0 }]}
-                                                placeholder="Dirección / Referencia"
-                                                value={addressQuery}
-                                                onChangeText={setAddressQuery}
-                                                onSubmitEditing={handleGeocode}
-                                                placeholderTextColor={colors.textMuted}
-                        />
-                                            <TouchableOpacity
-                                                style={{ backgroundColor: colors.gray[200], justifyContent: 'center', paddingHorizontal: 12, borderRadius: borderRadius.md }}
-                                                onPress={handleGeocode}
-                                            >
-                                                {isGeocoding ? <ActivityIndicator size="small" color={colors.text} /> : <Ionicons name="search" size={20} color={colors.text} />}
-                                            </TouchableOpacity>
-                                        </View>
-                                        <Text style={{ fontSize: 10, color: colors.textMuted, marginTop: 2 }}>Ingresa dirección y presiona buscar, o ajusta en el mapa.</Text>
-                                    </View>
-
-                                    <TouchableOpacity style={[styles.selectButton, { backgroundColor: colors.secondary + '20' }]} onPress={() => setShowLocationPicker(true)}>
-                                        <Text style={{ color: colors.secondary, fontWeight: '600' }}>
-                                            {newIncident.latitude !== 0 ? 'Map: Ubicación Ajustada' : 'Seleccionar en Mapa'}
-                                        </Text>
-                                        <Ionicons name="map" size={20} color={colors.secondary} />
-                                    </TouchableOpacity>
-                                    <Text style={styles.fieldLabel}>Descripción del llamado</Text>
-                                    <TextInput
-                                        style={[styles.input, styles.textArea]}
-                                        placeholder="Qué ocurre, riesgos, personas afectadas y referencias"
-                                        placeholderTextColor={colors.textMuted}
-                                        value={newIncident.description}
-                                        onChangeText={(t) => setNewIncident({ ...newIncident, description: t })}
-                                        multiline numberOfLines={3}
-                                    />
-                                    <Text style={{ fontSize: 12, marginBottom: 5, color: colors.textMuted, marginTop: 10 }}>Encargado (Jefe de Compañía):</Text>
-                                    {availableChiefs.length > 0 ? (
-                                        <View style={{ height: 50, marginBottom: 15 }}>
-                                            <FlatList
-                                                horizontal
-                                                data={availableChiefs.filter(item => role !== 'SUPER_ADMIN' || item.fire_department === newIncident.fire_department)}
-                                                showsHorizontalScrollIndicator={false}
-                                                keyExtractor={c => c.id.toString()}
-                                                renderItem={({ item }) => (
-                                                    <TouchableOpacity
-                                                        style={[
-                                                            styles.chiefCard,
-                                                            newIncident.commander === item.id && styles.chiefCardSelected
-                                                        ]}
-                                                        onPress={() => setNewIncident({ ...newIncident, commander: newIncident.commander === item.id ? null : item.id })}
-                                                    >
-                                                        <View style={{ alignItems: 'center' }}>
-                                                            <View style={[styles.chiefAvatar, newIncident.commander === item.id && { backgroundColor: colors.pressOverlay }]}>
-                                                                <Ionicons name="person" size={20} color={newIncident.commander === item.id ? 'white' : colors.primary} />
-                                                            </View>
-                                                            <Text
-                                                                numberOfLines={1}
-                                                                style={[
-                                                                    styles.chiefName,
-                                                                    newIncident.commander === item.id && { color: colors.white }
-                                                                ]}
-                                                            >
-                                                                {item.first_name || item.last_name ? `${item.first_name || ''} ${item.last_name || ''}`.trim() : (item.email || '').split('@')[0]}
-                                                            </Text>
-                                                            <Text style={[styles.chiefRole, newIncident.commander === item.id && { color: colors.textMuted }]}>
-                                                                Disponible
-                                                            </Text>
-                                                        </View>
-                                                    </TouchableOpacity>
-                                                )}
-                                            />
-                                        </View>
-                                    ) : (
-                                        <Text style={{ fontStyle: 'italic', color: colors.textMuted, marginBottom: 10 }}>No hay jefes disponibles</Text>
-                                    )}
-
-                                    <Text style={{ fontWeight: 'bold', marginBottom: 5, marginTop: 10, color: colors.gray[600] }}>Recursos Iniciales (Opcional):</Text>
-
-                                    {/* Bomberos guardados */}
-                                    <Text style={{ fontSize: 12, marginBottom: 5, color: colors.textMuted, marginTop: 10 }}>Bomberos Guardados:</Text>
-                                    <SavedFirefighters
-                                        onSelect={(f) => {
-                                            const member = {
-                                                firstName: f.first_name || ((f.email || '').split('@')[0]),
-                                                lastName: f.last_name || '',
-                                                rut: f.rut || '',
-                                                role: 'Bombero',
-                                                company: f.company_details?.name || ''
-                                            } as SectionMember;
-                                            setPersonnelList(prev => [...prev, member]);
-                                        }}
-                                    />
-
-                                    {/* Formulario de nuevo bombero */}
-                                    <PersonnelForm
-                                        initialMembers={personnelList}
-                                        onChange={setPersonnelList}
-                                    />
-
-                                    <Text style={{ fontSize: 12, marginBottom: 5, color: colors.textMuted, marginTop: 15 }}>Unidad a Utilizar (Despacho inmediato):</Text>
-                                    {availableUnits.length > 0 ? (
-                                        <View style={{ height: 50, marginBottom: 15 }}>
-                                            <FlatList
-                                                horizontal
-                                                data={availableUnits.filter(item => role !== 'SUPER_ADMIN' || companyDepartments[item.company] === newIncident.fire_department)}
-                                                showsHorizontalScrollIndicator={false}
-                                                keyExtractor={u => u.id.toString()}
-                                                renderItem={({ item }) => (
-                                                    <TouchableOpacity
-                                                        style={[
-                                                            styles.unitChip,
-                                                            selectedInitialUnit?.id === item.id && styles.unitChipSelected
-                                                        ]}
-                                                        onPress={() => setSelectedInitialUnit(item === selectedInitialUnit ? null : item)}
-                                                    >
-                                                        <Text style={[
-                                                            styles.unitChipText,
-                                                            selectedInitialUnit?.id === item.id && { color: colors.white }
-                                                        ]}>{item.name}</Text>
-                                                    </TouchableOpacity>
-                                                )}
-                                            />
-                                        </View>
-                                    ) : (
-                                        <Text style={{ fontStyle: 'italic', color: colors.textMuted, marginBottom: 10 }}>No hay unidades disponibles</Text>
-                                    )}
-
-                                    {/* Vehicle Selector - Only show if NO Unit is selected, to avoid confusion/duplication */}
-                                    {!selectedInitialUnit && (
-                                        <>
-                                            <Text style={{ fontSize: 12, marginBottom: 5, marginTop: 15, color: colors.textMuted }}>Vehículo a Utilizar (Opcional):</Text>
-                                            {availableVehicles.length > 0 ? (
-                                                <View style={{ height: 50, marginBottom: 15 }}>
-                                                    <FlatList
-                                                        horizontal
-                                                        data={availableVehicles.filter(item => role !== 'SUPER_ADMIN' || companyDepartments[item.company] === newIncident.fire_department)}
-                                                        showsHorizontalScrollIndicator={false}
-                                                        keyExtractor={v => v.id.toString()}
-                                                        renderItem={({ item }) => (
-                                                            <TouchableOpacity
-                                                                style={[
-                                                                    styles.unitChip,
-                                                                    selectedVehicle?.id === item.id && styles.unitChipSelected
-                                                                ]}
-                                                                onPress={() => setSelectedVehicle(item === selectedVehicle ? null : item)}
-                                                            >
-                                                                <Text style={[
-                                                                    styles.unitChipText,
-                                                                    selectedVehicle?.id === item.id && { color: colors.white }
-                                                                ]}>{item.name}</Text>
-                                                            </TouchableOpacity>
-                                                        )}
-                                                    />
-                                                </View>
-                                            ) : (
-                                                <Text style={{ fontStyle: 'italic', color: colors.textMuted, marginBottom: 10 }}>No hay vehículos disponibles</Text>
-                                            )}
-                                        </>
-                                    )}
-
-
-                                    <Text style={styles.locationText}>
-                                        Ubicación: {newIncident.latitude.toFixed(5)}, {newIncident.longitude.toFixed(5)}
-                                    </Text>
-                                    <View style={styles.modalButtons}>
-                                        <TouchableOpacity style={styles.cancelButton} onPress={() => setModalVisible(false)}>
-                                            <Text style={styles.cancelText}>Cancelar</Text>
-                                        </TouchableOpacity>
-                                        <TouchableOpacity style={styles.createButton} onPress={handleCreateIncident}>
-                                            <Text style={styles.createButtonText}>Reportar</Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                </>
-                            )}
-                        </ScrollView>
-                    </View>
-                </View>
-            </Modal>
+            <ReportarEmergencia
+                visible={isModalVisible}
+                incidente={editando}
+                onClose={() => { setModalVisible(false); setEditando(null); setEditingIncidentId(null); }}
+                onGuardado={fetchIncidents}
+            />
 
             {/* Dispatch Modal */}
             <Modal visible={isDispatchModalVisible} transparent animationType="slide">
