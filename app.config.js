@@ -1,7 +1,12 @@
 // Configuración única de la app. Antes vivía partida entre app.json y este
 // archivo, y no quedaba claro cuál mandaba.
-// El mapa usa Leaflet + OpenStreetMap en todas las plataformas y no necesita
-// una API key.
+//
+// La clave de Google Maps NO se escribe acá: vive como variable sensible en
+// EAS (GOOGLE_MAPS_API_KEY) y se inyecta en tiempo de build.
+// Para correr local: GOOGLE_MAPS_API_KEY=... npx expo start
+//
+// iOS no la necesita: MapWidget usa PROVIDER_DEFAULT (Apple Maps) en iOS y
+// PROVIDER_GOOGLE solo en Android.
 
 const config = {
     "name": "Lumbre",
@@ -69,7 +74,7 @@ const config = {
         "expo-notifications",
         {
           "icon": "./assets/icon.png",
-          "color": "#B82E0A",
+          "color": "#E8B17A",
           "defaultChannel": "despachos"
         }
       ],
@@ -91,4 +96,13 @@ const config = {
     "scheme": "lumbre"
   };
 
-module.exports = () => config;
+module.exports = () => ({
+  ...config,
+  android: {
+    ...config.android,
+    config: {
+      ...(config.android.config || {}),
+      googleMaps: { apiKey: process.env.GOOGLE_MAPS_API_KEY },
+    },
+  },
+});
