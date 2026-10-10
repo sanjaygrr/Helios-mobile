@@ -40,7 +40,7 @@ export default function ModalSelector({ visible, title, options, onSelect, onClo
                             placeholder="Buscar..."
                             value={search}
                             onChangeText={setSearch}
-                            placeholderTextColor={colors.textDisabled}
+                            placeholderTextColor={colors.textMuted}
                         />
                     )}
 
@@ -70,9 +70,18 @@ const styles = StyleSheet.create({
     overlay: { flex: 1, backgroundColor: colors.scrim, justifyContent: 'flex-end' },
     container: { backgroundColor: colors.surface, borderTopLeftRadius: borderRadius.lg, borderTopRightRadius: borderRadius.lg, padding: spacing.md, maxHeight: '80%' },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md },
-    title: { fontSize: 18, fontWeight: 'bold' },
-    searchInput: { backgroundColor: colors.gray[100], padding: spacing.sm, borderRadius: borderRadius.md, marginBottom: spacing.sm, color: colors.text,},
+    title: { fontSize: 20, fontWeight: 'bold', color: colors.text },
+    searchInput: {
+        backgroundColor: '#24303A',
+        padding: spacing.md,
+        borderRadius: borderRadius.md,
+        marginBottom: spacing.sm,
+        color: colors.text,
+        fontSize: 18,
+        borderWidth: 1,
+        borderColor: '#6B7380',
+    },
     list: { marginTop: spacing.xs },
-    option: { paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.gray[200] },
-    optionText: { fontSize: 16 },
+    option: { paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
+    optionText: { fontSize: 18, color: colors.text },
 });

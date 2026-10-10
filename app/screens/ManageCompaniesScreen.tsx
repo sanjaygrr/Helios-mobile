@@ -2,14 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Modal, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius } from '../theme/colors';
-import api from '../services/api';
+import api, { asList } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import ModalSelector from '../components/ModalSelector';
 import ListaAgrupada from '../components/ListaAgrupada';
 
 export default function ManageCompaniesScreen() {
     const { user, role } = useAuth();
-    const [companies, setCompanies] = useState([]);
+    const [companies, setCompanies] = useState<any[]>([]);
     const [isModalVisible, setModalVisible] = useState(false);
     const [detalle, setDetalle] = useState<any>(null);
     const [newCompany, setNewCompany] = useState({ name: '', number: '', fire_department: user?.fire_department });
@@ -24,27 +24,29 @@ export default function ManageCompaniesScreen() {
         [departments]);
 
 
+    const [errorCarga, setErrorCarga] = useState('');
+
     useEffect(() => {
         fetchCompanies();
-        if (role === 'SUPER_ADMIN') {
-            fetchDepartments();
-        }
+        fetchDepartments();
     }, []);
 
     const fetchCompanies = async () => {
         try {
-            const url = role === 'SUPER_ADMIN' ? '/companies/' : `/companies/?fire_department=${user?.fire_department}`;
-            const response = await api.get(url);
-            setCompanies(response.data);
+            // El backend ya filtra por el cuerpo del usuario. Mandar
+            // fire_department vacío dejaba la lista en cero.
+            const response = await api.get('/companies/');
+            setCompanies(asList(response.data));
+            setErrorCarga('');
         } catch (error) {
-            console.error(error);
+            setErrorCarga('No pude cargar las compañías. Cierra sesión y entra de nuevo.');
         }
     };
 
     const fetchDepartments = async () => {
         try {
             const response = await api.get('/departments/');
-            setDepartments(response.data.map((d: any) => ({ id: d.id, label: d.name })));
+            setDepartments(asList(response.data).map((d: any) => ({ id: d.id, label: d.name })));
         } catch (error) {
             console.error(error);
         }
@@ -90,6 +92,11 @@ export default function ManageCompaniesScreen() {
 
     return (
         <View style={styles.container}>
+            <TouchableOpacity style={styles.crearBarra} onPress={() => setModalVisible(true)}>
+                <Ionicons name="add" size={22} color={colors.white} />
+                <Text style={styles.crearBarraTexto}>Crear compañía</Text>
+            </TouchableOpacity>
+            {!!errorCarga && <Text style={styles.errorCarga}>{errorCarga}</Text>}
             <ListaAgrupada
                 datos={companies}
                 criterios={[
@@ -194,6 +201,7 @@ export default function ManageCompaniesScreen() {
                         <TextInput
                             style={styles.input}
                             placeholder="Nombre (ej: Primera Compañía)"
+                            placeholderTextColor={colors.textMuted}
                             value={newCompany.name}
                             onChangeText={(t) => setNewCompany({ ...newCompany, name: t })}
                         />
@@ -201,6 +209,7 @@ export default function ManageCompaniesScreen() {
                         <TextInput
                             style={styles.input}
                             placeholder="Número (ej: 1, B-1)"
+                            placeholderTextColor={colors.textMuted}
                             value={newCompany.number}
                             onChangeText={(t) => setNewCompany({ ...newCompany, number: t })}
                         />
@@ -209,7 +218,7 @@ export default function ManageCompaniesScreen() {
                             <View>
                                 <View style={{ flexDirection: 'row', gap: 10 }}>
                                     <TouchableOpacity style={[styles.selectButton, { flex: 1 }]} onPress={() => setShowDeptSelector(true)}>
-                                        <Text>{getDeptLabel()}</Text>
+                                        <Text style={styles.selectText}>{getDeptLabel()}</Text>
                                         <Ionicons name="chevron-down" size={20} color={colors.gray[500]} />
                                     </TouchableOpacity>
                                     <TouchableOpacity
@@ -224,7 +233,7 @@ export default function ManageCompaniesScreen() {
 
                         <View style={styles.modalButtons}>
                             <TouchableOpacity style={styles.cancelButton} onPress={() => setModalVisible(false)}>
-                                <Text>Cancelar</Text>
+                                <Text style={styles.cancelText}>Cancelar</Text>
                             </TouchableOpacity>
                             <TouchableOpacity style={styles.createButton} onPress={handleCreateCompany}>
                                 <Text style={styles.createButtonText}>Crear</Text>
@@ -256,7 +265,7 @@ export default function ManageCompaniesScreen() {
                         />
                         <View style={styles.modalButtons}>
                             <TouchableOpacity style={styles.cancelButton} onPress={() => setShowCreateDept(false)}>
-                                <Text>Cancelar</Text>
+                                <Text style={styles.cancelText}>Cancelar</Text>
                             </TouchableOpacity>
                             <TouchableOpacity style={styles.createButton} onPress={handleCreateDepartment}>
                                 <Text style={styles.createButtonText}>Crear</Text>
@@ -286,6 +295,12 @@ const styles = StyleSheet.create({
                        letterSpacing: 0.6, fontWeight: '700' },
     detalleValor: { fontSize: 17, color: colors.text, marginTop: 2 },
     container: { flex: 1, backgroundColor: colors.background },
+    crearBarra: {
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+        margin: spacing.md, minHeight: 56, borderRadius: borderRadius.md,
+        backgroundColor: colors.primary,
+    },
+    crearBarraTexto: { color: colors.white, fontSize: 18, fontWeight: '700' },
     listContent: { padding: spacing.md },
     card: {
         backgroundColor: colors.surface,
@@ -305,7 +320,8 @@ const styles = StyleSheet.create({
         backgroundColor: colors.gray[100], alignItems: 'center', justifyContent: 'center'
     },
     title: { fontSize: 16, fontWeight: '600', color: colors.text },
-    subtitle: { fontSize: 14, color: colors.gray[500] },
+    subtitle: { fontSize: 16, color: colors.textMuted },
+    errorCarga: { color: colors.warning, fontSize: 16, marginHorizontal: spacing.md, marginBottom: spacing.sm },
     fab: {
         position: 'absolute',
         bottom: spacing.xl,
@@ -320,8 +336,14 @@ const styles = StyleSheet.create({
     },
     modalOverlay: { flex: 1, backgroundColor: colors.scrim, justifyContent: 'center', padding: spacing.lg },
     modalContent: { backgroundColor: colors.surface, borderRadius: borderRadius.lg, padding: spacing.xl },
-    modalTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: spacing.lg, textAlign: 'center' },
-    input: { backgroundColor: colors.gray[100], padding: spacing.md, borderRadius: borderRadius.md, marginBottom: spacing.md, color: colors.text,},
+    modalTitle: { fontSize: 22, fontWeight: 'bold', marginBottom: spacing.lg, textAlign: 'center', color: colors.text },
+    input: {
+        backgroundColor: '#24303A', padding: spacing.md, borderRadius: borderRadius.md,
+        marginBottom: spacing.md, color: colors.text, fontSize: 18,
+        borderWidth: 1, borderColor: '#6B7380',
+    },
+    selectText: { color: colors.text, fontSize: 18, flex: 1 },
+    cancelText: { color: colors.text, fontSize: 16, fontWeight: '700' },
     modalButtons: { flexDirection: 'row', justifyContent: 'flex-end', gap: spacing.md, marginTop: spacing.md },
     cancelButton: { padding: spacing.md },
     createButton: { backgroundColor: colors.primary, padding: spacing.md, borderRadius: borderRadius.md },

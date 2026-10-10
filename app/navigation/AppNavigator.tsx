@@ -259,27 +259,25 @@ function RecursosHubScreen() {
     },
   ];
 
+  items.push({
+    key: 'carros',
+    title: 'Carros',
+    description: cifras.libres !== undefined
+      ? `${cifras.libres} disponibles para despachar.`
+      : 'Los carros y la compañía de cada uno.',
+    icon: 'bus-outline',
+    metrica: cifras.carros,
+    metricaEtiqueta: 'total',
+    onPress: () => navigation.navigate('Carros'),
+  });
   if (canAdministrate(role)) {
-    items.push(
-      {
-        key: 'unidades',
-        title: 'Unidades',
-        description: 'Administra las unidades disponibles.',
-        icon: 'albums-outline',
-        onPress: () => navigation.navigate('Unidades'),
-      },
-      {
-        key: 'carros',
-        title: 'Carros',
-        description: cifras.libres !== undefined
-          ? `${cifras.libres} disponibles para despachar.`
-          : 'Administra los carros y su compañía.',
-        icon: 'bus-outline',
-        metrica: cifras.carros,
-        metricaEtiqueta: 'total',
-        onPress: () => navigation.navigate('Carros'),
-      },
-    );
+    items.push({
+      key: 'unidades',
+      title: 'Unidades',
+      description: 'La dotación que sale en cada carro.',
+      icon: 'albums-outline',
+      onPress: () => navigation.navigate('Unidades'),
+    });
   }
 
   return (
@@ -298,32 +296,34 @@ function GestionHubScreen() {
   const { role } = useAuth();
   const items: HubItem[] = [
     {
+      key: 'crear',
+      title: 'Crear emergencia',
+      description: 'Abre el formulario: clave, dirección, carros y quién va.',
+      icon: 'add-circle',
+      onPress: () => navigation.navigate('Emergencias', { crear: true }),
+    },
+    {
       key: 'emergencias',
       title: 'Emergencias',
-      description: 'Revisa incidentes y despachos activos.',
+      description: 'Las que ya están abiertas.',
       icon: 'flame-outline',
       onPress: () => navigation.navigate('Emergencias'),
     },
+    {
+      key: 'usuarios',
+      title: 'Usuarios',
+      description: 'Bomberos, capitanes y mandos.',
+      icon: 'people-outline',
+      onPress: () => navigation.navigate('Usuarios'),
+    },
+    {
+      key: 'companias',
+      title: 'Compañías',
+      description: 'Los cuarteles y las compañías del cuerpo.',
+      icon: 'business-outline',
+      onPress: () => navigation.navigate('Companias'),
+    },
   ];
-
-  if (canAdministrate(role)) {
-    items.unshift(
-      {
-        key: 'usuarios',
-        title: 'Usuarios',
-        description: 'Administra bomberos, mandos y permisos.',
-        icon: 'people-outline',
-        onPress: () => navigation.navigate('Usuarios'),
-      },
-      {
-        key: 'companias',
-        title: 'Compañías',
-        description: 'Administra la estructura del cuerpo.',
-        icon: 'business-outline',
-        onPress: () => navigation.navigate('Companias'),
-      },
-    );
-  }
 
   return (
     <NavigationHub
@@ -354,34 +354,29 @@ function RecursosNavigator() {
           ...getDetailHeaderOptions(navigation),
         })}
       />
+      <RecursosStack.Screen
+        name="Carros"
+        component={ManageCarsScreen}
+        options={({ navigation }) => ({
+          title: 'Carros',
+          ...getDetailHeaderOptions(navigation),
+        })}
+      />
       {showAdministrativeRoutes && (
-        <>
-          <RecursosStack.Screen
-            name="Unidades"
-            component={ManageUnitsScreen}
-            options={({ navigation }) => ({
-              title: 'Unidades',
-              ...getDetailHeaderOptions(navigation),
-            })}
-          />
-          <RecursosStack.Screen
-            name="Carros"
-            component={ManageCarsScreen}
-            options={({ navigation }) => ({
-              title: 'Carros',
-              ...getDetailHeaderOptions(navigation),
-            })}
-          />
-        </>
+        <RecursosStack.Screen
+          name="Unidades"
+          component={ManageUnitsScreen}
+          options={({ navigation }) => ({
+            title: 'Unidades',
+            ...getDetailHeaderOptions(navigation),
+          })}
+        />
       )}
     </RecursosStack.Navigator>
   );
 }
 
 function GestionNavigator() {
-  const { role } = useAuth();
-  const showAdministrativeRoutes = canAdministrate(role);
-
   return (
     <GestionStack.Navigator screenOptions={getSharedHeaderOptions()}>
       <GestionStack.Screen
@@ -389,26 +384,22 @@ function GestionNavigator() {
         component={GestionHubScreen}
         options={{ title: 'Gestión' }}
       />
-      {showAdministrativeRoutes && (
-        <>
-          <GestionStack.Screen
-            name="Usuarios"
-            component={ManageUsersScreen}
-            options={({ navigation }) => ({
-              title: 'Usuarios',
-              ...getDetailHeaderOptions(navigation),
-            })}
-          />
-          <GestionStack.Screen
-            name="Companias"
-            component={ManageCompaniesScreen}
-            options={({ navigation }) => ({
-              title: 'Compañías',
-              ...getDetailHeaderOptions(navigation),
-            })}
-          />
-        </>
-      )}
+      <GestionStack.Screen
+        name="Usuarios"
+        component={ManageUsersScreen}
+        options={({ navigation }) => ({
+          title: 'Usuarios',
+          ...getDetailHeaderOptions(navigation),
+        })}
+      />
+      <GestionStack.Screen
+        name="Companias"
+        component={ManageCompaniesScreen}
+        options={({ navigation }) => ({
+          title: 'Compañías',
+          ...getDetailHeaderOptions(navigation),
+        })}
+      />
       <GestionStack.Screen
         name="Emergencias"
         component={IncidentsScreen}
@@ -601,6 +592,7 @@ const styles = StyleSheet.create({
   },
   hubTitle: {
     color: colors.text,
+    fontSize: 28,
     fontWeight: '700',
   },
   hubDescription: {
@@ -650,10 +642,12 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     color: colors.text,
+    fontSize: 20,
     fontWeight: '700',
   },
   cardDescription: {
     color: colors.textMuted,
+    fontSize: 16,
     marginTop: spacing.xs,
   },
   loading: {

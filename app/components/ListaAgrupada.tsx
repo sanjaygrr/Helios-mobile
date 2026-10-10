@@ -46,12 +46,13 @@ export default function ListaAgrupada<T>({
   const [plegados, setPlegados] = useState<Record<string, boolean>>({});
 
   const activo = criterios.find(c => c.clave === criterio) || criterios[0];
+  const lista = Array.isArray(datos) ? datos : [];
 
   const secciones = useMemo(() => {
     const texto = busqueda.trim().toLowerCase();
     const filtrados = texto && buscarEn
-      ? datos.filter(d => buscarEn(d).toLowerCase().includes(texto))
-      : datos;
+      ? lista.filter(d => buscarEn(d).toLowerCase().includes(texto))
+      : lista;
 
     const mapa = new Map<string, T[]>();
     filtrados.forEach(d => {
@@ -67,7 +68,7 @@ export default function ListaAgrupada<T>({
         total: items.length,
         data: plegados[titulo] ? [] : items,
       }));
-  }, [datos, activo, busqueda, plegados, buscarEn]);
+  }, [lista, activo, busqueda, plegados, buscarEn]);
 
   const totalVisible = secciones.reduce((n, s) => n + s.total, 0);
   const todosPlegados = secciones.length > 0 && secciones.every(s => plegados[s.titulo]);

@@ -13,7 +13,7 @@ import * as Location from 'expo-location';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { fetchWeatherData, WeatherData } from '../services/weather';
 import { useAuth } from '../context/AuthContext';
-import api from '../services/api';
+import api, { asList } from '../services/api';
 import { isLocationSharingEnabled, setLocationSharingEnabled } from '../services/locationSharing';
 import { getDeviceId } from '../services/deviceIdentity';
 import { resumeBackgroundTracking, stopBackgroundTracking } from '../services/backgroundTracking';
@@ -53,6 +53,10 @@ interface OtherUser {
     incident_type: string;
   } | null;
   timestamp?: number;
+  tipo?: 'bombero' | 'carro' | 'emergencia';
+  es_carro?: boolean;
+  status?: string;
+  nombre?: string;
 }
 
 export default function MapScreen() {
@@ -63,6 +67,8 @@ export default function MapScreen() {
 
   const [currentRegion, setCurrentRegion] = useState<any>(null); // Type 'any' for Region compat
   const [otherUsers, setOtherUsers] = useState<{ [key: string]: OtherUser }>({});
+  const [fijos, setFijos] = useState<OtherUser[]>([]);
+  const [sinPunto, setSinPunto] = useState({ companias: 0, carros: 0 });
   const [fireData, setFireData] = useState<FirePoint[]>([]);
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
 
@@ -179,12 +185,83 @@ export default function MapScreen() {
   }, [user?.id]);
 
   useEffect(() => {
+    let vivo = true;
+    const cargarFijos = async () => {
+      try {
+        const [cRes, uRes] = await Promise.all([api.get('/companies/'), api.get('/units/')]);
+        if (!vivo) return;
+        const comps = asList(cRes.data);
+        const units = asList(uRes.data);
+        const porId = new Map<number, any>(comps.map((c: any) => [c.id, c]));
+        const ahora = Date.now();
+        const puntos: OtherUser[] = [];
+        let companiasSin = 0;
+        let carrosSin = 0;
+        const tienePunto = (lat: number, lng: number) =>
+          Number.isFinite(lat) && Number.isFinite(lng) && !(lat === 0 && lng === 0);
+        comps.forEach((c: any) => {
+          const lat = Number(c.latitude);
+          const lng = Number(c.longitude);
+          if (!tienePunto(lat, lng)) {
+            companiasSin += 1;
+            return;
+          }
+          puntos.push({
+            id: 1_000_000 + c.id,
+            latitude: lat,
+            longitude: lng,
+            role: 'COMPANIA',
+            user_first_name: c.name,
+            timestamp: ahora,
+            tipo: 'bombero',
+          });
+        });
+        const usados = new Map<number, number>();
+        units.forEach((u: any) => {
+          const comp = porId.get(u.company);
+          const lat0 = Number(comp?.latitude);
+          const lng0 = Number(comp?.longitude);
+          if (!comp || !tienePunto(lat0, lng0)) {
+            carrosSin += 1;
+            return;
+          }
+          const n = usados.get(u.company) || 0;
+          usados.set(u.company, n + 1);
+          const ang = n * 0.9;
+          puntos.push({
+            id: 2_000_000 + u.id,
+            latitude: lat0 + Math.cos(ang) * 0.00035,
+            longitude: lng0 + Math.sin(ang) * 0.00035,
+            role: 'CARRO',
+            user_first_name: u.name,
+            nombre: u.name,
+            tipo: 'carro',
+            es_carro: true,
+            status: u.status,
+            timestamp: ahora,
+          });
+        });
+        setFijos(puntos);
+        setSinPunto({ companias: companiasSin, carros: carrosSin });
+      } catch {
+        if (vivo) {
+          setFijos([]);
+        }
+      }
+    };
+    cargarFijos();
+    const timer = setInterval(cargarFijos, 60000);
+    return () => { vivo = false; clearInterval(timer); };
+  }, []);
+
+  useEffect(() => {
     if (location) {
       if (fireData.length === 0) {
         api.get('/incidents/', { params: { is_active: true } })
           .then(res => {
-            if (Array.isArray(res.data)) {
-              const points: FirePoint[] = res.data.map((i: any) => ({
+            const lista = asList(res.data);
+            if (lista.length || Array.isArray(res.data)) {
+              const points: FirePoint[] = lista.map((i: any) => ({
                 latitude: i.latitude,
                 longitude: i.longitude,
                 brightness: i.severity === 'high' ? 360 : 330,
@@ -204,8 +281,9 @@ export default function MapScreen() {
     const interval = setInterval(() => {
       api.get('/incidents/', { params: { is_active: true } })
         .then(res => {
-          if (Array.isArray(res.data)) {
-            const points: FirePoint[] = res.data.map((i: any) => ({
+          const lista = asList(res.data);
+          {
+            const points: FirePoint[] = lista.map((i: any) => ({
               latitude: i.latitude,
               longitude: i.longitude,
               brightness: i.severity === 'high' ? 360 : 330,
@@ -261,9 +339,18 @@ export default function MapScreen() {
         <Text style={styles.statusLabel}>{isTracking ? 'Ubicación activada' : 'Ubicación pausada'}</Text>
         <View style={styles.statusDivider} />
         <Text style={styles.statusLabel}>
-          {Object.keys(otherUsers).length === 1 ? '1 en mapa'
-            : `${Object.keys(otherUsers).length} en mapa`}
+          {Object.keys(otherUsers).length === 1 ? '1 persona'
+            : `${Object.keys(otherUsers).length} personas`}
         </Text>
+        <View style={styles.statusDivider} />
+        <Text style={styles.statusLabel}>
+          {fijos.filter(p => p.role === 'COMPANIA').length} cías · {fijos.filter(p => p.role === 'CARRO').length} carros
+        </Text>
+        {(sinPunto.companias > 0 || sinPunto.carros > 0) && (
+          <Text style={styles.statusLabel}>
+            {sinPunto.companias + sinPunto.carros} sin ubicación
+          </Text>
+        )}
         {visibleFires.length > 0 && (
           <>
             <View style={styles.statusDivider} />
@@ -279,7 +366,7 @@ export default function MapScreen() {
         style={styles.map}
         currentLocation={mapCenter}
         selfUser={location ? user : null}
-        otherUsers={Object.values(otherUsers)}
+        otherUsers={[...Object.values(otherUsers), ...fijos]}
         fires={visibleFires}
         showFires
         onSelectMarker={setSelectedItem}
@@ -320,7 +407,9 @@ export default function MapScreen() {
               </View>
               <View>
                 <Text style={styles.infoTitle}>
-                  {selectedItem.brightness ? 'Foco de Incendio' :
+                  {selectedItem.brightness ? 'Emergencia' :
+                    selectedItem.role === 'COMPANIA' ? 'Compañía' :
+                    selectedItem.role === 'CARRO' ? 'Carro' :
                     (selectedItem.role === 'COMPANY_CHIEF' || selectedItem.role?.includes('ADMIN') ? 'Jefe de Compañía' : 'Voluntario')}
                 </Text>
                 <Text style={styles.infoSubtitle}>

@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Modal, Alert, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius } from '../theme/colors';
-import api from '../services/api';
+import api, { asList } from '../services/api';
 import ModalSelector from '../components/ModalSelector';
 import ListaAgrupada from '../components/ListaAgrupada';
 
 export default function ManageUsersScreen() {
-    const [users, setUsers] = useState([]);
+    const [users, setUsers] = useState<any[]>([]);
+    const [errorCarga, setErrorCarga] = useState('');
     const [isModalVisible, setModalVisible] = useState(false);
     const [newUser, setNewUser] = useState({
         email: '',
@@ -31,16 +32,17 @@ export default function ManageUsersScreen() {
     const fetchUsers = async () => {
         try {
             const response = await api.get('/users/');
-            setUsers(response.data);
+            setUsers(asList(response.data));
+            setErrorCarga('');
         } catch (error) {
-            console.error(error);
+            setErrorCarga('No pude cargar los usuarios. Cierra sesión y entra de nuevo.');
         }
     };
 
     const fetchDepartments = async () => {
         try {
             const response = await api.get('/departments/');
-            setDepartments(response.data.map((d: any) => ({ id: d.id, label: d.name })));
+            setDepartments(asList(response.data).map((d: any) => ({ id: d.id, label: d.name })));
         } catch (error) {
             console.error(error);
         }
@@ -49,7 +51,7 @@ export default function ManageUsersScreen() {
     const fetchCompanies = async (deptId: number) => {
         try {
             const response = await api.get(`/companies/?fire_department=${deptId}`);
-            setCompanies(response.data.map((c: any) => ({ id: c.id, label: `${c.name} (${c.number})` })));
+            setCompanies(asList(response.data).map((c: any) => ({ id: c.id, label: `${c.name} (${c.number})` })));
         } catch (error) {
             console.error(error);
         }
@@ -72,6 +74,11 @@ export default function ManageUsersScreen() {
 
     return (
         <View style={styles.container}>
+            <TouchableOpacity style={styles.crearBarra} onPress={() => setModalVisible(true)}>
+                <Ionicons name="person-add" size={22} color={colors.white} />
+                <Text style={styles.crearBarraTexto}>Crear usuario</Text>
+            </TouchableOpacity>
+            {!!errorCarga && <Text style={styles.errorCarga}>{errorCarga}</Text>}
             <ListaAgrupada
                 datos={users}
                 criterios={[
@@ -111,7 +118,14 @@ export default function ManageUsersScreen() {
 
                             {/* Info */}
                             <View style={styles.userInfo}>
-                                <Text style={styles.userEmail}>{item.email}</Text>
+                                <Text style={styles.userEmail}>
+                                    {(item.first_name || item.last_name)
+                                        ? `${item.first_name || ''} ${item.last_name || ''}`.trim()
+                                        : item.email}
+                                </Text>
+                                {(item.first_name || item.last_name) ? (
+                                    <Text style={styles.companyLabel}>{item.email}</Text>
+                                ) : null}
                                 <View style={styles.userMeta}>
                                     <View style={[styles.roleBadge, { backgroundColor: roleInfo.color + '15' }]}>
                                         <Text style={[styles.roleText, { color: roleInfo.color }]}>{roleInfo.label}</Text>
@@ -155,6 +169,7 @@ export default function ManageUsersScreen() {
                             <TextInput
                                 style={styles.input}
                                 placeholder="Email"
+                                placeholderTextColor={colors.textMuted}
                                 value={newUser.email}
                                 onChangeText={(t) => setNewUser({ ...newUser, email: t })}
                                 autoCapitalize="none"
@@ -163,6 +178,7 @@ export default function ManageUsersScreen() {
                             <TextInput
                                 style={styles.input}
                                 placeholder="Contraseña"
+                                placeholderTextColor={colors.textMuted}
                                 secureTextEntry
                                 value={newUser.password}
                                 onChangeText={(t) => setNewUser({ ...newUser, password: t })}
@@ -185,8 +201,8 @@ export default function ManageUsersScreen() {
 
                             <Text style={styles.label}>Organización:</Text>
                             <TouchableOpacity style={styles.selectButton} onPress={() => setShowDeptSelector(true)}>
-                                <Text>{getDeptLabel()}</Text>
-                                <Ionicons name="chevron-down" size={20} color={colors.gray[500]} />
+                                <Text style={styles.selectText}>{getDeptLabel()}</Text>
+                                <Ionicons name="chevron-down" size={20} color={colors.text} />
                             </TouchableOpacity>
 
                             <TouchableOpacity
@@ -194,13 +210,13 @@ export default function ManageUsersScreen() {
                                 onPress={() => newUser.fire_department && setShowCompSelector(true)}
                                 disabled={!newUser.fire_department}
                             >
-                                <Text>{getCompLabel()}</Text>
-                                <Ionicons name="chevron-down" size={20} color={colors.gray[500]} />
+                                <Text style={styles.selectText}>{getCompLabel()}</Text>
+                                <Ionicons name="chevron-down" size={20} color={colors.text} />
                             </TouchableOpacity>
 
                             <View style={styles.modalButtons}>
                                 <TouchableOpacity style={styles.cancelButton} onPress={() => setModalVisible(false)}>
-                                    <Text>Cancelar</Text>
+                                    <Text style={styles.cancelText}>Cancelar</Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity style={styles.createButton} onPress={handleCreateUser}>
                                     <Text style={styles.createButtonText}>Crear</Text>
@@ -283,7 +299,7 @@ const styles = StyleSheet.create({
     },
     companyLabel: {
         fontSize: 12,
-        color: colors.gray[500],
+        color: colors.textMuted,
     },
     statusBadge: {
         flexDirection: 'row',
@@ -305,7 +321,7 @@ const styles = StyleSheet.create({
     emptyText: {
         textAlign: 'center',
         marginTop: 50,
-        color: colors.gray[500],
+        color: colors.textMuted,
         fontSize: 15,
     },
     activeBadge: { padding: spacing.xs },
@@ -345,14 +361,21 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         color: colors.text,
     },
+    crearBarra: {
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+        margin: spacing.md, minHeight: 56, borderRadius: borderRadius.md,
+        backgroundColor: colors.primary,
+    },
+    crearBarraTexto: { color: colors.white, fontSize: 18, fontWeight: '700' },
+    errorCarga: { color: colors.danger, fontSize: 16, marginHorizontal: spacing.md, marginBottom: spacing.sm },
     input: {
-        backgroundColor: colors.gray[50],
+        backgroundColor: '#24303A',
         padding: spacing.md,
         borderRadius: borderRadius.md,
         marginBottom: spacing.md,
-        fontSize: 15,
+        fontSize: 18,
         borderWidth: 1,
-        borderColor: colors.gray[200], color: colors.text,},
+        borderColor: '#6B7380', color: colors.text,},
     label: {
         fontWeight: '600',
         marginBottom: spacing.sm,
@@ -372,16 +395,20 @@ const styles = StyleSheet.create({
         backgroundColor: colors.primary,
         borderColor: colors.accent,
     },
-    roleButtonText: { fontSize: 13, fontWeight: '600', color: colors.accent },
+    roleButtonText: { fontSize: 16, fontWeight: '700', color: colors.text },
     roleButtonTextActive: { color: colors.textOnPrimary },
     modalButtons: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing.md, marginTop: spacing.lg },
     cancelButton: {
         flex: 1,
         padding: spacing.md,
         borderRadius: borderRadius.md,
-        backgroundColor: colors.gray[100],
+        backgroundColor: '#24303A',
+        borderWidth: 1,
+        borderColor: '#6B7380',
         alignItems: 'center',
     },
+    cancelText: { color: colors.text, fontSize: 16, fontWeight: '700' },
+    selectText: { color: colors.text, fontSize: 18, flex: 1 },
     createButton: {
         flex: 2,
         backgroundColor: colors.primary,
@@ -397,8 +424,8 @@ const styles = StyleSheet.create({
     createButtonText: { color: colors.white, fontWeight: '700', fontSize: 15 },
     selectButton: {
         flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-        backgroundColor: colors.gray[50], padding: spacing.md, borderRadius: borderRadius.md, marginBottom: spacing.md,
-        borderWidth: 1, borderColor: colors.gray[200]
+        backgroundColor: '#24303A', padding: spacing.md, borderRadius: borderRadius.md, marginBottom: spacing.md,
+        borderWidth: 1, borderColor: '#6B7380'
     },
     disabled: { opacity: 0.5 },
 });
