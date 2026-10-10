@@ -61,7 +61,7 @@ interface OtherUser {
 }
 
 export default function MapScreen() {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const [location, setLocation] = useState<LocationData | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isTracking, setIsTracking] = useState(true);
@@ -246,11 +246,14 @@ export default function MapScreen() {
         });
         setFijos(puntos);
         setSinPunto({ companias: companiasSin, carros: carrosSin });
-        const faltan = comps.filter((c: any) => {
+        // Geocodificar y guardar es una tarea administrativa. Antes todos los
+        // teléfonos repetían estas consultas cada minuto aunque el PATCH diera 403.
+        const canPersistLocations = role === 'SUPER_ADMIN' || role === 'COMPANY_ADMIN';
+        const faltan = canPersistLocations ? comps.filter((c: any) => {
           const lat = Number(c.latitude);
           const lng = Number(c.longitude);
           return !tienePunto(lat, lng) && (c.address || c.comuna);
-        }).slice(0, 12);
+        }).slice(0, 12) : [];
         for (const c of faltan) {
           if (!vivo) return;
           try {
@@ -288,7 +291,7 @@ export default function MapScreen() {
     cargarFijos();
     const timer = setInterval(cargarFijos, 60000);
     return () => { vivo = false; clearInterval(timer); };
-  }, []);
+  }, [role]);
 
   useEffect(() => {
     let vivo = true;

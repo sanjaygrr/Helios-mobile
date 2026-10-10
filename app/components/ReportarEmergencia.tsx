@@ -218,7 +218,9 @@ export default function ReportarEmergencia({
   const toggleCarro = (carro: any) => {
     const deOtroCuerpo = carro.fire_department && user?.fire_department
       && carro.fire_department !== user.fire_department && role !== 'SUPER_ADMIN';
-    if (deOtroCuerpo || (carro.status || '').toUpperCase() !== 'AVAILABLE') return;
+    const deOtraCompania = role === 'COMPANY_CHIEF'
+      && user?.company && carro.company !== user.company;
+    if (deOtroCuerpo || deOtraCompania || (carro.status || '').toUpperCase() !== 'AVAILABLE') return;
     setElegidos(prev => prev.includes(carro.id)
       ? prev.filter(id => id !== carro.id)
       : [...prev, carro.id]);
@@ -313,22 +315,17 @@ export default function ReportarEmergencia({
         fire_department: protagonista,
         centrales,
       };
-      const res = editando
-        ? await api.patch(`/incidents/${incidente.id}/`, payload)
-        : await api.post('/incidents/', payload);
-      const incidentId = res.data.id;
-      if (!editando) {
-        for (const carroId of elegidos) {
-          const carro = carros.find(c => c.id === carroId);
-          await api.post('/assignments/', {
+      if (editando) {
+        await api.patch(`/incidents/${incidente.id}/`, payload);
+      } else {
+        await api.post('/incidents/create-and-dispatch/', {
+          incident: payload,
+          dispatches: elegidos.map(carroId => ({
             unit: carroId,
-            incident: incidentId,
             encargado: encargado[carroId],
             tripulacion: vaEn[carroId] || [],
-          }).catch((error) => {
-            throw new Error(mensajeError(error, `No pude sacar ${carro?.name || 'el carro'}.`));
-          });
-        }
+          })),
+        });
       }
       onGuardado();
       onClose();
@@ -454,7 +451,10 @@ export default function ReportarEmergencia({
                       {abierta && grupo.carros.map(carro => {
                         const deOtro = carro.fire_department && user?.fire_department
                           && carro.fire_department !== user.fire_department && role !== 'SUPER_ADMIN';
-                        const libre = !deOtro && (carro.status || '').toUpperCase() === 'AVAILABLE';
+                        const deOtraCompania = role === 'COMPANY_CHIEF'
+                          && user?.company && carro.company !== user.company;
+                        const libre = !deOtro && !deOtraCompania
+                          && (carro.status || '').toUpperCase() === 'AVAILABLE';
                         const marcado = elegidos.includes(carro.id);
                         return (
                           <TouchableOpacity
@@ -467,7 +467,9 @@ export default function ReportarEmergencia({
                               <Text style={estilos.carroNombre}>{carro.name}</Text>
                               <Text style={estilos.especialidad}>
                                 {etiquetaCarro(carro.unit_type, carro.type_display)}
-                                {deOtro ? ' · Lo saca su central' : libre ? '' : ` · ${carro.status_display || 'No disponible'}`}
+                                {deOtro || deOtraCompania
+                                  ? ' · Lo saca su central'
+                                  : libre ? '' : ` · ${carro.status_display || 'No disponible'}`}
                               </Text>
                             </View>
                             <Ionicons

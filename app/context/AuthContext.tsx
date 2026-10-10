@@ -1,6 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { login as apiLogin } from '../services/api';
+import api, { login as apiLogin, setUnauthorizedHandler } from '../services/api';
 import { esVista, puedePrevisualizar, rolDeVista, type Vista } from '../utils/vistas';
 
 interface User {
@@ -33,6 +33,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
+        setUnauthorizedHandler(() => {
+            setUser(null);
+            setVistaState(null);
+        });
+        return () => setUnauthorizedHandler(null);
+    }, []);
+
+    useEffect(() => {
         loadStorageData();
     }, []);
 
@@ -47,6 +55,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 const guardada = await AsyncStorage.getItem('@Auth:vista');
                 if (puedePrevisualizar(parsed?.role) && esVista(guardada)) {
                     setVistaState(guardada);
+                }
+                try {
+                    const { data } = await api.get('/users/me/');
+                    setUser(data);
+                    await AsyncStorage.setItem('@Auth:user', JSON.stringify(data));
+                } catch {
+                    // El interceptor cierra la sesión sólo si el refresh expiró.
+                    // Un corte de red no borra una sesión que todavía puede servir.
                 }
             }
         } catch (error) {

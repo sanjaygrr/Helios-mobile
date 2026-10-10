@@ -5,8 +5,7 @@
 // EAS (GOOGLE_MAPS_API_KEY) y se inyecta en tiempo de build.
 // Para correr local: GOOGLE_MAPS_API_KEY=... npx expo start
 //
-// iOS no la necesita: MapWidget usa PROVIDER_DEFAULT (Apple Maps) en iOS y
-// PROVIDER_GOOGLE solo en Android.
+// MapWidget usa Google Maps tanto en Android como en iOS.
 
 const config = {
     "name": "Lumbre",
@@ -98,6 +97,13 @@ const config = {
 
 module.exports = () => ({
   ...config,
+  ios: {
+    ...config.ios,
+    config: {
+      ...(config.ios.config || {}),
+      googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY,
+    },
+  },
   android: {
     ...config.android,
     config: {

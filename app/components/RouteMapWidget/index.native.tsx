@@ -1,6 +1,6 @@
 import React from 'react';
-import { StyleSheet, View, Platform, Dimensions } from 'react-native';
-import MapView, { Polyline, Marker, PROVIDER_GOOGLE, PROVIDER_DEFAULT } from 'react-native-maps';
+import { StyleSheet } from 'react-native';
+import MapView, { Polyline, Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 import { RouteMapWidgetProps } from './types';
@@ -22,7 +22,7 @@ export default function RouteMapWidget({
     return (
         <MapView
             style={[styles.map, style]}
-            provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : PROVIDER_DEFAULT}
+            provider={PROVIDER_GOOGLE}
             initialRegion={initialRegion}
         >
             <Polyline

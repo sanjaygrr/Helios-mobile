@@ -1,6 +1,6 @@
 import React, { useEffect, useImperativeHandle, useMemo, useRef, useState, forwardRef } from 'react';
-import { StyleSheet, View, Platform, Text, LayoutChangeEvent } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE, PROVIDER_DEFAULT, Region } from 'react-native-maps';
+import { StyleSheet, View, Text, LayoutChangeEvent } from 'react-native';
+import MapView, { Marker, PROVIDER_GOOGLE, Region } from 'react-native-maps';
 import { colors, marcador, shadows, spacing, unitStatus } from '../../theme/colors';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { estiloMapa } from './estiloMapa';
@@ -249,7 +249,7 @@ const MapWidget = forwardRef<MapWidgetHandle, MapWidgetProps>(({
         <MapView
             ref={mapRef}
             style={[styles.map, style]}
-            provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : PROVIDER_DEFAULT}
+            provider={PROVIDER_GOOGLE}
             initialRegion={{
                 latitude: currentLocation.latitude,
                 longitude: currentLocation.longitude,
@@ -259,8 +259,7 @@ const MapWidget = forwardRef<MapWidgetHandle, MapWidgetProps>(({
             showsUserLocation={false}
             showsCompass={true}
             mapType="standard"
-            // Android: Google respeta el estilo. iOS usa Apple Maps y lo ignora
-            // por completo, por eso seguian apareciendo tiendas y museos.
+            // Google Maps en Android e iOS; el mismo estilo limpia ambos mapas.
             customMapStyle={estiloMapa}
             // La prop lleva una "s" de mas: asi se llama en la libreria.
             showsPointsOfInterests={false}
