@@ -54,7 +54,7 @@ interface OtherUser {
     incident_type: string;
   } | null;
   timestamp?: number;
-  tipo?: 'bombero' | 'carro' | 'emergencia';
+  tipo?: 'bombero' | 'carro' | 'emergencia' | 'compania';
   es_carro?: boolean;
   status?: string;
   nombre?: string;
@@ -93,7 +93,8 @@ export default function MapScreen() {
 
   // --- Optimization: Filter Fire Data ---
   const visibleFires = useMemo(() => {
-    if (!currentRegion || !fireData.length) return [];
+    if (!fireData.length) return [];
+    if (!currentRegion) return fireData.slice(0, 60);
 
     // Broad phase filter
     const latDelta = currentRegion.latitudeDelta * 2;
@@ -214,8 +215,8 @@ export default function MapScreen() {
             longitude: lng,
             role: 'COMPANIA',
             user_first_name: c.name,
-            timestamp: ahora,
-            tipo: 'bombero',
+            nombre: c.name,
+            tipo: 'compania',
           });
         });
         const usados = new Map<number, number>();
@@ -245,6 +246,39 @@ export default function MapScreen() {
         });
         setFijos(puntos);
         setSinPunto({ companias: companiasSin, carros: carrosSin });
+        const faltan = comps.filter((c: any) => {
+          const lat = Number(c.latitude);
+          const lng = Number(c.longitude);
+          return !tienePunto(lat, lng) && (c.address || c.comuna);
+        }).slice(0, 12);
+        for (const c of faltan) {
+          if (!vivo) return;
+          try {
+            const consulta = [c.address, c.comuna, 'Chile'].filter(Boolean).join(', ');
+            const hallado = await Location.geocodeAsync(consulta);
+            if (!vivo || !hallado[0]) continue;
+            c.latitude = hallado[0].latitude;
+            c.longitude = hallado[0].longitude;
+            puntos.push({
+              id: 1_000_000 + c.id,
+              latitude: c.latitude,
+              longitude: c.longitude,
+              role: 'COMPANIA',
+              user_first_name: c.name,
+              nombre: c.name,
+              tipo: 'compania',
+            });
+            companiasSin -= 1;
+            setFijos([...puntos]);
+            setSinPunto({ companias: companiasSin, carros: carrosSin });
+            api.patch(`/companies/${c.id}/`, {
+              latitude: c.latitude,
+              longitude: c.longitude,
+            }).catch(() => undefined);
+          } catch {
+            /* sigue sin punto */
+          }
+        }
       } catch {
         if (vivo) {
           setFijos([]);
@@ -257,48 +291,36 @@ export default function MapScreen() {
   }, []);
 
   useEffect(() => {
-    if (location) {
-      if (fireData.length === 0) {
-        api.get('/incidents/', { params: { is_active: true } })
-          .then(res => {
-            const lista = asList(res.data);
-            if (lista.length || Array.isArray(res.data)) {
-              const points: FirePoint[] = lista.map((i: any) => ({
-                latitude: i.latitude,
-                longitude: i.longitude,
-                brightness: i.severity === 'high' ? 360 : 330,
-                acq_date: (i.reported_at || '').slice(0, 10) || 'backend',
-                acq_time: '0000'
-              }));
-              setFireData(points);
-            }
-          })
-          .catch(() => { });
-      }
-      if (!weatherData) fetchWeatherData(location.coords.latitude, location.coords.longitude).then(setWeatherData);
-    }
-  }, [location]);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
+    let vivo = true;
+    const cargarEmergencias = () => {
       api.get('/incidents/', { params: { is_active: true } })
         .then(res => {
-          const lista = asList(res.data);
-          {
-            const points: FirePoint[] = lista.map((i: any) => ({
-              latitude: i.latitude,
-              longitude: i.longitude,
+          if (!vivo) return;
+          const points: FirePoint[] = asList(res.data)
+            .filter((i: any) => Number.isFinite(Number(i.latitude)) && Number.isFinite(Number(i.longitude)))
+            .map((i: any) => ({
+              latitude: Number(i.latitude),
+              longitude: Number(i.longitude),
               brightness: i.severity === 'high' ? 360 : 330,
-              acq_date: (i.reported_at || '').slice(0, 10) || 'backend',
-              acq_time: '0000'
+              title: i.title,
+              address: [i.address, i.comuna].filter(Boolean).join(', '),
+              acq_date: (i.reported_at || '').slice(0, 10),
+              acq_time: '',
             }));
-            setFireData(points);
-          }
+          setFireData(points);
         })
         .catch(() => { });
-    }, 120000);
-    return () => clearInterval(interval);
+    };
+    cargarEmergencias();
+    const interval = setInterval(cargarEmergencias, 20000);
+    return () => { vivo = false; clearInterval(interval); };
   }, []);
+
+  useEffect(() => {
+    if (location && !weatherData) {
+      fetchWeatherData(location.coords.latitude, location.coords.longitude).then(setWeatherData);
+    }
+  }, [location]);
 
   // Apenas llega la ubicacion real, el mapa se va ahi.
   const yaCentrado = useRef(false);
@@ -416,7 +438,7 @@ export default function MapScreen() {
               </View>
               <View>
                 <Text style={styles.infoTitle}>
-                  {selectedItem.brightness ? 'Emergencia' :
+                  {selectedItem.brightness ? (selectedItem.title || 'Emergencia') :
                     selectedItem.role === 'COMPANIA' ? 'Compañía' :
                     selectedItem.role === 'CARRO' ? 'Carro' :
                     (selectedItem.role === 'COMPANY_CHIEF' || selectedItem.role?.includes('ADMIN') ? 'Comandante' : 'Voluntario')}
@@ -442,7 +464,7 @@ export default function MapScreen() {
               <View style={styles.incidentRow}>
                 <Ionicons name="flame" size={18} color={colors.danger} />
                 <Text style={styles.incidentText}>
-                  Detectado: {selectedItem.acq_date || 'N/A'} {selectedItem.acq_time || ''}
+                  {selectedItem.address || selectedItem.title || 'Emergencia activa'}
                 </Text>
               </View>
             )}
