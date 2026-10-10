@@ -1,176 +1,85 @@
-import React, { useEffect, useImperativeHandle, useMemo, useRef, useState, forwardRef } from 'react';
-import { StyleSheet, View, Platform, Text, LayoutChangeEvent } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE, PROVIDER_DEFAULT, Region } from 'react-native-maps';
-import { colors, marcador, shadows, spacing, unitStatus } from '../../theme/colors';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { estiloMapa } from './estiloMapa';
+import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import { StyleSheet } from 'react-native';
+import { WebView, WebViewMessageEvent } from 'react-native-webview';
+import { colors, marcador, unitStatus } from '../../theme/colors';
 import {
-    MapWidgetProps,
-    MapWidgetHandle,
     MapPoint,
     MapRegion,
+    MapWidgetHandle,
+    MapWidgetProps,
     buildMapPoints,
     captionFor,
-    clusterMarkers,
     markerFill,
     markerOpacity,
     markerSize,
 } from './types';
 
-const SQUARE_RADIUS = 10;
+type BridgeMessage =
+    | { type: 'select'; key: string }
+    | { type: 'mapPress' }
+    | { type: 'region'; region: MapRegion };
 
-function useTrackChanges(signature: string) {
-    const [tracking, setTracking] = useState(true);
-    useEffect(() => {
-        setTracking(true);
-        const timer = setTimeout(() => setTracking(false), 800);
-        return () => clearTimeout(timer);
-    }, [signature]);
-    return tracking;
+function safeJson(value: unknown): string {
+    return JSON.stringify(value).replace(/</g, '\\u003c');
 }
 
-function MarkerShape({
-    point,
-    selected,
-}: {
-    point: MapPoint;
-    selected: boolean;
-}) {
-    const size = markerSize(point.kind, selected);
-    const shape = marcador[point.kind].forma;
-    const fill = markerFill(point.kind, point.status);
-    const outer = size + (selected ? spacing.xs * 2 : 0);
-    const ring = selected
-        ? {
-            width: outer,
-            height: outer,
-            borderWidth: spacing.xs,
-            borderColor: colors.accent,
-            alignItems: 'center' as const,
-            justifyContent: 'center' as const,
-        }
-        : {
-            alignItems: 'center' as const,
-            justifyContent: 'center' as const,
+function createMapHtml(points: MapPoint[], selectedKey: string | null, initialRegion: MapRegion, now: number): string {
+    const serializedPoints = points.map((point) => {
+        const caption = captionFor(point, now);
+        return {
+            key: point.key,
+            latitude: point.latitude,
+            longitude: point.longitude,
+            shape: marcador[point.kind].forma,
+            size: markerSize(point.kind, point.key === selectedKey),
+            fill: markerFill(point.kind, point.status),
+            opacity: markerOpacity(point.key === selectedKey, selectedKey != null, caption.stale),
+            selected: point.key === selectedKey,
+            caption: caption.text,
+            captionColor: point.status ? unitStatus[point.status].text : (caption.stale ? colors.warning : colors.text),
+            captionBg: point.status ? unitStatus[point.status].bg : colors.surface,
+            stale: caption.stale,
+            glyph: point.kind === 'bombero' ? 'B' : point.kind === 'carro' ? 'C' : 'F',
         };
-    const body = {
-        width: size,
-        height: size,
-        backgroundColor: fill,
-        borderWidth: marcador.anilloAncho,
-        borderColor: marcador.anillo,
-        alignItems: 'center' as const,
-        justifyContent: 'center' as const,
-    };
-    // Un circulo de color no dice nada: el icono dice si es persona, carro o fuego.
-    const glifo = (
-        <MaterialCommunityIcons
-            name={marcador[point.kind].icono}
-            size={Math.round(size * 0.56)}
-            color={colors.white}
-        />
-    );
+    });
 
-    if (shape === 'circulo') {
-        return (
-            <View style={[ring, selected && { borderRadius: outer / 2 }]}>
-                <View style={[body, { borderRadius: size / 2 }]}>{glifo}</View>
-            </View>
-        );
-    }
-    if (shape === 'cuadrado') {
-        return (
-            <View style={[ring, selected && { borderRadius: SQUARE_RADIUS + spacing.xs }]}>
-                <View style={[body, { borderRadius: SQUARE_RADIUS }]}>{glifo}</View>
-            </View>
-        );
-    }
-    return (
-        <View style={[ring, { transform: [{ rotate: '45deg' }] }]}>
-            <View style={body}>
-                {/* el rombo se rota, el icono se desrota para que no quede chueco */}
-                <View style={{ transform: [{ rotate: '-45deg' }] }}>{glifo}</View>
-            </View>
-        </View>
-    );
-}
-
-function UnitMarker({
-    point,
-    selected,
-    somethingSelected,
-    now,
-    onPress,
-}: {
-    point: MapPoint;
-    selected: boolean;
-    somethingSelected: boolean;
-    now: number;
-    onPress: () => void;
-}) {
-    const caption = captionFor(point, now);
-    const opacity = markerOpacity(selected, somethingSelected, caption.stale);
-    const size = markerSize(point.kind, selected);
-    const shapeHeight = size + (selected ? spacing.xs * 2 : 0);
-    const labelHeight = 44;
-    const gap = marcador[point.kind].forma === 'diamante' ? spacing.md : spacing.xs;
-    const anchorY = (shapeHeight / 2) / (shapeHeight + gap + labelHeight);
-    const tracking = useTrackChanges(`${point.key}|${selected}|${caption.text}|${opacity}|${point.status || ''}`);
-    const chipColor = point.status ? unitStatus[point.status].text : (caption.stale ? colors.warning : colors.text);
-    const chipBg = point.status ? unitStatus[point.status].bg : colors.surface;
-
-    return (
-        <Marker
-            coordinate={{ latitude: point.latitude, longitude: point.longitude }}
-            zIndex={selected ? 1000 : caption.stale ? 1 : 10}
-            tracksViewChanges={tracking}
-            onPress={onPress}
-            anchor={{ x: 0.5, y: anchorY }}
-        >
-            <View style={[styles.pin, { opacity }]} collapsable={false}>
-                {caption.stale && <View style={[styles.staleMark, { width: size, backgroundColor: colors.warning }]} />}
-                <MarkerShape point={point} selected={selected} />
-                <View style={[styles.caption, { marginTop: gap, backgroundColor: chipBg }]}>
-                    <Text style={[styles.captionText, { color: chipColor }]} numberOfLines={3}>
-                        {caption.text}
-                    </Text>
-                </View>
-            </View>
-        </Marker>
-    );
-}
-
-function ClusterBubble({
-    count,
-    latitude,
-    longitude,
-    faded,
-    onPress,
-}: {
-    count: number;
-    latitude: number;
-    longitude: number;
-    faded: boolean;
-    onPress: () => void;
-}) {
-    const size = marcador.carro.tam;
-    const tracking = useTrackChanges(`cluster-${count}-${latitude}-${longitude}-${faded}`);
-    return (
-        <Marker
-            coordinate={{ latitude, longitude }}
-            zIndex={50}
-            tracksViewChanges={tracking}
-            onPress={onPress}
-            anchor={{ x: 0.5, y: 0.5 }}
-        >
-            <View
-                style={[styles.cluster, { minWidth: size, height: size, borderRadius: size / 2, opacity: faded ? marcador.opacidadNoSeleccionado : 1 }]}
-                accessibilityLabel={`${count} marcadores juntos`}
-            >
-                <Text style={styles.clusterText}>{count}</Text>
-            </View>
-        </Marker>
-    );
+    return `<!doctype html>
+<html><head>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+html,body,#map{height:100%;width:100%;margin:0;background:${colors.canvas}}
+.leaflet-control-attribution{font:9px system-ui;background:rgba(14,18,23,.82)!important;color:${colors.textMuted}!important}
+.leaflet-control-attribution a{color:${colors.info}!important}
+.lumbre-pin{display:flex;flex-direction:column;align-items:center;filter:drop-shadow(0 3px 5px rgba(0,0,0,.6))}
+.lumbre-stale{width:22px;height:4px;background:${colors.warning};margin-bottom:3px}
+.lumbre-shape{display:flex;align-items:center;justify-content:center;border:2px solid ${colors.white};box-sizing:border-box;color:${colors.white};font:800 13px system-ui}
+.lumbre-circle{border-radius:999px}.lumbre-square{border-radius:9px}.lumbre-diamond{transform:rotate(45deg)}
+.lumbre-diamond span{transform:rotate(-45deg)}
+.lumbre-selected{outline:4px solid ${colors.accent};outline-offset:2px}
+.lumbre-caption{max-width:132px;margin-top:6px;padding:4px 6px;text-align:center;white-space:pre-line;font:700 11px/14px system-ui;box-shadow:0 2px 5px rgba(0,0,0,.5)}
+</style></head><body><div id="map"></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const initial=${safeJson(initialRegion)};
+const points=${safeJson(serializedPoints)};
+const map=L.map('map',{zoomControl:true,attributionControl:true}).setView([initial.latitude,initial.longitude],13);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(map);
+const send=(message)=>window.ReactNativeWebView&&window.ReactNativeWebView.postMessage(JSON.stringify(message));
+points.forEach((point)=>{
+  const shapeClass=point.shape==='circulo'?'circle':point.shape==='cuadrado'?'square':'diamond';
+  const stale=point.stale?'<div class="lumbre-stale"></div>':'';
+  const selected=point.selected?' lumbre-selected':'';
+  const html='<div class="lumbre-pin" style="opacity:'+point.opacity+'">'+stale+
+    '<div class="lumbre-shape lumbre-'+shapeClass+selected+'" style="width:'+point.size+'px;height:'+point.size+'px;background:'+point.fill+'"><span>'+point.glyph+'</span></div>'+
+    '<div class="lumbre-caption" style="color:'+point.captionColor+';background:'+point.captionBg+'">'+point.caption.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</div></div>';
+  const icon=L.divIcon({className:'',html,iconSize:[140,84],iconAnchor:[70,35]});
+  L.marker([point.latitude,point.longitude],{icon,zIndexOffset:point.selected?1000:0,bubblingMouseEvents:false}).addTo(map).on('click',()=>send({type:'select',key:point.key}));
+});
+map.on('click',()=>send({type:'mapPress'}));
+map.on('moveend',()=>{const c=map.getCenter(),b=map.getBounds();send({type:'region',region:{latitude:c.lat,longitude:c.lng,latitudeDelta:Math.abs(b.getNorth()-b.getSouth()),longitudeDelta:Math.abs(b.getEast()-b.getWest())}})});
+window.lumbreSetRegion=(region)=>{const bounds=L.latLngBounds([region.latitude-region.latitudeDelta/2,region.longitude-region.longitudeDelta/2],[region.latitude+region.latitudeDelta/2,region.longitude+region.longitudeDelta/2]);map.flyToBounds(bounds,{duration:.35})};
+</script></body></html>`;
 }
 
 const MapWidget = forwardRef<MapWidgetHandle, MapWidgetProps>(({
@@ -185,17 +94,15 @@ const MapWidget = forwardRef<MapWidgetHandle, MapWidgetProps>(({
     onRegionChange,
     selectedId,
 }, ref) => {
-    const mapRef = useRef<MapView>(null);
-    const ignoreMapPress = useRef(false);
+    const webRef = useRef<WebView>(null);
     const [now, setNow] = useState(() => Date.now());
     const [localSelected, setLocalSelected] = useState<string | null>(null);
-    const [layout, setLayout] = useState({ width: 0, height: 0 });
-    const [region, setRegion] = useState<MapRegion>({
+    const initialRegion = useRef<MapRegion>({
         latitude: currentLocation.latitude,
         longitude: currentLocation.longitude,
         latitudeDelta: 0.1,
         longitudeDelta: 0.1,
-    });
+    }).current;
 
     useEffect(() => {
         const timer = setInterval(() => setNow(Date.now()), 15000);
@@ -205,13 +112,6 @@ const MapWidget = forwardRef<MapWidgetHandle, MapWidgetProps>(({
     const selectedKey = selectedId !== undefined
         ? (selectedId == null ? null : String(selectedId))
         : localSelected;
-
-    useImperativeHandle(ref, () => ({
-        animateToRegion: (next, duration) => {
-            mapRef.current?.animateToRegion(next, duration);
-        }
-    }));
-
     const points = useMemo(() => buildMapPoints({
         selfUser,
         currentLocation,
@@ -220,139 +120,48 @@ const MapWidget = forwardRef<MapWidgetHandle, MapWidgetProps>(({
         showFires,
         now,
     }), [selfUser, currentLocation, otherUsers, fires, showFires, now]);
+    const pointsByKey = useMemo(() => new Map(points.map((point) => [point.key, point])), [points]);
+    const html = useMemo(() => createMapHtml(points, selectedKey, initialRegion, now), [points, selectedKey, initialRegion, now]);
 
-    const groups = useMemo(
-        () => clusterMarkers(points, region, layout.width, layout.height, selectedKey),
-        [points, region, layout.width, layout.height, selectedKey],
-    );
+    useImperativeHandle(ref, () => ({
+        animateToRegion: (region) => {
+            webRef.current?.injectJavaScript(`window.lumbreSetRegion(${safeJson(region)});true;`);
+        },
+    }));
 
-    const onLayout = (event: LayoutChangeEvent) => {
-        const { width, height } = event.nativeEvent.layout;
-        setLayout({ width, height });
-    };
-
-    const onRegion = (next: Region) => {
-        setRegion(next);
-        onRegionChange?.(next);
-    };
-
-    const zoomTo = (latitude: number, longitude: number) => {
-        mapRef.current?.animateToRegion({
-            latitude,
-            longitude,
-            latitudeDelta: Math.max(region.latitudeDelta / 2, 0.002),
-            longitudeDelta: Math.max(region.longitudeDelta / 2, 0.002),
-        }, 350);
+    const handleMessage = (event: WebViewMessageEvent) => {
+        try {
+            const message = JSON.parse(event.nativeEvent.data) as BridgeMessage;
+            if (message.type === 'select') {
+                const point = pointsByKey.get(message.key);
+                if (!point) return;
+                if (selectedId === undefined) setLocalSelected(point.key);
+                onSelectMarker(point.raw);
+            } else if (message.type === 'mapPress') {
+                if (selectedId === undefined) setLocalSelected(null);
+                onMapPress();
+            } else if (message.type === 'region') {
+                onRegionChange?.(message.region);
+            }
+        } catch {
+            // Ignora mensajes ajenos al puente del mapa.
+        }
     };
 
     return (
-        <MapView
-            ref={mapRef}
+        <WebView
+            ref={webRef}
             style={[styles.map, style]}
-            provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : PROVIDER_DEFAULT}
-            initialRegion={{
-                latitude: currentLocation.latitude,
-                longitude: currentLocation.longitude,
-                latitudeDelta: 0.1,
-                longitudeDelta: 0.1,
-            }}
-            showsUserLocation={false}
-            showsCompass={true}
-            mapType="standard"
-            // Android: Google respeta el estilo. iOS usa Apple Maps y lo ignora
-            // por completo, por eso seguian apareciendo tiendas y museos.
-            customMapStyle={estiloMapa}
-            // La prop lleva una "s" de mas: asi se llama en la libreria.
-            showsPointsOfInterests={false}
-            // En iOS manda sobre la anterior: lista vacia = ninguna categoria.
-            pointsOfInterestFilter={[]}
-            showsBuildings={false}
-            toolbarEnabled={false}
-            onLayout={onLayout}
-            onPress={() => {
-                if (ignoreMapPress.current) {
-                    ignoreMapPress.current = false;
-                    return;
-                }
-                if (selectedId === undefined) setLocalSelected(null);
-                onMapPress();
-            }}
-            onRegionChangeComplete={onRegion}
-        >
-            {groups.map((group) => {
-                if (group.members.length > 1) {
-                    return (
-                        <ClusterBubble
-                            key={group.key}
-                            count={group.members.length}
-                            latitude={group.latitude}
-                            longitude={group.longitude}
-                            faded={selectedKey != null}
-                            onPress={() => {
-                                ignoreMapPress.current = true;
-                                zoomTo(group.latitude, group.longitude);
-                            }}
-                        />
-                    );
-                }
-                const point = group.members[0];
-                const selected = point.key === selectedKey;
-                return (
-                    <UnitMarker
-                        key={point.key}
-                        point={point}
-                        selected={selected}
-                        somethingSelected={selectedKey != null}
-                        now={now}
-                        onPress={() => {
-                            ignoreMapPress.current = true;
-                            if (selectedId === undefined) setLocalSelected(point.key);
-                            onSelectMarker(point.raw);
-                        }}
-                    />
-                );
-            })}
-        </MapView>
+            source={{ html, baseUrl: 'https://www.openstreetmap.org' }}
+            originWhitelist={['*']}
+            javaScriptEnabled
+            domStorageEnabled
+            onMessage={handleMessage}
+            overScrollMode="never"
+        />
     );
 });
 
 export default MapWidget;
 
-const styles = StyleSheet.create({
-    map: {
-        flex: 1,
-    },
-    pin: {
-        alignItems: 'center',
-    },
-    staleMark: {
-        height: spacing.xs,
-        marginBottom: spacing.xs,
-    },
-    caption: {
-        paddingHorizontal: spacing.xs,
-        paddingVertical: spacing.xs,
-        maxWidth: 128,
-        ...shadows.sm,
-    },
-    captionText: {
-        fontSize: 11,
-        fontWeight: '700',
-        textAlign: 'center',
-    },
-    cluster: {
-        paddingHorizontal: spacing.sm,
-        backgroundColor: colors.surface,
-        borderWidth: marcador.anilloAncho,
-        borderColor: marcador.anillo,
-        alignItems: 'center',
-        justifyContent: 'center',
-        ...shadows.md,
-    },
-    clusterText: {
-        color: colors.text,
-        fontSize: 16,
-        fontWeight: '700',
-        textAlign: 'center',
-    },
-});
+const styles = StyleSheet.create({ map: { flex: 1, backgroundColor: colors.canvas } });
