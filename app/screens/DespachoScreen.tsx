@@ -193,19 +193,6 @@ function belongsToBody(person: Person, body: BodyIdentity): boolean {
   return false;
 }
 
-function isCompatibleBody(candidate: BodyIdentity, target: BodyIdentity): boolean {
-  if (target.id === undefined && !target.name) return true;
-  if (candidate.id !== undefined && target.id !== undefined) {
-    return candidate.id === target.id;
-  }
-  if (candidate.name && target.name) {
-    return normalizeText(candidate.name) === normalizeText(target.name);
-  }
-  // Si alguno de los serializers no trae una identidad comparable, la API
-  // autenticada sigue siendo la autoridad de alcance y no ocultamos el carro.
-  return true;
-}
-
 function personName(person?: Person): string {
   if (!person) return 'Sin seleccionar';
   const composed = `${person.first_name || ''} ${person.last_name || ''}`.trim();
@@ -393,7 +380,7 @@ export default function DespachoScreen({ navigation, route }: Props) {
     try {
       const [incidentResponse, unitResponse, peopleResponse] = await Promise.all([
         api.get('/incidents/'),
-        api.get('/units/'),
+        api.get('/units/available/'),
         api.get('/users/'),
       ]);
       const nextIncidents = asList<Incident>(incidentResponse.data).filter(isIncidentOpen);
@@ -432,7 +419,7 @@ export default function DespachoScreen({ navigation, route }: Props) {
     setRefreshingUnits(true);
     setUnitRefreshError(null);
     try {
-      const response = await api.get('/units/');
+      const response = await api.get('/units/available/');
       const nextUnits = asList<Unit>(response.data);
       setUnits(nextUnits);
       if (
@@ -460,15 +447,10 @@ export default function DespachoScreen({ navigation, route }: Props) {
   const selectedUnit = units.find((unit) => unit.id === selectedUnitId);
   const selectedLeader = people.find((person) => person.id === leaderId);
   const selectedCrew = people.filter((person) => crewIds.includes(person.id));
-  const unitsForIncident = useMemo(() => {
-    const body = incidentBody(selectedIncident);
-    return units.filter((unit) => isCompatibleBody(unitBody(unit), body));
-  }, [selectedIncident, units]);
   const availableUnits = useMemo(
-    () => unitsForIncident.filter((unit) => (unit.status || '').toUpperCase() === 'AVAILABLE'),
-    [unitsForIncident],
+    () => units.filter((unit) => (unit.status || '').toUpperCase() === 'AVAILABLE'),
+    [units],
   );
-  const unavailableCount = unitsForIncident.length - availableUnits.length;
 
   const targetBody = useMemo(() => {
     const fromIncident = incidentBody(selectedIncident);
@@ -678,8 +660,7 @@ export default function DespachoScreen({ navigation, route }: Props) {
         </Pressable>
       </View>
       <Text style={styles.notice}>
-        Los carros ya despachados no se pueden elegir porque están asignados a otra emergencia.
-        {unavailableCount > 0 ? ` ${unavailableCount} no están disponibles ahora.` : ''}
+        Los carros ya despachados no aparecen porque están asignados a otra emergencia.
       </Text>
       {unitRefreshError ? <Text style={styles.inlineError}>{unitRefreshError}</Text> : null}
       <SearchField value={query} onChangeText={setQuery} placeholder="Buscar carro o compañía" />
