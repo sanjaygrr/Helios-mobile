@@ -9,6 +9,7 @@ import { colors, spacing, borderRadius } from '../theme/colors';
 import api, { asList } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import ModalSelector from './ModalSelector';
+import { compararCarros, etiquetaCarro } from '../utils/claves';
 
 const TIPOS = [
   { id: 'FORESTAL', label: 'Forestal' },
@@ -160,9 +161,11 @@ export default function ReportarEmergencia({
       }
       map.get(id)!.carros.push(carro);
     });
-    return [...map.values()].sort((a, b) =>
-      String(a.compania.number || a.compania.name).localeCompare(
-        String(b.compania.number || b.compania.name), 'es', { numeric: true }));
+    return [...map.values()]
+      .map(g => ({ ...g, carros: [...g.carros].sort(compararCarros) }))
+      .sort((a, b) =>
+        String(a.compania.number || a.compania.name).localeCompare(
+          String(b.compania.number || b.compania.name), 'es', { numeric: true }));
   }, [companias, carros]);
 
   useEffect(() => {
@@ -462,7 +465,7 @@ export default function ReportarEmergencia({
                             <View style={{ flex: 1 }}>
                               <Text style={estilos.carroNombre}>{carro.name}</Text>
                               <Text style={estilos.especialidad}>
-                                {carro.type_display || carro.unit_type || 'Sin especialidad'}
+                                {etiquetaCarro(carro.unit_type, carro.type_display)}
                                 {deOtro ? ' · Lo saca su central' : libre ? '' : ` · ${carro.status_display || 'No disponible'}`}
                               </Text>
                             </View>
@@ -497,7 +500,7 @@ export default function ReportarEmergencia({
               return (
                 <View key={carroId} style={estilos.bloque}>
                   <Text style={estilos.compania}>{carro?.name}</Text>
-                  <Text style={estilos.especialidad}>{carro?.type_display || carro?.unit_type} · {carro?.company_name}</Text>
+                  <Text style={estilos.especialidad}>{etiquetaCarro(carro?.unit_type, carro?.type_display)} · {carro?.company_name}</Text>
                   <Text style={estilos.seccion}>Va en el carro</Text>
                   {van.length === 0 && <Text style={estilos.vacio}>Nadie marcado. Toca a alguien de disponibles.</Text>}
                   {van.map(pid => {

@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius, shadows } from '../theme/colors';
 import api from '../services/api';
 import ModalSelector from '../components/ModalSelector';
+import { compararCarros, etiquetaCarro, TIPOS_CARRO } from '../utils/claves';
 
 export default function ManageUnitsScreen() {
     const [units, setUnits] = useState<any[]>([]);
@@ -21,11 +22,7 @@ export default function ManageUnitsScreen() {
     const [showStatusSelector, setShowStatusSelector] = useState(false);
 
     // Dictionaries
-    const unitTypes = [
-        { id: 'FORESTAL', label: 'Forestal' },
-        { id: 'URBANO', label: 'Urbano' },
-        { id: 'APOYO', label: 'Apoyo' },
-    ];
+    const unitTypes = TIPOS_CARRO;
     const unitStatuses = [
         { id: 'AVAILABLE', label: 'Disponible' },
         { id: 'DEPLOYED', label: 'Desplegado' },
@@ -137,7 +134,7 @@ export default function ManageUnitsScreen() {
                     </View>
                     <View style={styles.cardInfo}>
                         <Text style={styles.cardTitle}>{item.name}</Text>
-                        <Text style={styles.cardSubtitle}>{item.type_display || item.unit_type}</Text>
+                        <Text style={styles.cardSubtitle}>{etiquetaCarro(item.unit_type, item.type_display)}</Text>
                     </View>
                     <View style={[styles.statusBadge, { backgroundColor: statusColor + '15' }]}>
                         <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
@@ -174,7 +171,7 @@ export default function ManageUnitsScreen() {
                 <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 50 }} />
             ) : (
                 <FlatList
-                    data={units}
+                    data={[...units].sort(compararCarros)}
                     keyExtractor={u => u.id.toString()}
                     renderItem={renderItem}
                     contentContainerStyle={styles.list}

@@ -15,6 +15,7 @@ export type Criterio<T> = {
   clave: string;
   etiqueta: string;
   grupo: (item: T) => string;
+  orden?: (titulo: string) => number;
 };
 
 type Props<T> = {
@@ -62,7 +63,13 @@ export default function ListaAgrupada<T>({
     });
 
     return Array.from(mapa.entries())
-      .sort((a, b) => a[0].localeCompare(b[0], 'es'))
+      .sort((a, b) => {
+        if (activo?.orden) {
+          const d = activo.orden(a[0]) - activo.orden(b[0]);
+          if (d) return d;
+        }
+        return a[0].localeCompare(b[0], 'es');
+      })
       .map(([titulo, items]) => ({
         titulo,
         total: items.length,

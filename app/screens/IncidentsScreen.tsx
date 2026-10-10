@@ -11,6 +11,7 @@ import { useAuth } from '../context/AuthContext';
 import api, { asList } from '../services/api';
 import LocationPicker from '../components/LocationPicker';
 import ReportarEmergencia from '../components/ReportarEmergencia';
+import { compararCarros, etiquetaCarro } from '../utils/claves';
 
 
 const getIncidentColor = (type: string) => {
@@ -581,7 +582,7 @@ export default function IncidentsScreen() {
                                 ) : (
                                     <View style={{ maxHeight: 200 }}>
                                         <FlatList
-                                            data={availableUnits}
+                                            data={[...availableUnits].sort(compararCarros)}
                                             keyExtractor={(u) => u.id.toString()}
                                             renderItem={({ item }) => (
                                                 <TouchableOpacity
@@ -594,7 +595,7 @@ export default function IncidentsScreen() {
                                                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                                                         <Ionicons name="bus" size={20} color={selectedUnit?.id === item.id ? colors.white : colors.primary} />
                                                         <Text style={[styles.unitItemText, selectedUnit?.id === item.id && { color: colors.white }]}>
-                                                            {item.name} ({item.type_display})
+                                                            {item.name} ({etiquetaCarro(item.unit_type, item.type_display)})
                                                         </Text>
                                                     </View>
                                                     {selectedUnit?.id === item.id && <Ionicons name="checkmark" size={20} color="white" />}

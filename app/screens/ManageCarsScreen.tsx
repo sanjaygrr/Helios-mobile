@@ -6,6 +6,7 @@ import api, { asList } from '../services/api';
 import ModalSelector from '../components/ModalSelector';
 import { useAuth } from '../context/AuthContext';
 import ListaAgrupada from '../components/ListaAgrupada';
+import { compararCarros, etiquetaCarro, ordenEtiqueta, TIPOS_CARRO } from '../utils/claves';
 
 export default function ManageCarsScreen({ navigation }: any) {
   const { user } = useAuth();
@@ -28,15 +29,7 @@ export default function ManageCarsScreen({ navigation }: any) {
   const [companies, setCompanies] = useState<{ id: number; label: string }[]>([]);
   const [showCompanySelector, setShowCompanySelector] = useState(false);
 
-  const unitTypes = [
-    { id: 'FORESTAL', label: 'Forestal' },
-    { id: 'URBANO', label: 'Urbano' },
-    { id: 'APOYO', label: 'Apoyo' },
-    { id: 'ALJIBE', label: 'Aljibe' },
-    { id: 'PORTAESCALAS', label: 'Portaescalas' },
-    { id: 'RESCATE', label: 'Rescate' },
-    { id: 'HAZMAT', label: 'HazMat' },
-  ];
+  const unitTypes = TIPOS_CARRO;
   const unitStatuses = [
     { id: 'AVAILABLE', label: 'Disponible' },
     { id: 'DEPLOYED', label: 'Desplegado' },
@@ -197,7 +190,7 @@ export default function ManageCarsScreen({ navigation }: any) {
             </View>
             <View style={styles.vehicleDetails}>
               <Text style={styles.cardTitle}>{item.name}</Text>
-              <Text style={styles.cardSubtitle}>{item.type_display || item.unit_type}</Text>
+              <Text style={styles.cardSubtitle}>{etiquetaCarro(item.unit_type, item.type_display)}</Text>
             </View>
           </View>
           <View style={[styles.statusBadge, { backgroundColor: statusInfo.color + '15' }]}>
@@ -247,7 +240,7 @@ export default function ManageCarsScreen({ navigation }: any) {
         <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 50 }} />
       ) : (
         <ListaAgrupada
-          datos={units}
+          datos={[...units].sort(compararCarros)}
           criterios={[
             { clave: 'comuna', etiqueta: 'Ciudad',
               grupo: (u: any) => u.comuna || 'Sin ciudad' },
@@ -256,7 +249,8 @@ export default function ManageCarsScreen({ navigation }: any) {
             { clave: 'cuerpo', etiqueta: 'Cuerpo',
               grupo: (u: any) => u.fire_department_name || 'Sin cuerpo' },
             { clave: 'tipo', etiqueta: 'Tipo',
-              grupo: (u: any) => u.type_display || 'Sin tipo' },
+              grupo: (u: any) => etiquetaCarro(u.unit_type, u.type_display),
+              orden: ordenEtiqueta },
           ]}
           claveItem={(u: any) => String(u.id)}
           buscarEn={(u: any) =>
@@ -279,7 +273,7 @@ export default function ManageCarsScreen({ navigation }: any) {
               <View style={{ flex: 1 }}>
                 <Text style={estilosDetalle.titulo}>{detalleCarro?.name}</Text>
                 <Text style={estilosDetalle.sub}>
-                  {detalleCarro?.type_display || detalleCarro?.unit_type}
+                  {etiquetaCarro(detalleCarro?.unit_type, detalleCarro?.type_display)}
                 </Text>
               </View>
               <TouchableOpacity onPress={() => setDetalleCarro(null)} hitSlop={12}

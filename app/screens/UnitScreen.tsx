@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius, shadows, typography } from '../theme/colors';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
+import { etiquetaCarro } from '../utils/claves';
 
 type UnitStatus = 'available' | 'en_route' | 'on_scene' | 'returning';
 
@@ -446,7 +447,7 @@ export default function UnitScreen() {
         </View>
         <View style={styles.unitInfo}>
           <Text style={styles.unitName}>{unit.name}</Text>
-          <Text style={styles.unitType}>{unit.type_display || unit.unit_type}</Text>
+          <Text style={styles.unitType}>{etiquetaCarro(unit.unit_type, unit.type_display)}</Text>
         </View>
         <View style={[styles.statusBadge, { backgroundColor: statusConfig.bgColor }]}>
           <Ionicons name={statusConfig.icon} size={18} color={statusConfig.color} />
