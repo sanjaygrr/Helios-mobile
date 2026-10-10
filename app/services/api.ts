@@ -9,6 +9,20 @@ const DEFAULT_URL = (ENV_URL || PROD_URL).replace(/\/$/, '');
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+let unauthorizedHandler: (() => void) | null = null;
+let refreshPromise: Promise<string> | null = null;
+
+export function setUnauthorizedHandler(handler: (() => void) | null) {
+    unauthorizedHandler = handler;
+}
+
+async function clearExpiredSession() {
+    await AsyncStorage.multiRemove([
+        '@Auth:token', '@Auth:refresh', '@Auth:user', '@Auth:vista',
+    ]);
+    unauthorizedHandler?.();
+}
+
 const api = axios.create({
     baseURL: DEFAULT_URL,
     timeout: 10000,
@@ -40,16 +54,28 @@ api.interceptors.response.use(response => response, async error => {
     }
     original._retried = true;
     const refresh = await AsyncStorage.getItem('@Auth:refresh');
-    if (!refresh) return Promise.reject(error);
+    if (!refresh) {
+        await clearExpiredSession();
+        return Promise.reject(error);
+    }
     try {
-        const storedBase = __DEV__ ? await AsyncStorage.getItem('@Api:baseURL') : null;
-        const refreshBase = (storedBase || DEFAULT_URL).replace(/\/$/, '');
-        const response = await axios.post(`${refreshBase}/token/refresh/`, { refresh });
-        const access = response.data.access;
-        await AsyncStorage.setItem('@Auth:token', access);
+        if (!refreshPromise) {
+            refreshPromise = (async () => {
+                const storedBase = __DEV__ ? await AsyncStorage.getItem('@Api:baseURL') : null;
+                const refreshBase = (storedBase || DEFAULT_URL).replace(/\/$/, '');
+                const response = await axios.post(`${refreshBase}/token/refresh/`, { refresh });
+                const access = response.data.access;
+                await AsyncStorage.setItem('@Auth:token', access);
+                return access;
+            })().finally(() => { refreshPromise = null; });
+        }
+        const access = await refreshPromise;
         original.headers.Authorization = `Bearer ${access}`;
         return api(original);
-    } catch {
+    } catch (refreshError: any) {
+        if ([400, 401, 403].includes(refreshError?.response?.status)) {
+            await clearExpiredSession();
+        }
         return Promise.reject(error);
     }
 });
