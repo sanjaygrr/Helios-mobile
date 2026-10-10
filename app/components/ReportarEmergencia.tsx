@@ -18,6 +18,14 @@ const TIPOS = [
   { id: 'OTRO', label: 'Otro' },
 ];
 
+const LUGARES = [
+  { id: 'URBANO', label: 'Urbano' },
+  { id: 'RURAL', label: 'Rural' },
+  { id: 'FORESTAL', label: 'Forestal' },
+  { id: 'INTERFAZ', label: 'Interfaz' },
+  { id: 'CARRETERA', label: 'Carretera' },
+];
+
 function nombrePersona(p: any) {
   const n = `${p?.first_name || ''} ${p?.last_name || ''}`.trim();
   return n || (p?.email || '').split('@')[0] || 'Sin nombre';
@@ -33,6 +41,10 @@ function mensajeError(error: any, fallback: string) {
   if (Array.isArray(first) && first[0]) return String(first[0]);
   if (typeof first === 'string') return first;
   return fallback;
+}
+
+function nombreCentral(cuerpo: any) {
+  return cuerpo?.central_name || (cuerpo?.name ? `Central de ${cuerpo.name}` : 'Central');
 }
 
 export default function ReportarEmergencia({
@@ -52,9 +64,14 @@ export default function ReportarEmergencia({
   const [cargando, setCargando] = useState(false);
   const [errorCarga, setErrorCarga] = useState('');
   const [guardando, setGuardando] = useState(false);
+  const [departamentos, setDepartamentos] = useState<any[]>([]);
   const [companias, setCompanias] = useState<any[]>([]);
   const [carros, setCarros] = useState<any[]>([]);
   const [personas, setPersonas] = useState<any[]>([]);
+  const [lugar, setLugar] = useState('');
+  const [protagonista, setProtagonista] = useState<number | null>(null);
+  const [apoyos, setApoyos] = useState<number[]>([]);
+  const [busca, setBusca] = useState('');
   const [elegidos, setElegidos] = useState<number[]>([]);
   const [vaEn, setVaEn] = useState<Record<number, number[]>>({});
   const [encargado, setEncargado] = useState<Record<number, number | null>>({});
@@ -63,18 +80,26 @@ export default function ReportarEmergencia({
   const [tipo, setTipo] = useState('OTRO');
   const [descripcion, setDescripcion] = useState('');
   const [direccion, setDireccion] = useState('');
+  const [comuna, setComuna] = useState('');
   const [lat, setLat] = useState(0);
   const [lng, setLng] = useState(0);
   const [showTipo, setShowTipo] = useState(false);
 
   useEffect(() => {
     if (!visible) return;
-    setPaso(editando ? 3 : 1);
+    const centrales = Array.isArray(incidente?.centrales) ? incidente.centrales : [];
+    const prot = centrales.find((c: any) => c.role === 'PROTAGONISTA');
+    setPaso(editando ? 4 : 1);
+    setLugar(incidente?.geographic_type || '');
+    setProtagonista(prot?.fire_department || incidente?.fire_department || user?.fire_department || null);
+    setApoyos(centrales.filter((c: any) => c.role === 'APOYO').map((c: any) => c.fire_department));
+    setBusca('');
     setTitulo(incidente?.title || '');
     setClave(incidente?.dispatch_code || '');
     setTipo(incidente?.incident_type || 'OTRO');
     setDescripcion(incidente?.description || '');
-    setDireccion('');
+    setDireccion(incidente?.address || '');
+    setComuna(incidente?.comuna || '');
     setLat(Number(incidente?.latitude) || 0);
     setLng(Number(incidente?.longitude) || 0);
     setElegidos([]);
@@ -84,16 +109,18 @@ export default function ReportarEmergencia({
     let vivo = true;
     setCargando(true);
     Promise.all([
+      api.get('/departments/', { params: { para: 'emergencia' } }),
       api.get('/companies/'),
       api.get('/units/'),
       api.get('/users/'),
-    ]).then(([c, u, p]) => {
+    ]).then(([d, c, u, p]) => {
       if (!vivo) return;
+      setDepartamentos(asList(d.data));
       setCompanias(asList(c.data));
       setCarros(asList(u.data));
       setPersonas(asList(p.data));
     }).catch(() => {
-      if (vivo) setErrorCarga('No pude cargar compañías ni carros. Cierra sesión y entra de nuevo.');
+      if (vivo) setErrorCarga('No pude cargar cuerpos ni carros. Cierra sesión y entra de nuevo.');
     }).finally(() => { if (vivo) setCargando(false); });
 
     if (!incidente?.latitude) {
@@ -109,6 +136,8 @@ export default function ReportarEmergencia({
     return () => { vivo = false; };
   }, [visible, incidente?.id]);
 
+  const cuerpoDe = (id: number | null) => departamentos.find(d => d.id === id);
+
   const grupos = useMemo(() => {
     const map = new Map<number, { compania: any; carros: any[] }>();
     companias.forEach(c => map.set(c.id, { compania: c, carros: [] }));
@@ -116,7 +145,12 @@ export default function ReportarEmergencia({
       const id = carro.company;
       if (!map.has(id)) {
         map.set(id, {
-          compania: { id, name: carro.company_name || 'Sin compañía', number: carro.company_number || '' },
+          compania: {
+            id,
+            name: carro.company_name || 'Sin compañía',
+            number: carro.company_number || '',
+            fire_department: carro.fire_department,
+          },
           carros: [],
         });
       }
@@ -127,11 +161,59 @@ export default function ReportarEmergencia({
         String(b.compania.number || b.compania.name), 'es', { numeric: true }));
   }, [companias, carros]);
 
+  const centralesElegidas = useMemo(() => {
+    const ids = [protagonista, ...apoyos].filter((id): id is number => !!id);
+    return ids.map(id => cuerpoDe(id) || {
+      id,
+      name: 'Cuerpo',
+      region: '',
+      central_name: 'Central',
+    });
+  }, [protagonista, apoyos, departamentos]);
+
+  const resultados = useMemo(() => {
+    const q = busca.trim().toLowerCase();
+    const base = q
+      ? departamentos.filter(d => `${d.name} ${d.region || ''} ${d.central_name || ''}`.toLowerCase().includes(q))
+      : departamentos.filter(d => d.id === user?.fire_department || d.id === protagonista || apoyos.includes(d.id));
+    return base.slice(0, 40);
+  }, [busca, departamentos, user?.fire_department, protagonista, apoyos]);
+
   const genteDe = (companyId: number) =>
     personas.filter(p => p.is_active !== false && p.company === companyId);
 
+  const marcarProtagonista = (id: number) => {
+    setApoyos(actual => {
+      const sinEste = actual.filter(x => x !== id);
+      if (protagonista && protagonista !== id && !sinEste.includes(protagonista)) {
+        return [...sinEste, protagonista];
+      }
+      return sinEste;
+    });
+    setProtagonista(id);
+  };
+
+  const alternarApoyo = (id: number) => {
+    if (id === protagonista) return;
+    setApoyos(actual => actual.includes(id) ? actual.filter(x => x !== id) : [...actual, id]);
+  };
+
+  const seguirACarros = () => {
+    if (!lugar) {
+      Alert.alert('Falta el lugar', 'Elige si es urbano, rural, forestal, interfaz o carretera.');
+      return;
+    }
+    if (!protagonista) {
+      Alert.alert('Falta la central', 'Marca la central que tiene el problema.');
+      return;
+    }
+    setPaso(2);
+  };
+
   const toggleCarro = (carro: any) => {
-    if ((carro.status || '').toUpperCase() !== 'AVAILABLE') return;
+    const deOtroCuerpo = carro.fire_department && user?.fire_department
+      && carro.fire_department !== user.fire_department && role !== 'SUPER_ADMIN';
+    if (deOtroCuerpo || (carro.status || '').toUpperCase() !== 'AVAILABLE') return;
     setElegidos(prev => prev.includes(carro.id)
       ? prev.filter(id => id !== carro.id)
       : [...prev, carro.id]);
@@ -155,7 +237,7 @@ export default function ReportarEmergencia({
     });
     setVaEn(va);
     setEncargado(jefes);
-    setPaso(2);
+    setPaso(3);
   };
 
   const mover = (carroId: number, personaId: number) => {
@@ -179,6 +261,14 @@ export default function ReportarEmergencia({
   };
 
   const guardar = async () => {
+    if (!lugar) {
+      Alert.alert('Falta el lugar', 'Elige el tipo geográfico.');
+      return;
+    }
+    if (!protagonista) {
+      Alert.alert('Falta la central', 'Marca la central que tiene el problema.');
+      return;
+    }
     if (!titulo.trim() || !clave.trim()) {
       Alert.alert('Falta el llamado', 'Escribe el título y la clave.');
       return;
@@ -199,24 +289,23 @@ export default function ReportarEmergencia({
         setGuardando(false);
         return;
       }
-      const cuerpo = user?.fire_department
-        || carros.find(c => elegidos.includes(c.id))?.fire_department
-        || incidente?.fire_department
-        || null;
-      if (role === 'SUPER_ADMIN' && !cuerpo) {
-        Alert.alert('Falta el cuerpo', 'Elige un carro de un cuerpo, o entra con una cuenta de ese cuerpo.');
-        setGuardando(false);
-        return;
-      }
+      const centrales = [
+        { fire_department: protagonista, role: 'PROTAGONISTA' },
+        ...apoyos.filter(id => id !== protagonista).map(id => ({ fire_department: id, role: 'APOYO' })),
+      ];
       const payload = {
         title: titulo.trim(),
         dispatch_code: clave.trim(),
         description: descripcion.trim(),
         requested_units: Math.max(1, elegidos.length),
         incident_type: tipo,
+        geographic_type: lugar,
+        address: direccion.trim(),
+        comuna: comuna.trim(),
         latitude,
         longitude,
-        fire_department: cuerpo,
+        fire_department: protagonista,
+        centrales,
       };
       const res = editando
         ? await api.patch(`/incidents/${incidente.id}/`, payload)
@@ -249,9 +338,96 @@ export default function ReportarEmergencia({
 
   const tituloPaso = editando
     ? 'Editar emergencia'
-    : paso === 1 ? 'Compañías y carros'
-    : paso === 2 ? 'Quién sale'
+    : paso === 1 ? 'Lugar y centrales'
+    : paso === 2 ? 'Compañías y carros'
+    : paso === 3 ? 'Quién sale'
     : 'El llamado';
+
+  const resumen = [
+    LUGARES.find(l => l.id === lugar)?.label,
+    comuna.trim(),
+    nombreCentral(cuerpoDe(protagonista)),
+  ].filter(Boolean).join(' · ');
+
+  const bloqueLugar = (
+    <View>
+      <Text style={estilos.seccion}>Tipo de lugar</Text>
+      <View style={estilos.chips}>
+        {LUGARES.map(opcion => {
+          const activo = lugar === opcion.id;
+          return (
+            <TouchableOpacity
+              key={opcion.id}
+              style={[estilos.chip, activo && estilos.chipOn]}
+              onPress={() => setLugar(opcion.id)}
+            >
+              <Text style={[estilos.chipTexto, activo && estilos.chipTextoOn]}>{opcion.label}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+      <Text style={estilos.seccion}>Comuna</Text>
+      <TextInput style={estilos.input} value={comuna} onChangeText={setComuna} placeholder="Providencia" placeholderTextColor={colors.textMuted} />
+      <Text style={estilos.seccion}>Dirección</Text>
+      <TextInput style={estilos.input} value={direccion} onChangeText={setDireccion} placeholder="Calle y número" placeholderTextColor={colors.textMuted} />
+      <Text style={estilos.especialidad}>
+        {lat ? `Punto: ${lat.toFixed(5)}, ${lng.toFixed(5)}` : 'Sin punto todavía. Escribe la dirección o espera el GPS.'}
+      </Text>
+      <Text style={estilos.seccion}>Centrales</Text>
+      <Text style={estilos.vacio}>
+        Cada cuerpo tiene la suya. La protagonista es la que tiene el problema. El resto queda en apoyo.
+      </Text>
+      {centralesElegidas.map(cuerpo => {
+        const esProta = cuerpo.id === protagonista;
+        return (
+          <View key={cuerpo.id} style={[estilos.carro, esProta && estilos.carroOn]}>
+            <View style={{ flex: 1 }}>
+              <Text style={estilos.carroNombre}>{nombreCentral(cuerpo)}</Text>
+              <Text style={estilos.especialidad}>
+                {cuerpo.name}{cuerpo.region ? ` · ${cuerpo.region}` : ''}
+                {esProta ? ' · Tiene el problema' : ' · Apoyo'}
+              </Text>
+            </View>
+            {!esProta && (
+              <TouchableOpacity onPress={() => alternarApoyo(cuerpo.id)}>
+                <Text style={estilos.link}>Quitar</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        );
+      })}
+      <TextInput
+        style={estilos.input}
+        value={busca}
+        onChangeText={setBusca}
+        placeholder="Buscar cuerpo o central"
+        placeholderTextColor={colors.textMuted}
+      />
+      {resultados.map(cuerpo => {
+        const esProta = cuerpo.id === protagonista;
+        const esApoyo = apoyos.includes(cuerpo.id);
+        return (
+          <View key={`b-${cuerpo.id}`} style={estilos.fila}>
+            <View style={{ flex: 1 }}>
+              <Text style={estilos.carroNombre}>{nombreCentral(cuerpo)}</Text>
+              <Text style={estilos.especialidad}>{cuerpo.name}{cuerpo.region ? ` · ${cuerpo.region}` : ''}</Text>
+            </View>
+            {!esProta && (
+              <TouchableOpacity onPress={() => marcarProtagonista(cuerpo.id)}>
+                <Text style={estilos.link}>Problema</Text>
+              </TouchableOpacity>
+            )}
+            {!esProta && (
+              <TouchableOpacity onPress={() => alternarApoyo(cuerpo.id)} style={{ marginLeft: 12 }}>
+                <Text style={estilos.link}>{esApoyo ? 'En apoyo' : 'Apoyo'}</Text>
+              </TouchableOpacity>
+            )}
+            {esProta && <Text style={estilos.link}>Protagonista</Text>}
+          </View>
+        );
+      })}
+    </View>
+  );
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
@@ -261,7 +437,7 @@ export default function ReportarEmergencia({
             <Ionicons name={paso > 1 && !editando ? 'arrow-back' : 'close'} size={26} color={colors.text} />
           </TouchableOpacity>
           <Text style={estilos.titulo}>{tituloPaso}</Text>
-          <Text style={estilos.paso}>{editando ? '' : `${paso}/3`}</Text>
+          <Text style={estilos.paso}>{editando ? '' : `${paso}/4`}</Text>
         </View>
 
         {cargando ? (
@@ -269,47 +445,65 @@ export default function ReportarEmergencia({
         ) : (
           <ScrollView contentContainerStyle={estilos.scroll} keyboardShouldPersistTaps="handled">
             {!!errorCarga && <Text style={estilos.error}>{errorCarga}</Text>}
+            {paso > 1 && !!resumen && <Text style={estilos.especialidad}>{resumen}</Text>}
 
-            {paso === 1 && !editando && grupos.map(grupo => (
-              <View key={grupo.compania.id} style={estilos.bloque}>
-                <Text style={estilos.compania}>
-                  {grupo.compania.number ? `${grupo.compania.number} · ` : ''}{grupo.compania.name}
-                </Text>
-                {grupo.carros.length === 0 ? (
-                  <Text style={estilos.vacio}>Esta compañía no tiene carros cargados.</Text>
-                ) : grupo.carros.map(carro => {
-                  const libre = (carro.status || '').toUpperCase() === 'AVAILABLE';
-                  const marcado = elegidos.includes(carro.id);
-                  return (
-                    <TouchableOpacity
-                      key={carro.id}
-                      style={[estilos.carro, marcado && estilos.carroOn, !libre && estilos.carroOff]}
-                      onPress={() => toggleCarro(carro)}
-                      disabled={!libre}
-                    >
-                      <View style={{ flex: 1 }}>
-                        <Text style={estilos.carroNombre}>{carro.name}</Text>
-                        <Text style={estilos.especialidad}>
-                          {carro.type_display || carro.unit_type || 'Sin especialidad'}
-                          {libre ? '' : ` · ${carro.status_display || 'No disponible'}`}
-                        </Text>
-                      </View>
-                      <Ionicons
-                        name={marcado ? 'checkbox' : libre ? 'square-outline' : 'lock-closed'}
-                        size={24}
-                        color={marcado ? colors.accent : colors.textMuted}
-                      />
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            ))}
+            {(paso === 1 || editando) && bloqueLugar}
 
-            {paso === 1 && !editando && grupos.length === 0 && !errorCarga && (
-              <Text style={estilos.vacio}>No hay compañías en tu cuerpo. Créalas en Gestión.</Text>
-            )}
+            {paso === 2 && !editando && centralesElegidas.map(cuerpo => {
+              const deEste = grupos.filter(g => g.compania.fire_department === cuerpo.id);
+              return (
+                <View key={cuerpo.id} style={estilos.bloque}>
+                  <Text style={estilos.compania}>{nombreCentral(cuerpo)}</Text>
+                  <Text style={estilos.especialidad}>
+                    {cuerpo.id === protagonista ? 'Protagonista · tiene el problema' : 'Apoyo'}
+                    {cuerpo.name ? ` · ${cuerpo.name}` : ''}
+                  </Text>
+                  {deEste.length === 0 && (
+                    <Text style={estilos.vacio}>
+                      Esta central no tiene compañías cargadas acá. Sus carros los saca ella.
+                    </Text>
+                  )}
+                  {deEste.map(grupo => (
+                    <View key={grupo.compania.id}>
+                      <Text style={estilos.seccion}>
+                        {grupo.compania.number ? `${grupo.compania.number} · ` : ''}{grupo.compania.name}
+                      </Text>
+                      {grupo.carros.length === 0 ? (
+                        <Text style={estilos.vacio}>Esta compañía no tiene carros cargados.</Text>
+                      ) : grupo.carros.map(carro => {
+                        const deOtro = carro.fire_department && user?.fire_department
+                          && carro.fire_department !== user.fire_department && role !== 'SUPER_ADMIN';
+                        const libre = !deOtro && (carro.status || '').toUpperCase() === 'AVAILABLE';
+                        const marcado = elegidos.includes(carro.id);
+                        return (
+                          <TouchableOpacity
+                            key={carro.id}
+                            style={[estilos.carro, marcado && estilos.carroOn, !libre && estilos.carroOff]}
+                            onPress={() => toggleCarro(carro)}
+                            disabled={!libre}
+                          >
+                            <View style={{ flex: 1 }}>
+                              <Text style={estilos.carroNombre}>{carro.name}</Text>
+                              <Text style={estilos.especialidad}>
+                                {carro.type_display || carro.unit_type || 'Sin especialidad'}
+                                {deOtro ? ' · Lo saca su central' : libre ? '' : ` · ${carro.status_display || 'No disponible'}`}
+                              </Text>
+                            </View>
+                            <Ionicons
+                              name={marcado ? 'checkbox' : libre ? 'square-outline' : 'lock-closed'}
+                              size={24}
+                              color={marcado ? colors.accent : colors.textMuted}
+                            />
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  ))}
+                </View>
+              );
+            })}
 
-            {paso === 2 && elegidos.map(carroId => {
+            {paso === 3 && elegidos.map(carroId => {
               const carro = carros.find(c => c.id === carroId);
               const van = vaEn[carroId] || [];
               const ocupados = new Set(elegidos.flatMap(id => id === carroId ? [] : (vaEn[id] || [])));
@@ -350,21 +544,16 @@ export default function ReportarEmergencia({
               );
             })}
 
-            {(paso === 3 || editando) && (
+            {(paso === 4 || editando) && (
               <View>
                 <Text style={estilos.seccion}>Título</Text>
                 <TextInput style={estilos.input} value={titulo} onChangeText={setTitulo} placeholder="Incendio en Sector 5" placeholderTextColor={colors.textMuted} />
                 <Text style={estilos.seccion}>Clave</Text>
                 <TextInput style={estilos.input} value={clave} onChangeText={setClave} placeholder="10-0" placeholderTextColor={colors.textMuted} autoCapitalize="characters" />
-                <Text style={estilos.seccion}>Tipo</Text>
+                <Text style={estilos.seccion}>Tipo de emergencia</Text>
                 <TouchableOpacity style={estilos.input} onPress={() => setShowTipo(true)}>
                   <Text style={estilos.carroNombre}>{TIPOS.find(t => t.id === tipo)?.label}</Text>
                 </TouchableOpacity>
-                <Text style={estilos.seccion}>Dirección</Text>
-                <TextInput style={estilos.input} value={direccion} onChangeText={setDireccion} placeholder="Calle y número" placeholderTextColor={colors.textMuted} />
-                <Text style={estilos.especialidad}>
-                  {lat ? `Punto: ${lat.toFixed(5)}, ${lng.toFixed(5)}` : 'Sin punto todavía. Escribe la dirección o espera el GPS.'}
-                </Text>
                 <Text style={estilos.seccion}>Qué pasa</Text>
                 <TextInput
                   style={[estilos.input, { minHeight: 90 }]}
@@ -381,8 +570,13 @@ export default function ReportarEmergencia({
 
         <View style={estilos.pie}>
           {paso === 1 && !editando && (
+            <TouchableOpacity style={estilos.primario} onPress={seguirACarros}>
+              <Text style={estilos.primarioTexto}>Compañías y carros</Text>
+            </TouchableOpacity>
+          )}
+          {paso === 2 && !editando && (
             <>
-              <TouchableOpacity style={estilos.secundario} onPress={() => setPaso(3)}>
+              <TouchableOpacity style={estilos.secundario} onPress={() => setPaso(4)}>
                 <Text style={estilos.secundarioTexto}>Sin carro</Text>
               </TouchableOpacity>
               <TouchableOpacity style={estilos.primario} onPress={armarSalida}>
@@ -390,12 +584,12 @@ export default function ReportarEmergencia({
               </TouchableOpacity>
             </>
           )}
-          {paso === 2 && (
-            <TouchableOpacity style={estilos.primario} onPress={() => setPaso(3)}>
+          {paso === 3 && (
+            <TouchableOpacity style={estilos.primario} onPress={() => setPaso(4)}>
               <Text style={estilos.primarioTexto}>Datos del llamado</Text>
             </TouchableOpacity>
           )}
-          {(paso === 3 || editando) && (
+          {(paso === 4 || editando) && (
             <TouchableOpacity style={estilos.primario} onPress={guardar} disabled={guardando}>
               <Text style={estilos.primarioTexto}>{guardando ? 'Guardando…' : editando ? 'Guardar' : 'Reportar'}</Text>
             </TouchableOpacity>
@@ -403,7 +597,7 @@ export default function ReportarEmergencia({
         </View>
         <ModalSelector
           visible={showTipo}
-          title="Tipo"
+          title="Tipo de emergencia"
           options={TIPOS}
           onClose={() => setShowTipo(false)}
           onSelect={opt => setTipo(String(opt.id))}
@@ -443,6 +637,14 @@ const estilos = StyleSheet.create({
     backgroundColor: '#24303A', borderRadius: borderRadius.md, padding: spacing.md,
   },
   link: { color: colors.accent, fontSize: 16, fontWeight: '700' },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: {
+    backgroundColor: '#24303A', borderWidth: 1, borderColor: '#6B7380',
+    borderRadius: borderRadius.md, paddingVertical: 10, paddingHorizontal: 14,
+  },
+  chipOn: { borderColor: colors.accent, backgroundColor: colors.primary },
+  chipTexto: { color: colors.text, fontSize: 16, fontWeight: '700' },
+  chipTextoOn: { color: colors.white },
   input: {
     backgroundColor: '#24303A', color: colors.text, fontSize: 18,
     borderWidth: 1, borderColor: '#6B7380', borderRadius: borderRadius.md,
