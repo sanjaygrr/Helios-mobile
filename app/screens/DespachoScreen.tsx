@@ -23,6 +23,7 @@ import {
   touch,
 } from '../theme/colors';
 import type { RootStackParamList } from '../navigation/types';
+import { compararCarros, etiquetaCarro } from '../utils/claves';
 
 type Props = StackScreenProps<RootStackParamList, 'Despacho'>;
 type Step = 1 | 2 | 3 | 4 | 5;
@@ -212,7 +213,7 @@ function personName(person?: Person): string {
 }
 
 function unitType(unit: Unit): string {
-  return unit.type_display || unit.unit_type || 'Tipo no informado';
+  return etiquetaCarro(unit.unit_type, unit.type_display || 'Tipo no informado');
 }
 
 function companyName(unit: Unit): string {
@@ -514,7 +515,7 @@ export default function DespachoScreen({ navigation, route }: Props) {
       .sort(([a], [b]) => a.localeCompare(b, 'es-CL'))
       .map(([company, companyUnits]) => ({
         company,
-        units: companyUnits.sort((a, b) => a.name.localeCompare(b.name, 'es-CL')),
+        units: [...companyUnits].sort(compararCarros),
       }));
   }, [filteredUnits]);
 
