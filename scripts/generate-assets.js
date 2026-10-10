@@ -3,7 +3,7 @@ const path = require('path');
 
 const ASSETS_DIR = path.join(__dirname, '..', 'assets');
 
-// Ignis color palette
+// Lumbre color palette
 const COLORS = {
   primary: 0xAA2B1DFF,    // #AA2B1D
   secondary: 0xCC561EFF,  // #CC561E
@@ -157,7 +157,7 @@ async function createFaviconPng() {
 }
 
 async function main() {
-  console.log('Generating Ignis assets...\n');
+  console.log('Generating Lumbre assets...\n');
 
   try {
     await createSplashScreen();
