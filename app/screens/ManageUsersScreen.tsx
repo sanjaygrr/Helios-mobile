@@ -91,7 +91,7 @@ export default function ManageUsersScreen() {
                     { clave: 'rol', etiqueta: 'Rol',
                       grupo: (u: any) => ({
                           SUPER_ADMIN: 'Super Admin', COMPANY_ADMIN: 'Comandante',
-                          COMPANY_CHIEF: 'Jefe de Compañía', FIREFIGHTER: 'Bombero',
+                          COMPANY_CHIEF: 'Comandante', FIREFIGHTER: 'Bombero',
                       } as any)[u.role] || u.role },
                 ]}
                 claveItem={(u: any) => String(u.id)}
@@ -102,7 +102,7 @@ export default function ManageUsersScreen() {
                         switch (role) {
                             case 'SUPER_ADMIN': return { label: 'Super Admin', color: colors.danger, icon: 'shield' };
                             case 'COMPANY_ADMIN': return { label: 'Administrador', color: colors.secondary, icon: 'settings' };
-                            case 'COMPANY_CHIEF': return { label: 'Jefe de Compañía', color: colors.accent, icon: 'star' };
+                            case 'COMPANY_CHIEF': return { label: 'Comandante', color: colors.accent, icon: 'star' };
                             case 'FIREFIGHTER': return { label: 'Bombero', color: colors.success, icon: 'flame' };
                             default: return { label: role, color: colors.gray[500], icon: 'person' };
                         }
@@ -193,7 +193,7 @@ export default function ManageUsersScreen() {
                                         onPress={() => setNewUser({ ...newUser, role: r })}
                                     >
                                         <Text style={[styles.roleButtonText, newUser.role === r && styles.roleButtonTextActive]}>
-                                            {r.replace('COMPANY_', '').replace('FIREFIGHTER', 'BOMBERO')}
+                                            {r === 'FIREFIGHTER' ? 'Bombero' : 'Comandante'}
                                         </Text>
                                     </TouchableOpacity>
                                 ))}
