@@ -71,7 +71,9 @@ export default function ReportarEmergencia({
   const [lugar, setLugar] = useState('');
   const [protagonista, setProtagonista] = useState<number | null>(null);
   const [apoyos, setApoyos] = useState<number[]>([]);
-  const [busca, setBusca] = useState('');
+  const [region, setRegion] = useState('');
+  const [selector, setSelector] = useState<null | 'region' | 'central' | 'apoyo'>(null);
+  const [companiaAbierta, setCompaniaAbierta] = useState<number | null>(null);
   const [elegidos, setElegidos] = useState<number[]>([]);
   const [vaEn, setVaEn] = useState<Record<number, number[]>>({});
   const [encargado, setEncargado] = useState<Record<number, number | null>>({});
@@ -93,7 +95,9 @@ export default function ReportarEmergencia({
     setLugar(incidente?.geographic_type || '');
     setProtagonista(prot?.fire_department || incidente?.fire_department || user?.fire_department || null);
     setApoyos(centrales.filter((c: any) => c.role === 'APOYO').map((c: any) => c.fire_department));
-    setBusca('');
+    setRegion('');
+    setSelector(null);
+    setCompaniaAbierta(null);
     setTitulo(incidente?.title || '');
     setClave(incidente?.dispatch_code || '');
     setTipo(incidente?.incident_type || 'OTRO');
@@ -161,23 +165,21 @@ export default function ReportarEmergencia({
         String(b.compania.number || b.compania.name), 'es', { numeric: true }));
   }, [companias, carros]);
 
-  const centralesElegidas = useMemo(() => {
-    const ids = [protagonista, ...apoyos].filter((id): id is number => !!id);
-    return ids.map(id => cuerpoDe(id) || {
-      id,
-      name: 'Cuerpo',
-      region: '',
-      central_name: 'Central',
-    });
-  }, [protagonista, apoyos, departamentos]);
+  useEffect(() => {
+    if (region || departamentos.length === 0) return;
+    const propia = departamentos.find(d => d.id === (protagonista || user?.fire_department));
+    if (propia?.region) setRegion(propia.region);
+  }, [departamentos, protagonista, region, user?.fire_department]);
 
-  const resultados = useMemo(() => {
-    const q = busca.trim().toLowerCase();
-    const base = q
-      ? departamentos.filter(d => `${d.name} ${d.region || ''} ${d.central_name || ''}`.toLowerCase().includes(q))
-      : departamentos.filter(d => d.id === user?.fire_department || d.id === protagonista || apoyos.includes(d.id));
-    return base.slice(0, 40);
-  }, [busca, departamentos, user?.fire_department, protagonista, apoyos]);
+  const regiones = useMemo(() => {
+    const nombres = departamentos.map(d => d.region).filter(Boolean);
+    return [...new Set(nombres)].sort((a, b) => a.localeCompare(b, 'es'));
+  }, [departamentos]);
+
+  const deLaRegion = useMemo(
+    () => departamentos.filter(d => !region || d.region === region),
+    [departamentos, region],
+  );
 
   const genteDe = (companyId: number) =>
     personas.filter(p => p.is_active !== false && p.company === companyId);
@@ -373,59 +375,29 @@ export default function ReportarEmergencia({
       <Text style={estilos.especialidad}>
         {lat ? `Punto: ${lat.toFixed(5)}, ${lng.toFixed(5)}` : 'Sin punto todavía. Escribe la dirección o espera el GPS.'}
       </Text>
-      <Text style={estilos.seccion}>Centrales</Text>
-      <Text style={estilos.vacio}>
-        Cada cuerpo tiene la suya. La protagonista es la que tiene el problema. El resto queda en apoyo.
-      </Text>
-      {centralesElegidas.map(cuerpo => {
-        const esProta = cuerpo.id === protagonista;
-        return (
-          <View key={cuerpo.id} style={[estilos.carro, esProta && estilos.carroOn]}>
-            <View style={{ flex: 1 }}>
-              <Text style={estilos.carroNombre}>{nombreCentral(cuerpo)}</Text>
-              <Text style={estilos.especialidad}>
-                {cuerpo.name}{cuerpo.region ? ` · ${cuerpo.region}` : ''}
-                {esProta ? ' · Tiene el problema' : ' · Apoyo'}
-              </Text>
-            </View>
-            {!esProta && (
-              <TouchableOpacity onPress={() => alternarApoyo(cuerpo.id)}>
-                <Text style={estilos.link}>Quitar</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        );
-      })}
-      <TextInput
-        style={estilos.input}
-        value={busca}
-        onChangeText={setBusca}
-        placeholder="Buscar cuerpo o central"
-        placeholderTextColor={colors.textMuted}
-      />
-      {resultados.map(cuerpo => {
-        const esProta = cuerpo.id === protagonista;
-        const esApoyo = apoyos.includes(cuerpo.id);
-        return (
-          <View key={`b-${cuerpo.id}`} style={estilos.fila}>
-            <View style={{ flex: 1 }}>
-              <Text style={estilos.carroNombre}>{nombreCentral(cuerpo)}</Text>
-              <Text style={estilos.especialidad}>{cuerpo.name}{cuerpo.region ? ` · ${cuerpo.region}` : ''}</Text>
-            </View>
-            {!esProta && (
-              <TouchableOpacity onPress={() => marcarProtagonista(cuerpo.id)}>
-                <Text style={estilos.link}>Problema</Text>
-              </TouchableOpacity>
-            )}
-            {!esProta && (
-              <TouchableOpacity onPress={() => alternarApoyo(cuerpo.id)} style={{ marginLeft: 12 }}>
-                <Text style={estilos.link}>{esApoyo ? 'En apoyo' : 'Apoyo'}</Text>
-              </TouchableOpacity>
-            )}
-            {esProta && <Text style={estilos.link}>Protagonista</Text>}
-          </View>
-        );
-      })}
+      <Text style={estilos.seccion}>Región del cuerpo</Text>
+      <TouchableOpacity style={estilos.input} onPress={() => setSelector('region')}>
+        <Text style={estilos.carroNombre}>{region || 'Elegir región'}</Text>
+      </TouchableOpacity>
+      <Text style={estilos.seccion}>Central que tiene el problema</Text>
+      <TouchableOpacity style={estilos.input} onPress={() => setSelector('central')}>
+        <Text style={estilos.carroNombre}>
+          {protagonista ? nombreCentral(cuerpoDe(protagonista)) : 'Elegir central de esta región'}
+        </Text>
+      </TouchableOpacity>
+      <Text style={estilos.especialidad}>Solo aparecen los cuerpos de {region || 'la región que elijas'}.</Text>
+      {apoyos.length > 0 && (
+        <View style={estilos.chips}>
+          {apoyos.map(id => (
+            <TouchableOpacity key={id} style={estilos.chip} onPress={() => alternarApoyo(id)}>
+              <Text style={estilos.chipTexto}>{nombreCentral(cuerpoDe(id))} · quitar</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+      <TouchableOpacity style={estilos.secundarioEnLinea} onPress={() => setSelector('apoyo')}>
+        <Text style={estilos.secundarioTexto}>Sumar central de apoyo</Text>
+      </TouchableOpacity>
     </View>
   );
 
@@ -449,28 +421,33 @@ export default function ReportarEmergencia({
 
             {(paso === 1 || editando) && bloqueLugar}
 
-            {paso === 2 && !editando && centralesElegidas.map(cuerpo => {
-              const deEste = grupos.filter(g => g.compania.fire_department === cuerpo.id);
-              return (
-                <View key={cuerpo.id} style={estilos.bloque}>
-                  <Text style={estilos.compania}>{nombreCentral(cuerpo)}</Text>
-                  <Text style={estilos.especialidad}>
-                    {cuerpo.id === protagonista ? 'Protagonista · tiene el problema' : 'Apoyo'}
-                    {cuerpo.name ? ` · ${cuerpo.name}` : ''}
-                  </Text>
-                  {deEste.length === 0 && (
-                    <Text style={estilos.vacio}>
-                      Esta central no tiene compañías cargadas acá. Sus carros los saca ella.
-                    </Text>
-                  )}
-                  {deEste.map(grupo => (
+            {paso === 2 && !editando && (
+              <View style={estilos.bloque}>
+                <Text style={estilos.compania}>{nombreCentral(cuerpoDe(protagonista))}</Text>
+                <Text style={estilos.especialidad}>Toca una compañía para ver sus carros.</Text>
+                {grupos.filter(g => g.compania.fire_department === protagonista).length === 0 && (
+                  <Text style={estilos.vacio}>Esta central no tiene compañías cargadas.</Text>
+                )}
+                {grupos.filter(g => g.compania.fire_department === protagonista).map(grupo => {
+                  const abierta = companiaAbierta === grupo.compania.id;
+                  const libres = grupo.carros.filter((c: any) => (c.status || '').toUpperCase() === 'AVAILABLE').length;
+                  return (
                     <View key={grupo.compania.id}>
-                      <Text style={estilos.seccion}>
-                        {grupo.compania.number ? `${grupo.compania.number} · ` : ''}{grupo.compania.name}
-                      </Text>
-                      {grupo.carros.length === 0 ? (
-                        <Text style={estilos.vacio}>Esta compañía no tiene carros cargados.</Text>
-                      ) : grupo.carros.map(carro => {
+                      <TouchableOpacity
+                        style={estilos.fila}
+                        onPress={() => setCompaniaAbierta(abierta ? null : grupo.compania.id)}
+                      >
+                        <View style={{ flex: 1 }}>
+                          <Text style={estilos.carroNombre}>
+                            {grupo.compania.number ? `${grupo.compania.number} · ` : ''}{grupo.compania.name}
+                          </Text>
+                          <Text style={estilos.especialidad}>
+                            {grupo.carros.length} carros · {libres} disponibles
+                          </Text>
+                        </View>
+                        <Ionicons name={abierta ? 'chevron-up' : 'chevron-down'} size={22} color={colors.textMuted} />
+                      </TouchableOpacity>
+                      {abierta && grupo.carros.map(carro => {
                         const deOtro = carro.fire_department && user?.fire_department
                           && carro.fire_department !== user.fire_department && role !== 'SUPER_ADMIN';
                         const libre = !deOtro && (carro.status || '').toUpperCase() === 'AVAILABLE';
@@ -497,11 +474,19 @@ export default function ReportarEmergencia({
                           </TouchableOpacity>
                         );
                       })}
+                      {abierta && grupo.carros.length === 0 && (
+                        <Text style={estilos.vacio}>Esta compañía no tiene carros cargados.</Text>
+                      )}
                     </View>
-                  ))}
-                </View>
-              );
-            })}
+                  );
+                })}
+                {apoyos.map(id => (
+                  <Text key={id} style={estilos.especialidad}>
+                    {nombreCentral(cuerpoDe(id))} va en apoyo. Sus carros los saca esa central.
+                  </Text>
+                ))}
+              </View>
+            )}
 
             {paso === 3 && elegidos.map(carroId => {
               const carro = carros.find(c => c.id === carroId);
@@ -602,6 +587,36 @@ export default function ReportarEmergencia({
           onClose={() => setShowTipo(false)}
           onSelect={opt => setTipo(String(opt.id))}
         />
+        <ModalSelector
+          visible={selector === 'region'}
+          title="Región"
+          searchable
+          options={regiones.map(nombre => ({ id: nombre, label: nombre }))}
+          onClose={() => setSelector(null)}
+          onSelect={opt => {
+            setRegion(String(opt.id));
+            setSelector(null);
+          }}
+        />
+        <ModalSelector
+          visible={selector === 'central' || selector === 'apoyo'}
+          title={selector === 'apoyo' ? 'Central de apoyo' : 'Central protagonista'}
+          searchable
+          options={deLaRegion
+            .filter(d => selector !== 'apoyo' || (d.id !== protagonista && !apoyos.includes(d.id)))
+            .map(d => ({ id: d.id, label: `${nombreCentral(d)} · ${d.name}` }))}
+          onClose={() => setSelector(null)}
+          onSelect={opt => {
+            const id = Number(opt.id);
+            if (selector === 'apoyo') alternarApoyo(id);
+            else {
+              const cuerpo = departamentos.find(d => d.id === id);
+              if (cuerpo?.region) setRegion(cuerpo.region);
+              marcarProtagonista(id);
+            }
+            setSelector(null);
+          }}
+        />
       </View>
     </Modal>
   );
@@ -662,4 +677,9 @@ const estilos = StyleSheet.create({
     borderWidth: 1, borderColor: '#6B7380', alignItems: 'center', justifyContent: 'center',
   },
   secundarioTexto: { color: colors.text, fontSize: 16, fontWeight: '700' },
+  secundarioEnLinea: {
+    minHeight: 48, borderRadius: borderRadius.md, backgroundColor: '#24303A',
+    borderWidth: 1, borderColor: '#6B7380', alignItems: 'center', justifyContent: 'center',
+    marginTop: spacing.sm,
+  },
 });

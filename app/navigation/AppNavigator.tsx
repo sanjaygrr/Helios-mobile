@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   ActivityIndicator,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -42,8 +43,10 @@ import {
   touch,
 } from '../theme/colors';
 import api from '../services/api';
+import { VISTAS, type Vista } from '../utils/vistas';
 import type {
   BomberoStackParamList,
+  CarroStackParamList,
   GestionStackParamList,
   MandoRole,
   MandoTabParamList,
@@ -56,6 +59,7 @@ const MandoTabs = createBottomTabNavigator<MandoTabParamList>();
 const RecursosStack = createStackNavigator<RecursosStackParamList>();
 const GestionStack = createStackNavigator<GestionStackParamList>();
 const BomberoStack = createStackNavigator<BomberoStackParamList>();
+const CarroStack = createStackNavigator<CarroStackParamList>();
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -141,8 +145,9 @@ function LogoutButton() {
 }
 
 // Se evalua al llamarla, no al definirla, asi que `styles` ya existe.
-function getSharedHeaderOptions() {
+function getSharedHeaderOptions(conBarra = false) {
   return {
+    headerStatusBarHeight: conBarra ? 0 : undefined,
     headerStyle: styles.header,
     headerTintColor: colors.white,
     headerRight: () => <ProfileButton />,
@@ -294,7 +299,7 @@ function GestionHubScreen() {
     StackNavigationProp<GestionStackParamList, 'GestionInicio'>
   >();
   const { role } = useAuth();
-  const items: HubItem[] = [
+  const todos: HubItem[] = [
     {
       key: 'crear',
       title: 'Crear emergencia',
@@ -324,6 +329,7 @@ function GestionHubScreen() {
       onPress: () => navigation.navigate('Companias'),
     },
   ];
+  const items = todos.filter(item => canAdministrate(role) || item.key === 'crear' || item.key === 'emergencias');
 
   return (
     <NavigationHub
@@ -336,11 +342,11 @@ function GestionHubScreen() {
 }
 
 function RecursosNavigator() {
-  const { role } = useAuth();
+  const { role, puedeCambiarVista } = useAuth();
   const showAdministrativeRoutes = canAdministrate(role);
 
   return (
-    <RecursosStack.Navigator screenOptions={getSharedHeaderOptions()}>
+    <RecursosStack.Navigator screenOptions={getSharedHeaderOptions(puedeCambiarVista)}>
       <RecursosStack.Screen
         name="RecursosInicio"
         component={RecursosHubScreen}
@@ -377,8 +383,9 @@ function RecursosNavigator() {
 }
 
 function GestionNavigator() {
+  const { puedeCambiarVista } = useAuth();
   return (
-    <GestionStack.Navigator screenOptions={getSharedHeaderOptions()}>
+    <GestionStack.Navigator screenOptions={getSharedHeaderOptions(puedeCambiarVista)}>
       <GestionStack.Screen
         name="GestionInicio"
         component={GestionHubScreen}
@@ -424,9 +431,11 @@ function getTabIcon(routeName: keyof MandoTabParamList, focused: boolean): IconN
 }
 
 function MandoTabsNavigator() {
+  const { puedeCambiarVista } = useAuth();
   return (
     <MandoTabs.Navigator
       screenOptions={({ route }) => ({
+        headerStatusBarHeight: puedeCambiarVista ? 0 : undefined,
         headerStyle: styles.header,
         headerTintColor: colors.white,
         headerRight: () => <ProfileButton />,
@@ -459,11 +468,67 @@ function MandoTabsNavigator() {
   );
 }
 
+function CarroNavigator() {
+  const { puedeCambiarVista } = useAuth();
+  return (
+    <CarroStack.Navigator screenOptions={getSharedHeaderOptions(puedeCambiarVista)}>
+      <CarroStack.Screen
+        name="MiCarro"
+        component={UnitScreen}
+        options={{ title: 'Mi carro' }}
+      />
+    </CarroStack.Navigator>
+  );
+}
+
+function SelectorVista() {
+  const { vista, setVista } = useAuth();
+  const [abierto, setAbierto] = React.useState(false);
+  const actual = VISTAS.find(item => item.id === vista);
+
+  const elegir = (next: Vista | null) => {
+    setAbierto(false);
+    setVista(next).catch(() => undefined);
+  };
+
+  return (
+    <View style={styles.vistaBar}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Cambiar la vista de la app"
+        onPress={() => setAbierto(true)}
+        style={({ pressed }) => [styles.vistaBoton, pressed && styles.headerButtonPressed]}
+      >
+        <Ionicons name="eye-outline" size={18} color={colors.white} />
+        <Text style={styles.vistaTexto}>{actual ? actual.label : 'Mi cuenta'}</Text>
+      </Pressable>
+      <Modal visible={abierto} transparent animationType="fade" onRequestClose={() => setAbierto(false)}>
+        <Pressable style={styles.vistaFondo} onPress={() => setAbierto(false)}>
+          <View style={styles.vistaHoja}>
+            <Text style={styles.vistaTitulo}>Ver como</Text>
+            <Pressable onPress={() => elegir(null)} style={styles.vistaOpcion}>
+              <Text style={styles.vistaOpcionTexto}>Mi cuenta</Text>
+              <Text style={styles.vistaDetalle}>Vuelve a tu rol real</Text>
+            </Pressable>
+            {VISTAS.map(item => (
+              <Pressable key={item.id} onPress={() => elegir(item.id)} style={styles.vistaOpcion}>
+                <Text style={styles.vistaOpcionTexto}>{item.label}</Text>
+                <Text style={styles.vistaDetalle}>{item.detalle}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </Pressable>
+      </Modal>
+    </View>
+  );
+}
+
 function BomberoNavigator() {
+  const { puedeCambiarVista } = useAuth();
   // Abre en Mi despacho: cuando a un bombero lo mandan a una emergencia, eso es
   // lo unico que tiene que ver al desbloquear el telefono.
   return (
-    <BomberoStack.Navigator screenOptions={getSharedHeaderOptions()}>
+    <BomberoStack.Navigator screenOptions={getSharedHeaderOptions(puedeCambiarVista)}>
       <BomberoStack.Screen
         name="MiDespacho"
         component={MiDespachoScreen}
@@ -479,26 +544,34 @@ function BomberoNavigator() {
 }
 
 function RoleNavigator() {
-  const { role, logout } = useAuth();
+  const { role, vista, puedeCambiarVista, logout } = useAuth();
 
-  if (role === 'FIREFIGHTER') {
-    return <BomberoNavigator />;
-  }
-
-  if (isMandoRole(role)) {
-    return <MandoTabsNavigator />;
+  let contenido: React.ReactNode;
+  if (vista === 'CARRO') {
+    contenido = <CarroNavigator />;
+  } else if (vista === 'BOMBERO' || role === 'FIREFIGHTER') {
+    contenido = <BomberoNavigator />;
+  } else if (isMandoRole(role)) {
+    contenido = <MandoTabsNavigator />;
+  } else {
+    contenido = (
+      <EstadoVacio
+        icono="alert-circle-outline"
+        titulo="Perfil sin acceso"
+        texto="No pudimos determinar qué navegación corresponde a tu cuenta."
+        botonTexto="Cerrar sesión"
+        onPressBoton={() => {
+          logout().catch(() => undefined);
+        }}
+      />
+    );
   }
 
   return (
-    <EstadoVacio
-      icono="alert-circle-outline"
-      titulo="Perfil sin acceso"
-      texto="No pudimos determinar qué navegación corresponde a tu cuenta."
-      botonTexto="Cerrar sesión"
-      onPressBoton={() => {
-        logout().catch(() => undefined);
-      }}
-    />
+    <View style={styles.navigator}>
+      {puedeCambiarVista && <SelectorVista />}
+      <View style={styles.navigator} key={vista || 'cuenta'}>{contenido}</View>
+    </View>
   );
 }
 
@@ -555,6 +628,46 @@ export default function AppNavigator() {
 }
 
 const styles = StyleSheet.create({
+  navigator: { flex: 1 },
+  vistaBar: {
+    backgroundColor: '#1C140F',
+    paddingTop: 52,
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.sm,
+  },
+  vistaBoton: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.md,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  vistaTexto: { color: colors.white, fontSize: 16, fontWeight: '700' },
+  vistaFondo: {
+    flex: 1,
+    backgroundColor: colors.scrim,
+    justifyContent: 'flex-start',
+    paddingTop: 110,
+    paddingHorizontal: spacing.md,
+  },
+  vistaHoja: {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  vistaTitulo: { color: colors.text, fontSize: 18, fontWeight: '700', marginBottom: spacing.sm },
+  vistaOpcion: {
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  vistaOpcionTexto: { color: colors.text, fontSize: 17, fontWeight: '700' },
+  vistaDetalle: { color: colors.textMuted, fontSize: 14, marginTop: 2 },
   header: {
     backgroundColor: colors.primary,
   },

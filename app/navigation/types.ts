@@ -40,3 +40,7 @@ export type BomberoStackParamList = {
   MiDespacho: undefined;
   MiEstado: undefined;
 };
+
+export type CarroStackParamList = {
+  MiCarro: undefined;
+};
