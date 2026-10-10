@@ -68,6 +68,14 @@ export const updatePosition = async (unitId: number, lat: number, lon: number) =
 
 export default api;
 
+export function asList(data: unknown): any[] {
+    if (Array.isArray(data)) return data;
+    if (data && typeof data === 'object' && Array.isArray((data as { results?: unknown }).results)) {
+        return (data as { results: any[] }).results;
+    }
+    return [];
+}
+
 export async function setApiBaseURL(url: string) {
     await AsyncStorage.setItem('@Api:baseURL', url);
 }

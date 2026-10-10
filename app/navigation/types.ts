@@ -33,7 +33,7 @@ export type GestionStackParamList = {
   GestionInicio: undefined;
   Usuarios: undefined;
   Companias: undefined;
-  Emergencias: undefined;
+  Emergencias: { crear?: boolean } | undefined;
 };
 
 export type BomberoStackParamList = {

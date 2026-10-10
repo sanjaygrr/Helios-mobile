@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, FlatList, Modal, ActivityIndicator, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius, shadows } from '../theme/colors';
-import api from '../services/api';
+import api, { asList } from '../services/api';
 import ModalSelector from '../components/ModalSelector';
 import { useAuth } from '../context/AuthContext';
 import ListaAgrupada from '../components/ListaAgrupada';
@@ -47,7 +47,7 @@ export default function ManageCarsScreen({ navigation }: any) {
   useEffect(() => {
     fetchUnits();
     api.get('/companies/').then(res => {
-      setCompanies(res.data.map((item: any) => ({ id: item.id, label: `${item.name} (${item.number})` })));
+      setCompanies(asList(res.data).map((item: any) => ({ id: item.id, label: `${item.name} (${item.number})` })));
     }).catch(() => {});
   }, []);
 
@@ -55,7 +55,7 @@ export default function ManageCarsScreen({ navigation }: any) {
     setLoading(true);
     try {
       const res = await api.get('/units/');
-      setUnits(res.data);
+      setUnits(asList(res.data));
     } catch (e) {
       console.error(e);
       Alert.alert('Error', 'No se pudieron cargar los carros');
@@ -239,6 +239,10 @@ export default function ManageCarsScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
+      <TouchableOpacity style={styles.crearBarra} onPress={() => handleOpenModal()}>
+        <Ionicons name="add" size={22} color={colors.white} />
+        <Text style={styles.crearBarraTexto}>Crear carro</Text>
+      </TouchableOpacity>
       {loading ? (
         <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 50 }} />
       ) : (
@@ -337,7 +341,7 @@ export default function ManageCarsScreen({ navigation }: any) {
               placeholder="Ej: B-1"
               value={name}
               onChangeText={setName}
-                placeholderTextColor={colors.textDisabled}
+                placeholderTextColor={colors.textMuted}
                         />
 
             <Text style={styles.label}>Compañía</Text>
@@ -377,7 +381,7 @@ export default function ManageCarsScreen({ navigation }: any) {
               keyboardType="numeric"
               value={membersCount}
               onChangeText={setMembersCount}
-                placeholderTextColor={colors.textDisabled}
+                placeholderTextColor={colors.textMuted}
                         />
 
             <Text style={styles.label}>Nivel de agua (%)</Text>
@@ -387,7 +391,7 @@ export default function ManageCarsScreen({ navigation }: any) {
               keyboardType="numeric"
               value={waterLevel}
               onChangeText={setWaterLevel}
-              placeholderTextColor={colors.textDisabled}
+              placeholderTextColor={colors.textMuted}
             />
 
             <Text style={styles.label}>Nivel de combustible (%)</Text>
@@ -397,7 +401,7 @@ export default function ManageCarsScreen({ navigation }: any) {
               keyboardType="numeric"
               value={fuelLevel}
               onChangeText={setFuelLevel}
-              placeholderTextColor={colors.textDisabled}
+              placeholderTextColor={colors.textMuted}
             />
 
             <Text style={styles.label}>Equipamiento</Text>
@@ -427,12 +431,12 @@ export default function ManageCarsScreen({ navigation }: any) {
               value={observations}
               onChangeText={setObservations}
               multiline
-              placeholderTextColor={colors.textDisabled}
+              placeholderTextColor={colors.textMuted}
             />
 
             <View style={styles.modalButtons}>
               <TouchableOpacity style={styles.cancelButton} onPress={() => setModalVisible(false)}>
-                <Text>Cancelar</Text>
+                <Text style={styles.cancelText}>Cancelar</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
                 <Text style={styles.saveButtonText}>Guardar</Text>
@@ -456,6 +460,12 @@ export default function ManageCarsScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
+  crearBarra: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    margin: spacing.md, minHeight: 56, borderRadius: borderRadius.md,
+    backgroundColor: colors.primary,
+  },
+  crearBarraTexto: { color: colors.white, fontSize: 18, fontWeight: '700' },
   card: {
     backgroundColor: colors.surface,
     borderRadius: borderRadius.lg,
@@ -593,38 +603,41 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   input: {
-    backgroundColor: colors.gray[50],
+    backgroundColor: '#24303A',
     padding: spacing.md,
     borderRadius: borderRadius.md,
     marginBottom: spacing.md,
-    fontSize: 15,
+    fontSize: 18,
     borderWidth: 1,
-    borderColor: colors.gray[200], color: colors.text,},
-  inputText: { color: colors.text, fontSize: 15 },
+    borderColor: '#6B7380', color: colors.text,},
+  inputText: { color: colors.text, fontSize: 18 },
   observationsInput: { minHeight: 88, textAlignVertical: 'top' },
   chipsRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
   chip: {
     paddingVertical: 10,
     paddingHorizontal: 14,
     borderRadius: borderRadius.md,
-    backgroundColor: colors.gray[50],
+    backgroundColor: '#24303A',
     borderWidth: 1.5,
-    borderColor: colors.gray[200],
+    borderColor: '#6B7380',
   },
   chipSelected: {
     backgroundColor: colors.primary,
     borderColor: colors.accent,
   },
-  chipText: { fontSize: 13, fontWeight: '600', color: colors.gray[700] },
+  chipText: { fontSize: 16, fontWeight: '700', color: colors.text },
   chipTextSelected: { color: colors.textOnPrimary },
   modalButtons: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing.md, marginTop: 20 },
   cancelButton: {
     flex: 1,
     padding: spacing.md,
     borderRadius: borderRadius.md,
-    backgroundColor: colors.gray[100],
+    backgroundColor: '#24303A',
+    borderWidth: 1,
+    borderColor: '#6B7380',
     alignItems: 'center',
   },
+  cancelText: { color: colors.text, fontSize: 16, fontWeight: '700' },
   saveButton: {
     flex: 2,
     backgroundColor: colors.primary,

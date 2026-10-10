@@ -69,7 +69,7 @@ export default function PersonnelForm({ onChange, initialMembers = [] }: Personn
                     {/* Header Info Block simulation */}
                     <View style={styles.formHeaderBlock}>
                         <Text style={styles.formLabel}>Lider del Grupo:</Text>
-                        <TextInput style={styles.headerInput} placeholder="Nombre del oficial a cargo"     placeholderTextColor={colors.textDisabled}
+                        <TextInput style={styles.headerInput} placeholder="Nombre del oficial a cargo"     placeholderTextColor={colors.textMuted}
                         />
                     </View>
 
@@ -92,6 +92,7 @@ export default function PersonnelForm({ onChange, initialMembers = [] }: Personn
                                         value={member.lastName}
                                         onChangeText={t => updateMember(member.id, 'lastName', t)}
                                         placeholder="Apellidos"
+                                        placeholderTextColor={colors.textMuted}
                                     />
                                 </View>
                                 <View style={styles.col}>
@@ -101,6 +102,7 @@ export default function PersonnelForm({ onChange, initialMembers = [] }: Personn
                                         value={member.firstName}
                                         onChangeText={t => updateMember(member.id, 'firstName', t)}
                                         placeholder="Nombres"
+                                        placeholderTextColor={colors.textMuted}
                                     />
                                 </View>
                             </View>
@@ -113,6 +115,7 @@ export default function PersonnelForm({ onChange, initialMembers = [] }: Personn
                                         value={member.rut}
                                         onChangeText={t => updateMember(member.id, 'rut', t)}
                                         placeholder="12.345.678-9"
+                                        placeholderTextColor={colors.textMuted}
                                         keyboardType="default"
                                     />
                                 </View>
@@ -123,6 +126,7 @@ export default function PersonnelForm({ onChange, initialMembers = [] }: Personn
                                         value={member.company}
                                         onChangeText={t => updateMember(member.id, 'company', t)}
                                         placeholder="N°"
+                                        placeholderTextColor={colors.textMuted}
                                     />
                                 </View>
                             </View>
@@ -135,6 +139,7 @@ export default function PersonnelForm({ onChange, initialMembers = [] }: Personn
                                         value={member.role}
                                         onChangeText={t => updateMember(member.id, 'role', t)}
                                         placeholder="Cargo"
+                                        placeholderTextColor={colors.textMuted}
                                     />
                                 </View>
                             </View>
@@ -217,7 +222,7 @@ const styles = StyleSheet.create({
     },
     memberIndex: {
         fontWeight: 'bold',
-        color: colors.gray[500]
+        color: colors.textMuted
     },
     row: {
         flexDirection: 'row',
@@ -228,19 +233,19 @@ const styles = StyleSheet.create({
         flex: 1
     },
     label: {
-        fontSize: 10,
-        color: colors.gray[500],
+        fontSize: 14,
+        color: colors.textMuted,
         marginBottom: 2
     },
     inputSmall: {
-        backgroundColor: colors.gray[50], // Very light gray
+        backgroundColor: '#24303A',
         borderWidth: 1,
-        borderColor: colors.gray[300],
+        borderColor: '#6B7380',
         borderRadius: borderRadius.sm,
         paddingHorizontal: 8,
         paddingVertical: 4,
-        fontSize: 13,
-        height: 36, color: colors.text,},
+        fontSize: 16,
+        height: 40, color: colors.text,},
     addButton: {
         flexDirection: 'row',
         alignItems: 'center',

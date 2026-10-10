@@ -6,9 +6,9 @@ import { colors, spacing, borderRadius } from '../theme/colors';
 
 import ModalSelector from '../components/ModalSelector';
 import PersonnelForm, { SectionMember } from '../components/PersonnelForm';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
-import api from '../services/api';
+import api, { asList } from '../services/api';
 import LocationPicker from '../components/LocationPicker';
 
 
@@ -24,6 +24,7 @@ const getIncidentColor = (type: string) => {
 
 export default function IncidentsScreen() {
     const navigation = useNavigation<any>();
+    const route = useRoute<any>();
     const { user, role } = useAuth();
     const [incidents, setIncidents] = useState<any[]>([]);
 
@@ -85,7 +86,7 @@ export default function IncidentsScreen() {
     const fetchIncidents = async () => {
         try {
             const response = await api.get('/incidents/');
-            setIncidents(response.data);
+            setIncidents(asList(response.data));
         } catch (error) {
             console.error(error);
         }
@@ -99,7 +100,7 @@ export default function IncidentsScreen() {
         setLoadingUnits(true);
         try {
             const res = await api.get('/units/available/');
-            setAvailableUnits(res.data);
+            setAvailableUnits(asList(res.data));
         } catch (error) {
             Alert.alert("Error", "No se pudieron cargar las unidades");
         } finally {
@@ -137,35 +138,33 @@ export default function IncidentsScreen() {
         setLoadingUnits(true);
         setAddressQuery('');
         if (role === 'SUPER_ADMIN') {
-            api.get('/departments/').then(res => setDepartments(res.data.map((item: any) => ({ id: item.id, label: item.name })))).catch(() => {});
-            api.get('/companies/').then(res => setCompanyDepartments(Object.fromEntries(res.data.map((item: any) => [item.id, item.fire_department])))).catch(() => {});
+            api.get('/departments/').then(res => setDepartments(asList(res.data).map((item: any) => ({ id: item.id, label: item.name })))).catch(() => {});
+            api.get('/companies/').then(res => setCompanyDepartments(Object.fromEntries(asList(res.data).map((item: any) => [item.id, item.fire_department])))).catch(() => {});
         }
 
         // Fetch Units for initial dispatch
         try {
             const res = await api.get('/units/available/');
-            setAvailableUnits(res.data);
+            const lista = asList(res.data);
+            setAvailableUnits(lista);
 
             // Pre-select chief's unit if they are a chief
             if (role === 'COMPANY_CHIEF') {
-                // Try to find user's assigned unit
-                const userUnit = res.data.find((unit: any) => unit.assigned_to === user?.id);
+                const userUnit = lista.find((unit: any) => unit.assigned_to === user?.id);
                 if (userUnit) {
                     setSelectedInitialUnit(userUnit);
                 }
             }
         } catch (e) { console.log("Error loading units", e); }
 
-        // Fetch Vehicles
         try {
-            const vehiclesRes = await api.get('/units/'); // Assuming vehicles are units or separate endpoint
-            setAvailableVehicles(vehiclesRes.data);
+            const vehiclesRes = await api.get('/units/');
+            setAvailableVehicles(asList(vehiclesRes.data));
         } catch (e) { console.log("Error loading vehicles", e); }
 
-        // Fetch Chiefs for commander selection
         try {
             const chiefsRes = await api.get('/users/', { params: { role: 'COMPANY_CHIEF' } });
-            setAvailableChiefs(chiefsRes.data);
+            setAvailableChiefs(asList(chiefsRes.data));
         } catch (e) { console.log("Error loading chiefs", e); }
 
         setLoadingUnits(false);
@@ -205,6 +204,12 @@ export default function IncidentsScreen() {
             setLoadingLocation(false);
         }
     };
+
+    useEffect(() => {
+        if (!route.params?.crear) return;
+        handleOpenModal();
+        navigation.setParams({ crear: false });
+    }, [route.params?.crear]);
 
     const handleGeocode = async () => {
         if (!addressQuery) return;
@@ -516,6 +521,10 @@ export default function IncidentsScreen() {
 
     return (
         <View style={styles.container}>
+            <TouchableOpacity style={styles.crearBarra} onPress={handleOpenModal}>
+                <Ionicons name="add" size={22} color={colors.white} />
+                <Text style={styles.crearBarraTexto}>Crear emergencia</Text>
+            </TouchableOpacity>
             <FlatList
                 data={incidents}
                 keyExtractor={(item: any) => item.id.toString()}
@@ -544,14 +553,14 @@ export default function IncidentsScreen() {
                             {loadingLocation ? (
                                 <View style={styles.loadingContainer}>
                                     <ActivityIndicator size="large" color={colors.primary} />
-                                    <Text>Obteniendo ubicación...</Text>
+                                    <Text style={{ color: colors.text, fontSize: 16, marginTop: 8 }}>Obteniendo ubicación...</Text>
                                 </View>
                             ) : (
                                 <>
                                     <TextInput
                                         style={styles.input}
                                         placeholder="Título (ej: Incendio en Sector 5)"
-                                        placeholderTextColor={colors.textDisabled}
+                                        placeholderTextColor={colors.textMuted}
                                         value={newIncident.title}
                                         onChangeText={(t) => setNewIncident({ ...newIncident, title: t })}
                                     />
@@ -561,7 +570,7 @@ export default function IncidentsScreen() {
                                             <TextInput
                                                 style={styles.input}
                                                 placeholder="Ej: 10-0"
-                                                placeholderTextColor={colors.textDisabled}
+                                                placeholderTextColor={colors.textMuted}
                                                 value={newIncident.dispatch_code}
                                                 onChangeText={(t) => setNewIncident({ ...newIncident, dispatch_code: t })}
                                                 autoCapitalize="characters"
@@ -572,7 +581,7 @@ export default function IncidentsScreen() {
                                             <TextInput
                                                 style={styles.input}
                                                 placeholder="1"
-                                                placeholderTextColor={colors.textDisabled}
+                                                placeholderTextColor={colors.textMuted}
                                                 value={newIncident.requested_units}
                                                 onChangeText={(t) => setNewIncident({ ...newIncident, requested_units: t.replace(/[^0-9]/g, '') })}
                                                 keyboardType="number-pad"
@@ -581,11 +590,11 @@ export default function IncidentsScreen() {
                                         </View>
                                     </View>
                                     {role === 'SUPER_ADMIN' && !editingIncidentId && <TouchableOpacity style={styles.selectButton} onPress={() => setShowDepartmentSelector(true)}>
-                                        <Text>{departments.find(item => item.id === newIncident.fire_department)?.label || 'Seleccionar cuerpo de bomberos'}</Text>
+                                        <Text style={styles.selectText}>{departments.find(item => item.id === newIncident.fire_department)?.label || 'Seleccionar cuerpo de bomberos'}</Text>
                                         <Ionicons name="chevron-down" size={20} color={colors.gray[500]} />
                                     </TouchableOpacity>}
                                     <TouchableOpacity style={styles.selectButton} onPress={() => setShowTypeSelector(true)}>
-                                        <Text>{getTypeLabel()}</Text>
+                                        <Text style={styles.selectText}>{getTypeLabel()}</Text>
                                         <Ionicons name="chevron-down" size={20} color={colors.gray[500]} />
                                     </TouchableOpacity>
 
@@ -598,7 +607,7 @@ export default function IncidentsScreen() {
                                                 value={addressQuery}
                                                 onChangeText={setAddressQuery}
                                                 onSubmitEditing={handleGeocode}
-                                                placeholderTextColor={colors.textDisabled}
+                                                placeholderTextColor={colors.textMuted}
                         />
                                             <TouchableOpacity
                                                 style={{ backgroundColor: colors.gray[200], justifyContent: 'center', paddingHorizontal: 12, borderRadius: borderRadius.md }}
@@ -607,7 +616,7 @@ export default function IncidentsScreen() {
                                                 {isGeocoding ? <ActivityIndicator size="small" color={colors.text} /> : <Ionicons name="search" size={20} color={colors.text} />}
                                             </TouchableOpacity>
                                         </View>
-                                        <Text style={{ fontSize: 10, color: colors.gray[500], marginTop: 2 }}>Ingresa dirección y presiona buscar, o ajusta en el mapa.</Text>
+                                        <Text style={{ fontSize: 10, color: colors.textMuted, marginTop: 2 }}>Ingresa dirección y presiona buscar, o ajusta en el mapa.</Text>
                                     </View>
 
                                     <TouchableOpacity style={[styles.selectButton, { backgroundColor: colors.secondary + '20' }]} onPress={() => setShowLocationPicker(true)}>
@@ -620,12 +629,12 @@ export default function IncidentsScreen() {
                                     <TextInput
                                         style={[styles.input, styles.textArea]}
                                         placeholder="Qué ocurre, riesgos, personas afectadas y referencias"
-                                        placeholderTextColor={colors.textDisabled}
+                                        placeholderTextColor={colors.textMuted}
                                         value={newIncident.description}
                                         onChangeText={(t) => setNewIncident({ ...newIncident, description: t })}
                                         multiline numberOfLines={3}
                                     />
-                                    <Text style={{ fontSize: 12, marginBottom: 5, color: colors.gray[500], marginTop: 10 }}>Encargado (Jefe de Compañía):</Text>
+                                    <Text style={{ fontSize: 12, marginBottom: 5, color: colors.textMuted, marginTop: 10 }}>Encargado (Jefe de Compañía):</Text>
                                     {availableChiefs.length > 0 ? (
                                         <View style={{ height: 50, marginBottom: 15 }}>
                                             <FlatList
@@ -663,13 +672,13 @@ export default function IncidentsScreen() {
                                             />
                                         </View>
                                     ) : (
-                                        <Text style={{ fontStyle: 'italic', color: colors.gray[400], marginBottom: 10 }}>No hay jefes disponibles</Text>
+                                        <Text style={{ fontStyle: 'italic', color: colors.textMuted, marginBottom: 10 }}>No hay jefes disponibles</Text>
                                     )}
 
                                     <Text style={{ fontWeight: 'bold', marginBottom: 5, marginTop: 10, color: colors.gray[600] }}>Recursos Iniciales (Opcional):</Text>
 
                                     {/* Bomberos guardados */}
-                                    <Text style={{ fontSize: 12, marginBottom: 5, color: colors.gray[500], marginTop: 10 }}>Bomberos Guardados:</Text>
+                                    <Text style={{ fontSize: 12, marginBottom: 5, color: colors.textMuted, marginTop: 10 }}>Bomberos Guardados:</Text>
                                     <SavedFirefighters
                                         onSelect={(f) => {
                                             const member = {
@@ -689,7 +698,7 @@ export default function IncidentsScreen() {
                                         onChange={setPersonnelList}
                                     />
 
-                                    <Text style={{ fontSize: 12, marginBottom: 5, color: colors.gray[500], marginTop: 15 }}>Unidad a Utilizar (Despacho inmediato):</Text>
+                                    <Text style={{ fontSize: 12, marginBottom: 5, color: colors.textMuted, marginTop: 15 }}>Unidad a Utilizar (Despacho inmediato):</Text>
                                     {availableUnits.length > 0 ? (
                                         <View style={{ height: 50, marginBottom: 15 }}>
                                             <FlatList
@@ -714,13 +723,13 @@ export default function IncidentsScreen() {
                                             />
                                         </View>
                                     ) : (
-                                        <Text style={{ fontStyle: 'italic', color: colors.gray[400], marginBottom: 10 }}>No hay unidades disponibles</Text>
+                                        <Text style={{ fontStyle: 'italic', color: colors.textMuted, marginBottom: 10 }}>No hay unidades disponibles</Text>
                                     )}
 
                                     {/* Vehicle Selector - Only show if NO Unit is selected, to avoid confusion/duplication */}
                                     {!selectedInitialUnit && (
                                         <>
-                                            <Text style={{ fontSize: 12, marginBottom: 5, marginTop: 15, color: colors.gray[500] }}>Vehículo a Utilizar (Opcional):</Text>
+                                            <Text style={{ fontSize: 12, marginBottom: 5, marginTop: 15, color: colors.textMuted }}>Vehículo a Utilizar (Opcional):</Text>
                                             {availableVehicles.length > 0 ? (
                                                 <View style={{ height: 50, marginBottom: 15 }}>
                                                     <FlatList
@@ -745,7 +754,7 @@ export default function IncidentsScreen() {
                                                     />
                                                 </View>
                                             ) : (
-                                                <Text style={{ fontStyle: 'italic', color: colors.gray[400], marginBottom: 10 }}>No hay vehículos disponibles</Text>
+                                                <Text style={{ fontStyle: 'italic', color: colors.textMuted, marginBottom: 10 }}>No hay vehículos disponibles</Text>
                                             )}
                                         </>
                                     )}
@@ -756,7 +765,7 @@ export default function IncidentsScreen() {
                                     </Text>
                                     <View style={styles.modalButtons}>
                                         <TouchableOpacity style={styles.cancelButton} onPress={() => setModalVisible(false)}>
-                                            <Text>Cancelar</Text>
+                                            <Text style={styles.cancelText}>Cancelar</Text>
                                         </TouchableOpacity>
                                         <TouchableOpacity style={styles.createButton} onPress={handleCreateIncident}>
                                             <Text style={styles.createButtonText}>Reportar</Text>
@@ -782,7 +791,7 @@ export default function IncidentsScreen() {
                             <>
                                 <Text style={{ marginBottom: 10, fontWeight: 'bold', color: colors.gray[600] }}>Unidades Disponibles:</Text>
                                 {availableUnits.length === 0 ? (
-                                    <Text style={{ fontStyle: 'italic', marginBottom: 20 }}>No hay unidades disponibles.</Text>
+                                    <Text style={{ fontStyle: 'italic', marginBottom: 20, color: colors.text, fontSize: 16 }}>No hay unidades disponibles.</Text>
                                 ) : (
                                     <View style={{ maxHeight: 200 }}>
                                         <FlatList
@@ -811,7 +820,7 @@ export default function IncidentsScreen() {
 
                                 <View style={styles.modalButtons}>
                                     <TouchableOpacity style={styles.cancelButton} onPress={() => setDispatchModalVisible(false)}>
-                                        <Text>Cancelar</Text>
+                                        <Text style={styles.cancelText}>Cancelar</Text>
                                     </TouchableOpacity>
                                     <TouchableOpacity
                                         style={[styles.createButton, (!selectedUnit) && { backgroundColor: colors.gray[400] }]}
@@ -957,7 +966,7 @@ const styles = StyleSheet.create({
     },
     cardDescription: {
         fontSize: 13,
-        color: colors.gray[500],
+        color: colors.textMuted,
         lineHeight: 18,
         marginBottom: spacing.sm,
     },
@@ -974,7 +983,7 @@ const styles = StyleSheet.create({
     },
     infoText: {
         fontSize: 12,
-        color: colors.gray[500],
+        color: colors.textMuted,
     },
     commanderBadge: {
         flexDirection: 'row',
@@ -1026,14 +1035,20 @@ const styles = StyleSheet.create({
     iconBox: { width: 40, height: 40, borderRadius: borderRadius.lg, alignItems: 'center', justifyContent: 'center' },
     title: { fontSize: 16, fontWeight: 'bold' },
     subtitle: { fontSize: 12, color: colors.gray[600] },
-    desc: { fontSize: 12, color: colors.gray[500], fontStyle: 'italic' },
+    desc: { fontSize: 12, color: colors.textMuted, fontStyle: 'italic' },
     statusBadge: { padding: spacing.xs },
     dot: { width: 8, height: 8, borderRadius: borderRadius.sm },
-    emptyText: { textAlign: 'center', marginTop: spacing.xl, color: colors.gray[500] },
+    emptyText: { textAlign: 'center', marginTop: spacing.xl, color: colors.textMuted },
+    crearBarra: {
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+        margin: spacing.md, minHeight: 56, borderRadius: borderRadius.md,
+        backgroundColor: colors.primary,
+    },
+    crearBarraTexto: { color: colors.white, fontSize: 18, fontWeight: '700' },
     fab: {
         position: 'absolute', bottom: spacing.xl, right: spacing.md, width: 60, height: 60, borderRadius: borderRadius.full,
-        backgroundColor: colors.danger, alignItems: 'center', justifyContent: 'center',
-        shadowColor: colors.danger, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 8
+        backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center',
+        shadowColor: colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 8
     },
     modalOverlay: { flex: 1, backgroundColor: colors.scrim, justifyContent: 'flex-end' },
     modalContent: {
@@ -1051,7 +1066,7 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         color: colors.text,
     },
-    modalSubtitle: { fontSize: 14, color: colors.gray[500], marginBottom: spacing.lg, textAlign: 'center' },
+    modalSubtitle: { fontSize: 14, color: colors.textMuted, marginBottom: spacing.lg, textAlign: 'center' },
     fieldLabel: {
         color: colors.textMuted,
         fontSize: 13,
@@ -1059,18 +1074,18 @@ const styles = StyleSheet.create({
         marginBottom: spacing.xs,
     },
     input: {
-        backgroundColor: colors.gray[50],
+        backgroundColor: '#24303A',
         padding: spacing.md,
         borderRadius: borderRadius.md,
         marginBottom: spacing.md,
-        fontSize: 15,
+        fontSize: 18,
         borderWidth: 1,
-        borderColor: colors.gray[200], color: colors.text,},
+        borderColor: '#6B7380', color: colors.text,},
     textArea: { height: 100, textAlignVertical: 'top' },
     loadingContainer: { alignItems: 'center', padding: spacing.xl },
     locationText: {
         fontSize: 12,
-        color: colors.gray[500],
+        color: colors.textMuted,
         marginBottom: spacing.md,
         textAlign: 'center',
         backgroundColor: colors.gray[50],
@@ -1087,7 +1102,7 @@ const styles = StyleSheet.create({
     },
     createButton: {
         flex: 2,
-        backgroundColor: colors.danger,
+        backgroundColor: colors.primary,
         padding: spacing.md,
         borderRadius: borderRadius.md,
         alignItems: 'center',
@@ -1100,9 +1115,11 @@ const styles = StyleSheet.create({
     createButtonText: { color: colors.white, fontWeight: '700', fontSize: 15 },
     selectButton: {
         flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-        backgroundColor: colors.gray[50], padding: spacing.md, borderRadius: borderRadius.md, marginBottom: spacing.md,
-        borderWidth: 1, borderColor: colors.gray[200]
+        backgroundColor: '#24303A', padding: spacing.md, borderRadius: borderRadius.md, marginBottom: spacing.md,
+        borderWidth: 1, borderColor: '#6B7380'
     },
+    selectText: { color: colors.text, fontSize: 18, flex: 1 },
+    cancelText: { color: colors.text, fontSize: 16, fontWeight: '700' },
     dispatchButtonSmall: {
         flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8,
         paddingVertical: 4, paddingHorizontal: 8,
@@ -1120,12 +1137,12 @@ const styles = StyleSheet.create({
     unitItemText: { fontWeight: '600', color: colors.text },
     unitChip: {
         paddingVertical: 10, paddingHorizontal: 16, borderRadius: borderRadius.full,
-        backgroundColor: colors.gray[50], marginRight: 8, borderWidth: 1.5, borderColor: colors.gray[200]
+        backgroundColor: '#24303A', marginRight: 8, borderWidth: 1.5, borderColor: '#6B7380'
     },
     unitChipSelected: {
         backgroundColor: colors.primary, borderColor: colors.accent
     },
-    unitChipText: { fontSize: 13, fontWeight: '600', color: colors.gray[700] },
+    unitChipText: { fontSize: 16, fontWeight: '700', color: colors.text },
 
     // Chief Cards mejorados
     chiefCard: {
@@ -1140,5 +1157,5 @@ const styles = StyleSheet.create({
         alignItems: 'center', justifyContent: 'center', marginBottom: 8
     },
     chiefName: { fontSize: 11, fontWeight: '700', color: colors.text, textAlign: 'center', marginBottom: 2 },
-    chiefRole: { fontSize: 10, color: colors.gray[500], textAlign: 'center' }
+    chiefRole: { fontSize: 10, color: colors.textMuted, textAlign: 'center' }
 });
