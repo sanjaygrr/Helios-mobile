@@ -279,7 +279,7 @@ function RecursosHubScreen() {
     items.push({
       key: 'unidades',
       title: 'Unidades',
-      description: 'La dotación que sale en cada carro.',
+      description: 'La misma lista de carros, con menos datos.',
       icon: 'albums-outline',
       onPress: () => navigation.navigate('Unidades'),
     });
