@@ -32,7 +32,9 @@ export default function IncidentsScreen() {
     const [editingIncidentId, setEditingIncidentId] = useState<number | null>(null);
     const [newIncident, setNewIncident] = useState({
         title: '',
+        dispatch_code: '',
         description: '',
+        requested_units: '1',
         incident_type: 'OTRO',
         latitude: 0,
         longitude: 0,
@@ -128,7 +130,7 @@ export default function IncidentsScreen() {
     const [isGeocoding, setIsGeocoding] = useState(false);
 
     const handleOpenModal = async () => {
-        setNewIncident({ title: '', description: '', incident_type: 'OTRO', latitude: 0, longitude: 0, commander: null, fire_department: user?.fire_department || null });
+        setNewIncident({ title: '', dispatch_code: '', description: '', requested_units: '1', incident_type: 'OTRO', latitude: 0, longitude: 0, commander: null, fire_department: user?.fire_department || null });
         setModalVisible(true);
         setEditingIncidentId(null);
         setLoadingLocation(true);
@@ -228,8 +230,13 @@ export default function IncidentsScreen() {
             Alert.alert('Error', 'Selecciona el cuerpo de bomberos antes de reportar.');
             return;
         }
-        if (!newIncident.title || !newIncident.latitude) {
-            Alert.alert('Error', 'Complete los campos y verificque la ubicación.');
+        const requestedUnits = Number.parseInt(newIncident.requested_units, 10);
+        if (!newIncident.title.trim() || !newIncident.dispatch_code.trim() || !newIncident.latitude) {
+            Alert.alert('Error', 'Completa el título, la clave 10 y verifica la ubicación.');
+            return;
+        }
+        if (!Number.isInteger(requestedUnits) || requestedUnits < 1 || requestedUnits > 50) {
+            Alert.alert('Error', 'La cantidad de carros debe estar entre 1 y 50.');
             return;
         }
 
@@ -250,12 +257,16 @@ export default function IncidentsScreen() {
             if (editingIncidentId) {
                 const res = await api.patch(`/incidents/${editingIncidentId}/`, {
                     ...newIncident,
+                    dispatch_code: newIncident.dispatch_code.trim(),
+                    requested_units: requestedUnits,
                     description: finalDescription,
                 });
                 incidentId = res.data.id;
             } else {
                 const res = await api.post('/incidents/', {
                     ...newIncident,
+                    dispatch_code: newIncident.dispatch_code.trim(),
+                    requested_units: requestedUnits,
                     description: finalDescription,
                     vehicle: selectedVehicle?.id || undefined,
                 });
@@ -278,7 +289,7 @@ export default function IncidentsScreen() {
             setModalVisible(false);
             fetchIncidents();
             // Reset
-            setNewIncident({ title: '', description: '', incident_type: 'OTRO', latitude: 0, longitude: 0, commander: null, fire_department: user?.fire_department || null });
+            setNewIncident({ title: '', dispatch_code: '', description: '', requested_units: '1', incident_type: 'OTRO', latitude: 0, longitude: 0, commander: null, fire_department: user?.fire_department || null });
             setPersonnelList([]);
             setSelectedInitialUnit(null);
             setSelectedVehicle(null);
@@ -368,6 +379,9 @@ export default function IncidentsScreen() {
 
                 {/* Título y descripción */}
                 <Text style={styles.cardTitle}>{item.title}</Text>
+                <Text style={styles.cardDescription}>
+                    Clave {item.dispatch_code || 'sin definir'} · {item.requested_units || 1} {Number(item.requested_units || 1) === 1 ? 'carro' : 'carros'}
+                </Text>
                 {item.description ? (
                     <Text style={styles.cardDescription} numberOfLines={2}>{item.description}</Text>
                 ) : null}
@@ -462,7 +476,9 @@ export default function IncidentsScreen() {
     const openEditIncident = (incident: any) => {
         setNewIncident({
             title: incident.title,
+            dispatch_code: incident.dispatch_code || '',
             description: incident.description || '',
+            requested_units: String(incident.requested_units || 1),
             incident_type: incident.incident_type || 'OTRO',
             latitude: incident.latitude,
             longitude: incident.longitude,
@@ -535,9 +551,35 @@ export default function IncidentsScreen() {
                                     <TextInput
                                         style={styles.input}
                                         placeholder="Título (ej: Incendio en Sector 5)"
+                                        placeholderTextColor={colors.textDisabled}
                                         value={newIncident.title}
                                         onChangeText={(t) => setNewIncident({ ...newIncident, title: t })}
                                     />
+                                    <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={styles.fieldLabel}>Clave 10</Text>
+                                            <TextInput
+                                                style={styles.input}
+                                                placeholder="Ej: 10-0"
+                                                placeholderTextColor={colors.textDisabled}
+                                                value={newIncident.dispatch_code}
+                                                onChangeText={(t) => setNewIncident({ ...newIncident, dispatch_code: t })}
+                                                autoCapitalize="characters"
+                                            />
+                                        </View>
+                                        <View style={{ width: 120 }}>
+                                            <Text style={styles.fieldLabel}>Carros</Text>
+                                            <TextInput
+                                                style={styles.input}
+                                                placeholder="1"
+                                                placeholderTextColor={colors.textDisabled}
+                                                value={newIncident.requested_units}
+                                                onChangeText={(t) => setNewIncident({ ...newIncident, requested_units: t.replace(/[^0-9]/g, '') })}
+                                                keyboardType="number-pad"
+                                                maxLength={2}
+                                            />
+                                        </View>
+                                    </View>
                                     {role === 'SUPER_ADMIN' && !editingIncidentId && <TouchableOpacity style={styles.selectButton} onPress={() => setShowDepartmentSelector(true)}>
                                         <Text>{departments.find(item => item.id === newIncident.fire_department)?.label || 'Seleccionar cuerpo de bomberos'}</Text>
                                         <Ionicons name="chevron-down" size={20} color={colors.gray[500]} />
@@ -574,9 +616,11 @@ export default function IncidentsScreen() {
                                         </Text>
                                         <Ionicons name="map" size={20} color={colors.secondary} />
                                     </TouchableOpacity>
+                                    <Text style={styles.fieldLabel}>Descripción del llamado</Text>
                                     <TextInput
                                         style={[styles.input, styles.textArea]}
-                                        placeholder="Descripción (Opcional)"
+                                        placeholder="Qué ocurre, riesgos, personas afectadas y referencias"
+                                        placeholderTextColor={colors.textDisabled}
                                         value={newIncident.description}
                                         onChangeText={(t) => setNewIncident({ ...newIncident, description: t })}
                                         multiline numberOfLines={3}
@@ -1008,6 +1052,12 @@ const styles = StyleSheet.create({
         color: colors.text,
     },
     modalSubtitle: { fontSize: 14, color: colors.gray[500], marginBottom: spacing.lg, textAlign: 'center' },
+    fieldLabel: {
+        color: colors.textMuted,
+        fontSize: 13,
+        fontWeight: '700',
+        marginBottom: spacing.xs,
+    },
     input: {
         backgroundColor: colors.gray[50],
         padding: spacing.md,

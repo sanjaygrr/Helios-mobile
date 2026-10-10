@@ -29,6 +29,9 @@ type Phase = 'PREPARACION' | 'DESPACHO' | 'COMBATE' | 'REACONDICIONAMIENTO';
 interface Incident {
   id: number;
   title: string;
+  dispatch_code?: string | null;
+  description?: string | null;
+  requested_units?: number | null;
   severity?: string | null;
   reported_at?: string | null;
   started_at?: string | null;
@@ -593,6 +596,12 @@ export default function EmergenciaVivaScreen({ navigation, route }: Props) {
             </View>
           </View>
           <Text style={styles.incidentTitle}>{incident.title}</Text>
+          <Text style={styles.incidentMeta}>
+            Clave {incident.dispatch_code || 'sin definir'} · {incident.requested_units || 1} {Number(incident.requested_units || 1) === 1 ? 'carro solicitado' : 'carros solicitados'}
+          </Text>
+          {incident.description ? (
+            <Text style={styles.incidentDescription}>{incident.description}</Text>
+          ) : null}
           <View style={styles.incidentMetaRow}>
             <Ionicons name="time-outline" size={spacing.lg} color={colors.text} />
             <Text style={styles.incidentMeta}>{elapsedLabel(incident, now)}</Text>
@@ -881,6 +890,12 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 18,
     lineHeight: 24,
+  },
+  incidentDescription: {
+    color: colors.textMuted,
+    fontSize: 16,
+    lineHeight: 23,
+    marginTop: spacing.sm,
   },
   refreshError: {
     alignItems: 'center',

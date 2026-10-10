@@ -1,22 +1,26 @@
 import axios from 'axios';
 
-// Base URL: env override -> persisted override -> production default
+// La app publicada siempre usa producción. La URL guardada queda disponible
+// sólo en desarrollo para que una prueba local no pueda dejar la app real
+// apuntando a un backend viejo o sin /api.
 const PROD_URL = 'https://backend-production-0413.up.railway.app/api';
 const ENV_URL = (typeof process !== 'undefined' && (process as any).env?.EXPO_PUBLIC_API_URL) || undefined;
+const DEFAULT_URL = (ENV_URL || PROD_URL).replace(/\/$/, '');
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const api = axios.create({
-    baseURL: ENV_URL || PROD_URL,
+    baseURL: DEFAULT_URL,
     timeout: 10000,
 });
 
 api.interceptors.request.use(
     async (config) => {
-        // Dynamic baseURL from storage
-        const storedBase = await AsyncStorage.getItem('@Api:baseURL');
-        if (storedBase) {
-            config.baseURL = storedBase;
+        if (__DEV__) {
+            const storedBase = await AsyncStorage.getItem('@Api:baseURL');
+            if (storedBase) {
+                config.baseURL = storedBase.replace(/\/$/, '');
+            }
         }
         const token = await AsyncStorage.getItem('@Auth:token');
         if (token) {
@@ -38,8 +42,9 @@ api.interceptors.response.use(response => response, async error => {
     const refresh = await AsyncStorage.getItem('@Auth:refresh');
     if (!refresh) return Promise.reject(error);
     try {
-        const storedBase = await AsyncStorage.getItem('@Api:baseURL');
-        const response = await axios.post(`${storedBase || ENV_URL || PROD_URL}/token/refresh/`, { refresh });
+        const storedBase = __DEV__ ? await AsyncStorage.getItem('@Api:baseURL') : null;
+        const refreshBase = (storedBase || DEFAULT_URL).replace(/\/$/, '');
+        const response = await axios.post(`${refreshBase}/token/refresh/`, { refresh });
         const access = response.data.access;
         await AsyncStorage.setItem('@Auth:token', access);
         original.headers.Authorization = `Bearer ${access}`;

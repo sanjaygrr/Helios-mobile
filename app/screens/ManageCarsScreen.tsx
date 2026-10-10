@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, FlatList, Modal, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, FlatList, Modal, ActivityIndicator, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius, shadows } from '../theme/colors';
 import api from '../services/api';
@@ -20,6 +20,9 @@ export default function ManageCarsScreen({ navigation }: any) {
   const [unitType, setUnitType] = useState('FORESTAL');
   const [status, setStatus] = useState('AVAILABLE');
   const [membersCount, setMembersCount] = useState('1');
+  const [waterLevel, setWaterLevel] = useState('100');
+  const [fuelLevel, setFuelLevel] = useState('100');
+  const [equipmentReady, setEquipmentReady] = useState(true);
   const [observations, setObservations] = useState('');
   const [company, setCompany] = useState<number | null>(user?.company || null);
   const [companies, setCompanies] = useState<{ id: number; label: string }[]>([]);
@@ -68,6 +71,9 @@ export default function ManageCarsScreen({ navigation }: any) {
       setUnitType(unit.unit_type || 'FORESTAL');
       setStatus(unit.status || 'AVAILABLE');
       setMembersCount(unit.members_count?.toString() || '1');
+      setWaterLevel(String(unit.water_level ?? 100));
+      setFuelLevel(String(unit.fuel_level ?? 100));
+      setEquipmentReady(unit.equipment_ready !== false);
       setObservations(unit.observations || '');
       setCompany(unit.company || null);
     } else {
@@ -76,6 +82,9 @@ export default function ManageCarsScreen({ navigation }: any) {
       setUnitType('FORESTAL');
       setStatus('AVAILABLE');
       setMembersCount('1');
+      setWaterLevel('100');
+      setFuelLevel('100');
+      setEquipmentReady(true);
       setObservations('');
       setCompany(user?.company || null);
     }
@@ -91,12 +100,22 @@ export default function ManageCarsScreen({ navigation }: any) {
       Alert.alert('Error', 'Selecciona una compañía para el carro');
       return;
     }
+    const water = Number(waterLevel);
+    const fuel = Number(fuelLevel);
+    if (!Number.isFinite(water) || water < 0 || water > 100 ||
+        !Number.isFinite(fuel) || fuel < 0 || fuel > 100) {
+      Alert.alert('Error', 'Agua y combustible deben estar entre 0 y 100');
+      return;
+    }
 
     const payload = {
       name,
       unit_type: unitType,
       status,
       members_count: parseInt(membersCount || '1', 10),
+      water_level: Math.round(water),
+      fuel_level: Math.round(fuel),
+      equipment_ready: equipmentReady,
       observations,
       company,
     };
@@ -272,6 +291,12 @@ export default function ManageCarsScreen({ navigation }: any) {
               ['shield', 'Cuerpo', detalleCarro?.fire_department_name],
               ['people', 'Dotación', detalleCarro?.members_count
                 ? `${detalleCarro.members_count} personas` : null],
+              ['water', 'Agua', detalleCarro?.water_level != null
+                ? `${detalleCarro.water_level}%` : null],
+              ['speedometer', 'Combustible', detalleCarro?.fuel_level != null
+                ? `${detalleCarro.fuel_level}%` : null],
+              ['construct', 'Equipamiento', detalleCarro?.equipment_ready === false
+                ? 'Requiere revisión' : 'Listo para servicio'],
               ['document-text', 'Observaciones', detalleCarro?.observations],
             ].map(([ic, et, va]: any) => (
               <View key={et} style={estilosDetalle.fila}>
@@ -298,6 +323,12 @@ export default function ManageCarsScreen({ navigation }: any) {
       <Modal visible={isModalVisible} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
+            <ScrollView
+              style={styles.modalScroll}
+              contentContainerStyle={styles.modalScrollContent}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
             <Text style={styles.modalTitle}>{editingUnit ? 'Editar Carro' : 'Nuevo Carro'}</Text>
 
             <Text style={styles.label}>Nombre</Text>
@@ -309,10 +340,11 @@ export default function ManageCarsScreen({ navigation }: any) {
                 placeholderTextColor={colors.textDisabled}
                         />
 
-            <Text style={styles.label}>Tipo</Text>
+            <Text style={styles.label}>Compañía</Text>
             <TouchableOpacity style={styles.input} onPress={() => setShowCompanySelector(true)}>
-              <Text>{companies.find(item => item.id === company)?.label || 'Seleccionar compañía'}</Text>
+              <Text style={styles.inputText}>{companies.find(item => item.id === company)?.label || 'Seleccionar compañía'}</Text>
             </TouchableOpacity>
+            <Text style={styles.label}>Tipo</Text>
             <View style={[styles.chipsRow, { marginBottom: 15 }]}>
               {unitTypes.map(t => (
                 <TouchableOpacity
@@ -348,6 +380,56 @@ export default function ManageCarsScreen({ navigation }: any) {
                 placeholderTextColor={colors.textDisabled}
                         />
 
+            <Text style={styles.label}>Nivel de agua (%)</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="100"
+              keyboardType="numeric"
+              value={waterLevel}
+              onChangeText={setWaterLevel}
+              placeholderTextColor={colors.textDisabled}
+            />
+
+            <Text style={styles.label}>Nivel de combustible (%)</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="100"
+              keyboardType="numeric"
+              value={fuelLevel}
+              onChangeText={setFuelLevel}
+              placeholderTextColor={colors.textDisabled}
+            />
+
+            <Text style={styles.label}>Equipamiento</Text>
+            <View style={[styles.chipsRow, { marginBottom: spacing.md }]}>
+              <TouchableOpacity
+                style={[styles.chip, equipmentReady && styles.chipSelected]}
+                onPress={() => setEquipmentReady(true)}
+              >
+                <Text style={[styles.chipText, equipmentReady && styles.chipTextSelected]}>
+                  Listo
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.chip, !equipmentReady && styles.chipSelected]}
+                onPress={() => setEquipmentReady(false)}
+              >
+                <Text style={[styles.chipText, !equipmentReady && styles.chipTextSelected]}>
+                  Requiere revisión
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.label}>Observaciones</Text>
+            <TextInput
+              style={[styles.input, styles.observationsInput]}
+              placeholder="Equipamiento faltante, fallas u observaciones"
+              value={observations}
+              onChangeText={setObservations}
+              multiline
+              placeholderTextColor={colors.textDisabled}
+            />
+
             <View style={styles.modalButtons}>
               <TouchableOpacity style={styles.cancelButton} onPress={() => setModalVisible(false)}>
                 <Text>Cancelar</Text>
@@ -356,6 +438,7 @@ export default function ManageCarsScreen({ navigation }: any) {
                 <Text style={styles.saveButtonText}>Guardar</Text>
               </TouchableOpacity>
             </View>
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -492,7 +575,10 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: spacing.xl,
+    maxHeight: '92%',
   },
+  modalScroll: { flexGrow: 0 },
+  modalScrollContent: { paddingBottom: spacing.md },
   modalTitle: {
     fontSize: 22,
     fontWeight: '700',
@@ -514,6 +600,8 @@ const styles = StyleSheet.create({
     fontSize: 15,
     borderWidth: 1,
     borderColor: colors.gray[200], color: colors.text,},
+  inputText: { color: colors.text, fontSize: 15 },
+  observationsInput: { minHeight: 88, textAlignVertical: 'top' },
   chipsRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
   chip: {
     paddingVertical: 10,
@@ -528,6 +616,7 @@ const styles = StyleSheet.create({
     borderColor: colors.accent,
   },
   chipText: { fontSize: 13, fontWeight: '600', color: colors.gray[700] },
+  chipTextSelected: { color: colors.textOnPrimary },
   modalButtons: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing.md, marginTop: 20 },
   cancelButton: {
     flex: 1,

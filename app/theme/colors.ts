@@ -12,16 +12,13 @@
 export const colors = {
   brand: '#FF1E00',            // logo y severidad crítica, nada más
 
-  // Acción. No es rojo a propósito: si el rojo pinta los botones, deja de
-  // significar emergencia. Es el ámbar de la brasa, la marca misma.
-  // Saturación 47% contra el 86% del cian anterior: se lee igual de bien pero
-  // no grita, que importa en una pantalla que se mira de noche.
-  primary: '#E8B17A',          // relleno de botón — texto oscuro encima 9.84:1
-  primaryPressed: '#C98F58',
-  accent: '#E8B17A',           // texto, íconos y bordes sobre oscuro — 9.84:1
-  accentMuted: '#9A7047',
-  secondary: '#7FC8A9',        // confirmación, también bajado de saturación
-  highlight: '#E8B17A',
+  // Acción: vuelve el rojo marrón aprobado anteriormente.
+  primary: '#B82E0A',          // relleno de botón — blanco encima 6.12:1
+  primaryPressed: '#8F2408',
+  accent: '#FF8A3D',           // texto, íconos y bordes sobre oscuro — 8.01:1
+  accentMuted: '#C45A18',
+  secondary: '#3DDC97',
+  highlight: '#FF8A3D',
 
   // Superficies
   canvas: '#0E1217',
@@ -41,7 +38,7 @@ export const colors = {
   textMuted: '#A8B0BA',        // 8.58:1
   textLight: '#A8B0BA',
   textDisabled: '#6B7380',
-  textOnPrimary: '#241607',   // oscuro cálido sobre el ámbar, no blanco
+  textOnPrimary: '#FFFFFF',
   textOnAccent: '#0E1217',
   white: '#FFFFFF',            // solo texto sobre rellenos de color
   black: '#000000',
