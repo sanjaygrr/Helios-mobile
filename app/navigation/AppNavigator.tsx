@@ -535,7 +535,7 @@ function RootNavigator() {
           headerShown: true,
           headerStyle: styles.header,
           headerTintColor: colors.white,
-          title: 'Ajustes',
+          title: 'Mi perfil',
           headerLeft: () => <BackButton onPress={() => navigation.goBack()} />,
           headerLeftContainerStyle: styles.headerLeft,
           headerRight: () => <LogoutButton />,

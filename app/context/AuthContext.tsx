@@ -18,6 +18,7 @@ interface AuthContextData {
     isLoading: boolean;
     login: (email: string, password: string) => Promise<void>;
     logout: () => Promise<void>;
+    updateUser: (next: User) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextData>({} as AuthContextData);
@@ -84,8 +85,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await AsyncStorage.removeItem('@Auth:user');
     }
 
+    async function updateUser(next: User) {
+        setUser(next);
+        await AsyncStorage.setItem('@Auth:user', JSON.stringify(next));
+    }
+
     return (
-        <AuthContext.Provider value={{ user, role: user?.role || null, login, logout, isLoading }}>
+        <AuthContext.Provider value={{ user, role: user?.role || null, login, logout, updateUser, isLoading }}>
             {children}
         </AuthContext.Provider>
     );
