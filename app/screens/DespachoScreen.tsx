@@ -56,6 +56,8 @@ interface Unit {
   unit_type?: string | null;
   type_display?: string | null;
   company_name?: string | null;
+  company?: number | null;
+  team_leader?: number | null;
   fire_department?: number | FireDepartmentReference | null;
   fire_department_details?: FireDepartmentReference | null;
   fire_department_name?: string | null;
@@ -75,6 +77,7 @@ interface Person {
   email?: string | null;
   role?: string | null;
   is_active?: boolean;
+  company?: number | null;
   fire_department?: number | FireDepartmentReference | null;
   fire_department_details?: FireDepartmentReference | null;
   company_details?: {
@@ -211,6 +214,19 @@ function unitType(unit: Unit): string {
 
 function companyName(unit: Unit): string {
   return unit.company_name || unit.company_details?.name || 'Sin compañía';
+}
+
+function belongsToCompany(person: Person, unit?: Unit): boolean {
+  if (!unit) return true;
+  if (unit.company != null && person.company != null) {
+    return unit.company === person.company;
+  }
+  const unitName = companyName(unit);
+  const personCompany = person.company_details?.name;
+  return Boolean(
+    personCompany &&
+    normalizeText(unitName) === normalizeText(personCompany),
+  );
 }
 
 function severityLabel(severity?: string | null): string {
@@ -461,9 +477,13 @@ export default function DespachoScreen({ navigation, route }: Props) {
 
   const eligiblePeople = useMemo(
     () => people
-      .filter((person) => person.is_active !== false && belongsToBody(person, targetBody))
+      .filter((person) =>
+        person.is_active !== false &&
+        belongsToBody(person, targetBody) &&
+        belongsToCompany(person, selectedUnit)
+      )
       .sort((a, b) => personName(a).localeCompare(personName(b), 'es-CL')),
-    [people, targetBody],
+    [people, selectedUnit, targetBody],
   );
 
   const normalizedQuery = normalizeText(query);
@@ -507,22 +527,32 @@ export default function DespachoScreen({ navigation, route }: Props) {
 
   const chooseUnit = (unit: Unit) => {
     if (selectedUnitId !== unit.id) {
-      setLeaderId(null);
-      setCrewIds([]);
+      const companyPeople = people.filter(
+        (person) =>
+          person.is_active !== false &&
+          belongsToBody(person, unitBody(unit)) &&
+          belongsToCompany(person, unit),
+      );
+      const captain =
+        companyPeople.find((person) => person.role === 'COMPANY_CHIEF') ??
+        companyPeople.find((person) => person.id === unit.team_leader) ??
+        null;
+      setLeaderId(captain?.id ?? null);
+      setCrewIds(
+        companyPeople
+          .filter((person) => person.id !== captain?.id)
+          .map((person) => person.id),
+      );
     }
     setSelectedUnitId(unit.id);
   };
 
   const chooseLeader = (person: Person) => {
     setLeaderId(person.id);
-    setCrewIds((current) => current.filter((id) => id !== person.id));
-  };
-
-  const toggleCrew = (personId: number) => {
-    setCrewIds((current) =>
-      current.includes(personId)
-        ? current.filter((id) => id !== personId)
-        : [...current, personId],
+    setCrewIds(
+      eligiblePeople
+        .filter((candidate) => candidate.id !== person.id)
+        .map((candidate) => candidate.id),
     );
   };
 
@@ -743,8 +773,10 @@ export default function DespachoScreen({ navigation, route }: Props) {
 
   const renderCrewStep = () => (
     <View>
-      <Text style={styles.sectionTitle}>Elige la tripulación</Text>
-      <Text style={styles.sectionText}>Puedes elegir varias personas. Este paso también puede quedar sin tripulación adicional.</Text>
+      <Text style={styles.sectionTitle}>Personas que recibirán la alarma</Text>
+      <Text style={styles.sectionText}>
+        Se avisará automáticamente a todos los miembros activos de {selectedUnit ? companyName(selectedUnit) : 'la compañía'}.
+      </Text>
       <View style={styles.noticeRow}>
         <Ionicons name="information-circle-outline" size={spacing.lg} color={colors.text} />
         <Text style={styles.noticeRowText}>
@@ -760,20 +792,8 @@ export default function DespachoScreen({ navigation, route }: Props) {
             texto={query ? 'No encontramos coincidencias.' : 'Puedes continuar solo con el encargado.'}
           />
         </View>
-      ) : crewCandidates.map((person) => {
-        const selected = crewIds.includes(person.id);
-        return (
-          <Pressable
-            accessibilityRole="checkbox"
-            accessibilityState={{ checked: selected }}
-            key={person.id}
-            onPress={() => toggleCrew(person.id)}
-            style={({ pressed }) => [
-              styles.optionCard,
-              selected && styles.optionCardSelected,
-              pressed && styles.pressed,
-            ]}
-          >
+      ) : crewCandidates.map((person) => (
+          <View key={person.id} style={[styles.optionCard, styles.optionCardSelected]}>
             <View style={styles.personIcon}>
               <Ionicons name="person-outline" size={spacing.lg} color={colors.text} />
             </View>
@@ -784,13 +804,12 @@ export default function DespachoScreen({ navigation, route }: Props) {
               </Text>
             </View>
             <Ionicons
-              name={selected ? 'checkbox' : 'square-outline'}
+              name="notifications"
               size={spacing.xl}
-              color={selected ? colors.primary : colors.textMuted}
+              color={colors.primary}
             />
-          </Pressable>
-        );
-      })}
+          </View>
+      ))}
     </View>
   );
 
@@ -846,7 +865,7 @@ export default function DespachoScreen({ navigation, route }: Props) {
           targetStep={3}
         />
         <SummaryRow
-          label="Tripulación adicional"
+          label="Miembros avisados"
           value={selectedCrew.length === 1 ? '1 persona' : `${selectedCrew.length} personas`}
           detail={selectedCrew.length ? selectedCrew.map(personName).join(', ') : 'Solo viaja el encargado'}
           targetStep={4}

@@ -46,6 +46,12 @@ type MiDespacho = {
   siguientes: string[];
   soy_encargado: boolean;
   mi_estado: string;
+  tipo_carro: string;
+  compania: string;
+  nivel_agua: number | null;
+  nivel_combustible: number | null;
+  equipamiento_listo: boolean | null;
+  observaciones_carro: string;
 };
 
 const ESTADO_CICLO_ES: Record<string, string> = {
@@ -130,6 +136,40 @@ function formatearDistancia(km: number | null): string {
   return `${Math.round(km)} km`;
 }
 
+function porcentaje(value: unknown): number | null {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return null;
+  return Math.max(0, Math.min(100, Math.round(parsed)));
+}
+
+function NivelCarro({
+  etiqueta,
+  valor,
+  icono,
+}: {
+  etiqueta: string;
+  valor: number | null;
+  icono: React.ComponentProps<typeof Ionicons>['name'];
+}) {
+  const ancho = `${valor ?? 0}%` as `${number}%`;
+  return (
+    <View style={styles.nivelFila}>
+      <Ionicons name={icono} size={spacing.lg} color={colors.accent} />
+      <View style={styles.nivelContenido}>
+        <View style={styles.nivelCabecera}>
+          <Text style={styles.nivelEtiqueta}>{etiqueta}</Text>
+          <Text style={styles.nivelValor}>
+            {valor == null ? 'Sin registrar' : `${valor}%`}
+          </Text>
+        </View>
+        <View style={styles.nivelBarra}>
+          <View style={[styles.nivelRelleno, { width: ancho }]} />
+        </View>
+      </View>
+    </View>
+  );
+}
+
 function parsearDespacho(raw: Record<string, unknown>): MiDespacho | null {
   const asignacion = Number(raw.asignacion ?? raw.id);
   if (!Number.isFinite(asignacion)) return null;
@@ -167,6 +207,21 @@ function parsearDespacho(raw: Record<string, unknown>): MiDespacho | null {
     siguientes,
     soy_encargado: Boolean(raw.soy_encargado ?? raw.esJefe),
     mi_estado: String(raw.mi_estado ?? ''),
+    tipo_carro: String(raw.tipo_carro ?? ''),
+    compania: String(raw.compania ?? ''),
+    nivel_agua: porcentaje(raw.nivel_agua ?? raw.water_level),
+    nivel_combustible: porcentaje(
+      raw.nivel_combustible ?? raw.fuel_level,
+    ),
+    equipamiento_listo:
+      typeof raw.equipamiento_listo === 'boolean'
+        ? raw.equipamiento_listo
+        : typeof raw.equipment_ready === 'boolean'
+          ? raw.equipment_ready
+          : null,
+    observaciones_carro: String(
+      raw.observaciones_carro ?? raw.observations ?? '',
+    ),
   };
 }
 
@@ -471,6 +526,49 @@ export default function MiDespachoScreen() {
         ) : null}
       </View>
 
+      <View style={styles.tarjeta}>
+        <Text style={styles.recursosTitulo}>Recursos del carro</Text>
+        {despacho.tipo_carro || despacho.compania ? (
+          <Text style={styles.recursosSubtitulo}>
+            {[despacho.tipo_carro, despacho.compania].filter(Boolean).join(' · ')}
+          </Text>
+        ) : null}
+        <NivelCarro etiqueta="Agua" valor={despacho.nivel_agua} icono="water" />
+        <View style={styles.separador} />
+        <NivelCarro
+          etiqueta="Combustible"
+          valor={despacho.nivel_combustible}
+          icono="speedometer"
+        />
+        <View style={styles.separador} />
+        <View style={styles.equipamientoFila}>
+          <Ionicons
+            name={despacho.equipamiento_listo === false ? 'warning' : 'checkmark-circle'}
+            size={spacing.lg}
+            color={despacho.equipamiento_listo === false ? colors.warning : colors.success}
+          />
+          <View style={styles.detalleTexto}>
+            <Text style={styles.detalleLabel}>Equipamiento</Text>
+            <Text style={styles.detalleValor}>
+              {despacho.equipamiento_listo == null
+                ? 'Sin registrar'
+                : despacho.equipamiento_listo
+                  ? 'Listo para servicio'
+                  : 'Requiere revisión'}
+            </Text>
+          </View>
+        </View>
+        {despacho.observaciones_carro ? (
+          <>
+            <View style={styles.separador} />
+            <Text style={styles.detalleLabel}>Observaciones</Text>
+            <Text style={styles.observacionesTexto}>
+              {despacho.observaciones_carro}
+            </Text>
+          </>
+        ) : null}
+      </View>
+
       {errorAccion ? (
         <View style={styles.errorCaja} accessibilityRole="alert">
           <Ionicons name="warning" size={spacing.lg} color={colors.warning} />
@@ -705,6 +803,63 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: colors.border,
     marginVertical: spacing.md,
+  },
+  recursosTitulo: {
+    ...typography.h3,
+    color: colors.text,
+  },
+  recursosSubtitulo: {
+    ...typography.bodySmall,
+    color: colors.textMuted,
+    marginTop: spacing.xs,
+    marginBottom: spacing.lg,
+  },
+  nivelFila: {
+    minHeight: touch,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  nivelContenido: {
+    flex: 1,
+    gap: spacing.sm,
+  },
+  nivelCabecera: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+  },
+  nivelEtiqueta: {
+    ...typography.body,
+    color: colors.text,
+    fontWeight: '700',
+  },
+  nivelValor: {
+    ...typography.body,
+    color: colors.accent,
+    fontWeight: '700',
+  },
+  nivelBarra: {
+    height: spacing.sm,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.surfaceRaised,
+    overflow: 'hidden',
+  },
+  nivelRelleno: {
+    height: '100%',
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.accent,
+  },
+  equipamientoFila: {
+    minHeight: touch,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  observacionesTexto: {
+    ...typography.body,
+    color: colors.text,
+    marginTop: spacing.xs,
   },
   errorCaja: {
     flexDirection: 'row',
