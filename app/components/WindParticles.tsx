@@ -13,32 +13,36 @@ interface Props {
   visible: boolean;
 }
 
-const CANTIDAD = 42;
+const COLUMNAS = 4;
+const FILAS = 4;
+const RECORRIDO = 160;
 
 /**
- * Rachas cortas que cruzan el mapa en la dirección hacia donde sopla el viento.
- * OpenWeather entrega la dirección de donde viene: se invierte 180°.
+ * Rachas cortas, todas en la misma dirección: hacia donde sopla el viento.
+ * OpenWeather dice de dónde viene, así que se invierte 180°.
+ * El giro va en el contenedor y el movimiento solo en el eje largo,
+ * para que no se abran en diagonal.
  */
 export function WindParticles({ weatherData, visible }: Props) {
   const { width, height } = useWindowDimensions();
-  const progresos = useRef(Array.from({ length: CANTIDAD }, () => new Animated.Value(0))).current;
+  const total = COLUMNAS * FILAS;
+  const progresos = useRef(Array.from({ length: total }, () => new Animated.Value(0))).current;
 
   const semillas = useMemo(
-    () => Array.from({ length: CANTIDAD }, (_, id) => ({
+    () => Array.from({ length: total }, (_, id) => ({
       id,
-      x: Math.random(),
-      y: Math.random(),
-      espera: Math.random(),
-      largo: 16 + Math.random() * 26,
-      grosor: Math.random() > 0.7 ? 2.2 : 1.4,
+      col: id % COLUMNAS,
+      fila: Math.floor(id / COLUMNAS),
+      largo: 22 + (id % 3) * 10,
+      espera: (id % 5) * 0.16,
     })),
-    [width, height],
+    [],
   );
 
   useEffect(() => {
     if (!visible || !weatherData) return undefined;
-    const kmh = Math.max(4, (weatherData.wind.speed || 0) * 3.6);
-    const duracion = Math.round(Math.min(9000, Math.max(2200, 150000 / kmh)));
+    const kmh = Math.max(6, (weatherData.wind.speed || 0) * 3.6);
+    const duracion = Math.round(Math.min(12000, Math.max(5600, 200000 / kmh)));
     const loops = progresos.map((valor, i) => {
       valor.setValue(0);
       const loop = Animated.sequence([
@@ -58,43 +62,51 @@ export function WindParticles({ weatherData, visible }: Props) {
     return () => {
       loops.forEach(loop => loop.stop());
     };
-  }, [visible, weatherData, progresos, semillas]);
+  }, [visible, weatherData?.wind.deg, weatherData?.wind.speed, progresos, semillas]);
 
   if (!visible || !weatherData || width < 1 || height < 1) return null;
 
-  const viaje = Math.hypot(width, height) * 1.15;
   const hacia = ((weatherData.wind.deg || 0) + 180) % 360;
   const rad = (hacia * Math.PI) / 180;
-  const dx = Math.sin(rad) * viaje;
-  const dy = -Math.cos(rad) * viaje;
   const giro = `${hacia - 90}deg`;
+  const ox = -Math.sin(rad) * 70;
+  const oy = Math.cos(rad) * 70;
 
   return (
     <View style={estilos.capa} pointerEvents="none">
       {semillas.map((s, i) => {
-        const x0 = s.x * width - dx * 0.5;
-        const y0 = s.y * height - dy * 0.5;
         const progreso = progresos[i];
         return (
-          <Animated.View
+          <View
             key={s.id}
             style={{
               position: 'absolute',
+              left: ((s.col + 0.5) / COLUMNAS) * width + ox,
+              top: ((s.fila + 0.5) / FILAS) * height + oy,
               width: s.largo,
-              height: s.grosor,
-              borderRadius: 2,
-              backgroundColor: 'rgba(245,247,250,0.72)',
-              opacity: progreso.interpolate({
-                inputRange: [0, 0.08, 0.82, 1],
-                outputRange: [0, 0.85, 0.85, 0],
-              }),
-              transform: [
-                { translateX: progreso.interpolate({ inputRange: [0, 1], outputRange: [x0, x0 + dx] }) },
-                { translateY: progreso.interpolate({ inputRange: [0, 1], outputRange: [y0, y0 + dy] }) },
-                { rotate: giro },
-              ],
+              height: 2,
+              transform: [{ rotate: giro }],
             }}
-          />
+          >
+            <Animated.View
+              style={{
+                width: s.largo,
+                height: 1.5,
+                borderRadius: 1,
+                backgroundColor: 'rgba(255,255,255,0.9)',
+                opacity: progreso.interpolate({
+                  inputRange: [0, 0.15, 0.7, 1],
+                  outputRange: [0, 0.42, 0.28, 0],
+                }),
+                transform: [{
+                  translateX: progreso.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [-s.largo, RECORRIDO],
+                  }),
+                }],
+              }}
+            />
+          </View>
         );
       })}
     </View>

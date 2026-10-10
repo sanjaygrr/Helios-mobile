@@ -393,7 +393,7 @@ export default function MapScreen() {
         >
           <View style={{ position: 'relative', alignItems: 'center', marginBottom: 4 }}>
             <MaterialCommunityIcons name="compass-rose" size={24} color={colors.white} style={{ opacity: 0.35 }} />
-            <Ionicons name="navigate" size={18} color={colors.white} style={{ position: 'absolute', transform: [{ rotate: `${weatherData.wind.deg || 0}deg` }] }} />
+            <Ionicons name="navigate" size={18} color={colors.white} style={{ position: 'absolute', transform: [{ rotate: `${((weatherData.wind.deg || 0) + 180) % 360}deg` }] }} />
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <Text style={styles.windText}>{Math.round(weatherData.wind.speed * 3.6)} km/h</Text>
