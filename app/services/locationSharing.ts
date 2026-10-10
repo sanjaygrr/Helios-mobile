@@ -1,10 +1,14 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const KEY = '@Helios:locationSharing';
+const KEY = '@Lumbre:locationSharing';
+const LEGACY_KEY = '@Helios:locationSharing';
 let enabled: boolean | null = null;
 
 export async function isLocationSharingEnabled(): Promise<boolean> {
-  if (enabled === null) enabled = (await AsyncStorage.getItem(KEY)) !== 'false';
+  if (enabled === null) {
+    const stored = await AsyncStorage.getItem(KEY) || await AsyncStorage.getItem(LEGACY_KEY);
+    enabled = stored !== 'false';
+  }
   return enabled;
 }
 

@@ -7,8 +7,10 @@ import api from './api';
 import { getDeviceId } from './deviceIdentity';
 import { isLocationSharingEnabled } from './locationSharing';
 
-const TASK_NAME = 'helios-background-location';
-const BACKGROUND_KEY = '@Helios:backgroundTracking';
+const TASK_NAME = 'lumbre-background-location';
+const LEGACY_TASK_NAME = 'helios-background-location';
+const BACKGROUND_KEY = '@Lumbre:backgroundTracking';
+const LEGACY_BACKGROUND_KEY = '@Helios:backgroundTracking';
 export const supportsBackgroundTracking = Platform.OS !== 'web' && Constants.executionEnvironment !== ExecutionEnvironment.StoreClient;
 
 TaskManager.defineTask(TASK_NAME, async ({ data, error }) => {
@@ -31,14 +33,20 @@ TaskManager.defineTask(TASK_NAME, async ({ data, error }) => {
 
 export async function isBackgroundTrackingEnabled(): Promise<boolean> {
   if (!supportsBackgroundTracking) return false;
-  return (await AsyncStorage.getItem(BACKGROUND_KEY)) === 'true';
+  const stored = await AsyncStorage.getItem(BACKGROUND_KEY) || await AsyncStorage.getItem(LEGACY_BACKGROUND_KEY);
+  return stored === 'true';
+}
+
+async function stopTask(name: string): Promise<void> {
+  if (await Location.hasStartedLocationUpdatesAsync(name)) {
+    await Location.stopLocationUpdatesAsync(name);
+  }
 }
 
 export async function stopBackgroundTracking(): Promise<void> {
   if (!supportsBackgroundTracking) return;
-  if (await Location.hasStartedLocationUpdatesAsync(TASK_NAME)) {
-    await Location.stopLocationUpdatesAsync(TASK_NAME);
-  }
+  await stopTask(TASK_NAME);
+  await stopTask(LEGACY_TASK_NAME);
 }
 
 export async function setBackgroundTrackingEnabled(enabled: boolean): Promise<boolean> {
