@@ -282,8 +282,9 @@ export default function ReportarEmergencia({
     try {
       let latitude = lat;
       let longitude = lng;
-      if (!latitude && direccion.trim()) {
-        const puntos = await Location.geocodeAsync(direccion.trim());
+      if (direccion.trim()) {
+        const consulta = [direccion.trim(), comuna.trim(), 'Chile'].filter(Boolean).join(', ');
+        const puntos = await Location.geocodeAsync(consulta);
         if (puntos[0]) {
           latitude = puntos[0].latitude;
           longitude = puntos[0].longitude;

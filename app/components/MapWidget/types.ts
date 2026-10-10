@@ -7,12 +7,14 @@ export interface FirePoint {
     acq_date?: string;
     acq_time?: string;
     timestamp?: number;
+    title?: string;
+    address?: string;
     tipo?: MarkerKind;
     status?: string;
     unit_status?: string;
 }
 
-export type MarkerKind = 'bombero' | 'carro' | 'emergencia';
+export type MarkerKind = 'bombero' | 'carro' | 'emergencia' | 'compania';
 
 export type UnitStatusKey = keyof typeof unitStatus;
 
@@ -94,11 +96,11 @@ export const STALE_AFTER_MS = 5 * 60 * 1000;
 
 export const STALE_OPACITY = 0.45;
 
-const CLUSTER_PX = Math.max(marcador.bombero.sel, marcador.carro.sel, marcador.emergencia.sel);
+const CLUSTER_PX = Math.max(marcador.bombero.sel, marcador.carro.sel, marcador.emergencia.sel, marcador.compania.sel);
 
 export function resolveKind(item: Partial<MapUser> & Partial<FirePoint>): MarkerKind {
     const explicit = item.tipo || item.kind;
-    if (explicit === 'bombero' || explicit === 'carro' || explicit === 'emergencia') return explicit;
+    if (explicit === 'bombero' || explicit === 'carro' || explicit === 'emergencia' || explicit === 'compania') return explicit;
     if (typeof item.brightness === 'number') return 'emergencia';
     if (item.es_carro || item.unit_type) return 'carro';
     const role = (item.role || '').toUpperCase();
@@ -201,7 +203,7 @@ export function buildMapPoints(input: {
                 kind: 'emergencia',
                 status: resolveStatus(fire),
                 timestamp: readTimestamp(fire.timestamp),
-                label: 'Emergencia',
+                label: fire.title || fire.address || 'Emergencia',
                 raw: fire,
             });
         });
@@ -210,6 +212,9 @@ export function buildMapPoints(input: {
 }
 
 export function captionFor(point: MapPoint, now: number): { text: string; stale: boolean } {
+    if (point.kind === 'compania' || point.kind === 'emergencia') {
+        return { text: point.label || '', stale: false };
+    }
     const age = positionAge(point.timestamp, now);
     const statusLabel = point.status ? unitStatus[point.status].label : null;
     const bits = [statusLabel, age.text, age.stale ? 'vieja' : null].filter(Boolean);

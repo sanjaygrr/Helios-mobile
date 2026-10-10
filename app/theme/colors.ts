@@ -102,6 +102,8 @@ export const marcador = {
                 icono: 'fire-truck' as const },
   emergencia: { forma: 'diamante' as const, tam: 32, sel: 40, relleno: colors.brand,
                 icono: 'fire' as const },
+  compania:   { forma: 'cuadrado' as const, tam: 30, sel: 38, relleno: '#C49A6C',
+                icono: 'office-building' as const },
   anillo: colors.white,
   anilloAncho: 2,
   opacidadNoSeleccionado: 0.85,
