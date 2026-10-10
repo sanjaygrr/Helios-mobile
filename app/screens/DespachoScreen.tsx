@@ -35,6 +35,9 @@ interface FireDepartmentReference {
 interface Incident {
   id: number;
   title: string;
+  dispatch_code?: string | null;
+  description?: string | null;
+  requested_units?: number | null;
   severity?: string | null;
   latitude?: number | string | null;
   longitude?: number | string | null;
@@ -630,6 +633,9 @@ export default function DespachoScreen({ navigation, route }: Props) {
           >
             <View style={styles.optionMain}>
               <Text style={styles.optionTitle}>{incident.title}</Text>
+              <Text style={styles.optionDetail}>
+                Clave {incident.dispatch_code || 'sin definir'} · {incident.requested_units || 1} {Number(incident.requested_units || 1) === 1 ? 'carro' : 'carros'}
+              </Text>
               <Text style={styles.optionDetail}>{incidentLocation(incident)}</Text>
               <View style={styles.severityRow}>
                 <View style={[styles.severityDot, { backgroundColor: severity }]} />

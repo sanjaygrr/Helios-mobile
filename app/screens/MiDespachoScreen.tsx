@@ -37,6 +37,9 @@ type MiDespacho = {
   asignacion: number;
   carro: string;
   emergencia: string;
+  clave: string;
+  descripcion_emergencia: string;
+  carros_solicitados: number;
   incidente: number;
   latitud: number | null;
   longitud: number | null;
@@ -198,6 +201,13 @@ function parsearDespacho(raw: Record<string, unknown>): MiDespacho | null {
     emergencia: String(
       raw.emergencia ?? raw.incident_title ?? 'Emergencia sin título',
     ),
+    clave: String(raw.clave ?? raw.dispatch_code ?? ''),
+    descripcion_emergencia: String(
+      raw.descripcion_emergencia ?? raw.description ?? '',
+    ),
+    carros_solicitados: Number(
+      raw.carros_solicitados ?? raw.requested_units ?? 1,
+    ) || 1,
     incidente: Number(raw.incidente ?? raw.incident) || 0,
     latitud,
     longitud,
@@ -436,6 +446,12 @@ export default function MiDespachoScreen() {
       <View style={styles.alarma}>
         <Text style={styles.alarmaEtiqueta}>DESPACHO ACTIVO</Text>
         <Text style={styles.emergenciaNombre}>{despacho.emergencia}</Text>
+        <Text style={styles.claveLlamado}>
+          Clave {despacho.clave || 'sin definir'} · {despacho.carros_solicitados} {despacho.carros_solicitados === 1 ? 'carro solicitado' : 'carros solicitados'}
+        </Text>
+        {despacho.descripcion_emergencia ? (
+          <Text style={styles.descripcionLlamado}>{despacho.descripcion_emergencia}</Text>
+        ) : null}
 
         <View style={styles.chips}>
           <View
@@ -713,6 +729,14 @@ const styles = StyleSheet.create({
   emergenciaNombre: {
     ...typography.h1,
     color: colors.text,
+  },
+  claveLlamado: {
+    ...typography.label,
+    color: colors.accent,
+  },
+  descripcionLlamado: {
+    ...typography.bodySmall,
+    color: colors.textMuted,
   },
   chips: {
     flexDirection: 'row',
