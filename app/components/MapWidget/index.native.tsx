@@ -1,6 +1,7 @@
 import React, { useEffect, useImperativeHandle, useMemo, useRef, useState, forwardRef } from 'react';
-import { StyleSheet, View, Text, LayoutChangeEvent } from 'react-native';
+import { StyleSheet, View, Text, LayoutChangeEvent, Platform } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE, Region } from 'react-native-maps';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { colors, marcador, shadows, spacing, unitStatus } from '../../theme/colors';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { estiloMapa } from './estiloMapa';
@@ -18,6 +19,10 @@ import {
 } from './types';
 
 const SQUARE_RADIUS = 10;
+const MAP_PROVIDER = Platform.OS === 'ios'
+    && Constants.executionEnvironment === ExecutionEnvironment.StoreClient
+    ? undefined
+    : PROVIDER_GOOGLE;
 
 function useTrackChanges(signature: string) {
     const [tracking, setTracking] = useState(true);
@@ -249,7 +254,7 @@ const MapWidget = forwardRef<MapWidgetHandle, MapWidgetProps>(({
         <MapView
             ref={mapRef}
             style={[styles.map, style]}
-            provider={PROVIDER_GOOGLE}
+            provider={MAP_PROVIDER}
             initialRegion={{
                 latitude: currentLocation.latitude,
                 longitude: currentLocation.longitude,
@@ -260,7 +265,7 @@ const MapWidget = forwardRef<MapWidgetHandle, MapWidgetProps>(({
             showsCompass={true}
             mapType="standard"
             // Google Maps en Android e iOS; el mismo estilo limpia ambos mapas.
-            customMapStyle={estiloMapa}
+            customMapStyle={MAP_PROVIDER === PROVIDER_GOOGLE ? estiloMapa : undefined}
             // La prop lleva una "s" de mas: asi se llama en la libreria.
             showsPointsOfInterests={false}
             // En iOS manda sobre la anterior: lista vacia = ninguna categoria.

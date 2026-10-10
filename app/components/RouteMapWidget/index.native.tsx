@@ -1,9 +1,15 @@
 import React from 'react';
-import { StyleSheet } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 import MapView, { Polyline, Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { colors } from '../../theme/colors';
 import { RouteMapWidgetProps } from './types';
+
+const MAP_PROVIDER = Platform.OS === 'ios'
+    && Constants.executionEnvironment === ExecutionEnvironment.StoreClient
+    ? undefined
+    : PROVIDER_GOOGLE;
 
 export default function RouteMapWidget({
     routeCoordinates,
@@ -22,7 +28,7 @@ export default function RouteMapWidget({
     return (
         <MapView
             style={[styles.map, style]}
-            provider={PROVIDER_GOOGLE}
+            provider={MAP_PROVIDER}
             initialRegion={initialRegion}
         >
             <Polyline
