@@ -12,6 +12,7 @@ import {
 import * as Location from 'expo-location';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { fetchWeatherData, WeatherData } from '../services/weather';
+import { WindParticles } from '../components/WindParticles';
 import { useAuth } from '../context/AuthContext';
 import api, { asList } from '../services/api';
 import { isLocationSharingEnabled, setLocationSharingEnabled } from '../services/locationSharing';
@@ -71,6 +72,7 @@ export default function MapScreen() {
   const [sinPunto, setSinPunto] = useState({ companias: 0, carros: 0 });
   const [fireData, setFireData] = useState<FirePoint[]>([]);
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
+  const [verViento, setVerViento] = useState(false);
 
   const [selectedItem, setSelectedItem] = useState<OtherUser | FirePoint | any>(null);
 
@@ -361,18 +363,21 @@ export default function MapScreen() {
         )}
       </View>
 
-      <MapWidget
-        ref={mapRef}
-        style={styles.map}
-        currentLocation={mapCenter}
-        selfUser={location ? user : null}
-        otherUsers={[...Object.values(otherUsers), ...fijos]}
-        fires={visibleFires}
-        showFires
-        onSelectMarker={setSelectedItem}
-        onMapPress={() => setSelectedItem(null)}
-        onRegionChange={setCurrentRegion}
-      />
+      <View style={styles.map}>
+        <MapWidget
+          ref={mapRef}
+          style={styles.map}
+          currentLocation={mapCenter}
+          selfUser={location ? user : null}
+          otherUsers={[...Object.values(otherUsers), ...fijos]}
+          fires={visibleFires}
+          showFires
+          onSelectMarker={setSelectedItem}
+          onMapPress={() => setSelectedItem(null)}
+          onRegionChange={setCurrentRegion}
+        />
+        <WindParticles weatherData={weatherData} visible={verViento} />
+      </View>
 
       {!location && <View style={styles.locationNotice}>
         {!errorMsg && <ActivityIndicator size="small" color={colors.primary} />}
@@ -381,7 +386,11 @@ export default function MapScreen() {
 
       {/* Wind Info Widget (Top-Right) */}
       {weatherData && (
-        <View style={styles.windWidget}>
+        <TouchableOpacity
+          style={[styles.windWidget, verViento && styles.windOn]}
+          onPress={() => setVerViento(actual => !actual)}
+          activeOpacity={0.8}
+        >
           <View style={{ position: 'relative', alignItems: 'center', marginBottom: 4 }}>
             <MaterialCommunityIcons name="compass-rose" size={24} color={colors.white} style={{ opacity: 0.35 }} />
             <Ionicons name="navigate" size={18} color={colors.white} style={{ position: 'absolute', transform: [{ rotate: `${weatherData.wind.deg || 0}deg` }] }} />
@@ -390,7 +399,7 @@ export default function MapScreen() {
             <Text style={styles.windText}>{Math.round(weatherData.wind.speed * 3.6)} km/h</Text>
           </View>
           <Text style={styles.windSubtext}>{Math.round(weatherData.main.temp)}°C</Text>
-        </View>
+        </TouchableOpacity>
       )}
 
       {/* Info Card (Dynamic) */}
@@ -606,7 +615,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    zIndex: 5,
     ...overlay,
+  },
+  windOn: {
+    borderColor: colors.accent,
+    borderWidth: 1,
   },
   windText: {
     color: colors.text,

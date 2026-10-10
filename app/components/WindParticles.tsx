@@ -1,177 +1,110 @@
-import React, { Component, useEffect, useState } from 'react';
-import { View, StyleSheet, Dimensions, Animated } from 'react-native';
-import Svg, { Line } from 'react-native-svg';
-import { colors } from '../theme/colors';
-
-// Wrapper to support Animated.createAnimatedComponent with functional components
-class LineWrapper extends Component<any> {
-    render() {
-        return <Line {...this.props} />;
-    }
-}
-const AnimatedLine = Animated.createAnimatedComponent(LineWrapper);
+import React, { useEffect, useMemo, useRef } from 'react';
+import { Animated, Easing, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 interface WindData {
-    wind: {
-        speed: number;
-        deg: number;
+  wind: {
+    speed: number;
+    deg: number;
+  };
+}
+
+interface Props {
+  weatherData: WindData | null;
+  visible: boolean;
+}
+
+const CANTIDAD = 42;
+
+/**
+ * Rachas cortas que cruzan el mapa en la dirección hacia donde sopla el viento.
+ * OpenWeather entrega la dirección de donde viene: se invierte 180°.
+ */
+export function WindParticles({ weatherData, visible }: Props) {
+  const { width, height } = useWindowDimensions();
+  const progresos = useRef(Array.from({ length: CANTIDAD }, () => new Animated.Value(0))).current;
+
+  const semillas = useMemo(
+    () => Array.from({ length: CANTIDAD }, (_, id) => ({
+      id,
+      x: Math.random(),
+      y: Math.random(),
+      espera: Math.random(),
+      largo: 16 + Math.random() * 26,
+      grosor: Math.random() > 0.7 ? 2.2 : 1.4,
+    })),
+    [width, height],
+  );
+
+  useEffect(() => {
+    if (!visible || !weatherData) return undefined;
+    const kmh = Math.max(4, (weatherData.wind.speed || 0) * 3.6);
+    const duracion = Math.round(Math.min(9000, Math.max(2200, 150000 / kmh)));
+    const loops = progresos.map((valor, i) => {
+      valor.setValue(0);
+      const loop = Animated.sequence([
+        Animated.delay(semillas[i].espera * duracion),
+        Animated.loop(
+          Animated.timing(valor, {
+            toValue: 1,
+            duration: duracion,
+            easing: Easing.linear,
+            useNativeDriver: true,
+          }),
+        ),
+      ]);
+      loop.start();
+      return loop;
+    });
+    return () => {
+      loops.forEach(loop => loop.stop());
     };
+  }, [visible, weatherData, progresos, semillas]);
+
+  if (!visible || !weatherData || width < 1 || height < 1) return null;
+
+  const viaje = Math.hypot(width, height) * 1.15;
+  const hacia = ((weatherData.wind.deg || 0) + 180) % 360;
+  const rad = (hacia * Math.PI) / 180;
+  const dx = Math.sin(rad) * viaje;
+  const dy = -Math.cos(rad) * viaje;
+  const giro = `${hacia - 90}deg`;
+
+  return (
+    <View style={estilos.capa} pointerEvents="none">
+      {semillas.map((s, i) => {
+        const x0 = s.x * width - dx * 0.5;
+        const y0 = s.y * height - dy * 0.5;
+        const progreso = progresos[i];
+        return (
+          <Animated.View
+            key={s.id}
+            style={{
+              position: 'absolute',
+              width: s.largo,
+              height: s.grosor,
+              borderRadius: 2,
+              backgroundColor: 'rgba(245,247,250,0.72)',
+              opacity: progreso.interpolate({
+                inputRange: [0, 0.08, 0.82, 1],
+                outputRange: [0, 0.85, 0.85, 0],
+              }),
+              transform: [
+                { translateX: progreso.interpolate({ inputRange: [0, 1], outputRange: [x0, x0 + dx] }) },
+                { translateY: progreso.interpolate({ inputRange: [0, 1], outputRange: [y0, y0 + dy] }) },
+                { rotate: giro },
+              ],
+            }}
+          />
+        );
+      })}
+    </View>
+  );
 }
 
-interface WindParticlesProps {
-    weatherData: WindData | null;
-}
-
-interface Particle {
-    id: number;
-    x: Animated.Value;
-    y: Animated.Value;
-    opacity: Animated.Value;
-}
-
-export const WindParticles: React.FC<WindParticlesProps> = ({ weatherData }) => {
-    const { width, height } = Dimensions.get('window');
-    const [particles, setParticles] = useState<Particle[]>([]);
-
-    useEffect(() => {
-        if (!weatherData) return;
-
-        let isMounted = true;
-
-        // Create initial particles
-        const particleCount = 100;
-        const newParticles: Particle[] = [];
-
-        for (let i = 0; i < particleCount; i++) {
-            newParticles.push({
-                id: i,
-                x: new Animated.Value(Math.random() * width),
-                y: new Animated.Value(Math.random() * height),
-                opacity: new Animated.Value(Math.random() * 0.6 + 0.2),
-            });
-        }
-
-        setParticles(newParticles);
-
-        // Animate particles
-        const windRad = ((weatherData.wind.deg + 180) % 360) * (Math.PI / 180);
-        const speedFactor = weatherData.wind.speed * 2;
-        const vx = Math.sin(windRad) * speedFactor;
-        const vy = -Math.cos(windRad) * speedFactor;
-
-        const animateParticle = (particle: Particle) => {
-            if (!isMounted) return;
-
-            // Get current position
-            const currentX = (particle.x as any)._value;
-            const currentY = (particle.y as any)._value;
-
-            // Calculate new position
-            let newX = currentX + vx;
-            let newY = currentY + vy;
-
-            // Wrap around screen edges
-            if (newX < 0) newX = width;
-            if (newX > width) newX = 0;
-            if (newY < 0) newY = height;
-            if (newY > height) newY = 0;
-
-            Animated.parallel([
-                Animated.timing(particle.x, {
-                    toValue: newX,
-                    duration: 50,
-                    useNativeDriver: false,
-                }),
-                Animated.timing(particle.y, {
-                    toValue: newY,
-                    duration: 50,
-                    useNativeDriver: false,
-                }),
-                Animated.sequence([
-                    Animated.timing(particle.opacity, {
-                        toValue: 0.8,
-                        duration: 25,
-                        useNativeDriver: false,
-                    }),
-                    Animated.timing(particle.opacity, {
-                        toValue: 0.2,
-                        duration: 25,
-                        useNativeDriver: false,
-                    }),
-                ]),
-            ]).start(() => {
-                if (isMounted) animateParticle(particle);
-            });
-        };
-
-        newParticles.forEach(p => animateParticle(p));
-
-        return () => {
-            isMounted = false;
-        };
-    }, [weatherData, width, height]);
-
-    if (!weatherData) return null;
-
-    // Color based on wind speed
-    const getWindColor = () => {
-        if (weatherData.wind.speed > 10) return colors.sevCritica;
-        if (weatherData.wind.speed > 5) return '#FFA500';
-        return colors.success;
-    };
-
-    const windColor = getWindColor();
-    const windRad = ((weatherData.wind.deg + 180) % 360) * (Math.PI / 180);
-    const lineLength = 15;
-
-    return (
-        <View style={[styles.container, { width, height }]} pointerEvents="none">
-            <Svg width={width} height={height} style={styles.svg}>
-                {particles.map((particle) => {
-                    // Calculate line end point based on wind direction
-                    const x1 = particle.x;
-                    const y1 = particle.y;
-                    const x2 = new Animated.Value(0);
-                    const y2 = new Animated.Value(0);
-
-                    Animated.timing(x2, {
-                        toValue: (x1 as any)._value + Math.sin(windRad) * lineLength,
-                        duration: 0,
-                        useNativeDriver: false,
-                    }).start();
-
-                    Animated.timing(y2, {
-                        toValue: (y1 as any)._value - Math.cos(windRad) * lineLength,
-                        duration: 0,
-                        useNativeDriver: false,
-                    }).start();
-
-                    return (
-                        <AnimatedLine
-                            key={particle.id}
-                            x1={x1}
-                            y1={y1}
-                            x2={x2}
-                            y2={y2}
-                            stroke={windColor}
-                            strokeWidth="2"
-                            strokeOpacity={particle.opacity}
-                            strokeLinecap="round"
-                        />
-                    );
-                })}
-            </Svg>
-        </View>
-    );
-};
-
-const styles = StyleSheet.create({
-    container: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-    },
-    svg: {
-        position: 'absolute',
-    },
+const estilos = StyleSheet.create({
+  capa: {
+    ...StyleSheet.absoluteFill,
+    zIndex: 2,
+    overflow: 'hidden',
+  },
 });
