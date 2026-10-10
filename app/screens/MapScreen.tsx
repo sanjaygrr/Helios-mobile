@@ -12,7 +12,6 @@ import {
 import * as Location from 'expo-location';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { fetchWeatherData, WeatherData } from '../services/weather';
-import { WindParticles } from '../components/WindParticles';
 import { useAuth } from '../context/AuthContext';
 import api, { asList } from '../services/api';
 import { isLocationSharingEnabled, setLocationSharingEnabled } from '../services/locationSharing';
@@ -72,7 +71,6 @@ export default function MapScreen() {
   const [sinPunto, setSinPunto] = useState({ companias: 0, carros: 0 });
   const [fireData, setFireData] = useState<FirePoint[]>([]);
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
-  const [verViento, setVerViento] = useState(false);
 
   const [selectedItem, setSelectedItem] = useState<OtherUser | FirePoint | any>(null);
 
@@ -401,7 +399,6 @@ export default function MapScreen() {
           onMapPress={() => setSelectedItem(null)}
           onRegionChange={setCurrentRegion}
         />
-        <WindParticles weatherData={weatherData} visible={verViento} />
       </View>
 
       {!location && <View style={styles.locationNotice}>
@@ -411,11 +408,7 @@ export default function MapScreen() {
 
       {/* Wind Info Widget (Top-Right) */}
       {weatherData && (
-        <TouchableOpacity
-          style={[styles.windWidget, verViento && styles.windOn]}
-          onPress={() => setVerViento(actual => !actual)}
-          activeOpacity={0.8}
-        >
+        <View style={styles.windWidget}>
           <View style={{ position: 'relative', alignItems: 'center', marginBottom: 4 }}>
             <MaterialCommunityIcons name="compass-rose" size={24} color={colors.white} style={{ opacity: 0.35 }} />
             <Ionicons name="navigate" size={18} color={colors.white} style={{ position: 'absolute', transform: [{ rotate: `${((weatherData.wind.deg || 0) + 180) % 360}deg` }] }} />
@@ -424,7 +417,7 @@ export default function MapScreen() {
             <Text style={styles.windText}>{Math.round(weatherData.wind.speed * 3.6)} km/h</Text>
           </View>
           <Text style={styles.windSubtext}>{Math.round(weatherData.main.temp)}°C</Text>
-        </TouchableOpacity>
+        </View>
       )}
 
       {/* Info Card (Dynamic) */}
@@ -642,10 +635,6 @@ const styles = StyleSheet.create({
     gap: 8,
     zIndex: 5,
     ...overlay,
-  },
-  windOn: {
-    borderColor: colors.accent,
-    borderWidth: 1,
   },
   windText: {
     color: colors.text,

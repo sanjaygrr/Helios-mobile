@@ -77,6 +77,13 @@ const config = {
           "defaultChannel": "despachos"
         }
       ],
+      [
+        "react-native-maps",
+        {
+          "iosGoogleMapsApiKey": process.env.GOOGLE_MAPS_API_KEY,
+          "androidGoogleMapsApiKey": process.env.GOOGLE_MAPS_API_KEY
+        }
+      ],
       "expo-asset",
       "expo-font",
       "expo-status-bar"
