@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { login as apiLogin } from '../services/api';
+import { esVista, puedePrevisualizar, rolDeVista, type Vista } from '../utils/vistas';
 
 interface User {
     id: number;
@@ -15,16 +16,20 @@ interface User {
 interface AuthContextData {
     user: User | null;
     role: string | null;
+    vista: Vista | null;
+    puedeCambiarVista: boolean;
     isLoading: boolean;
     login: (email: string, password: string) => Promise<void>;
     logout: () => Promise<void>;
     updateUser: (next: User) => Promise<void>;
+    setVista: (next: Vista | null) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextData>({} as AuthContextData);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null);
+    const [vista, setVistaState] = useState<Vista | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
@@ -37,7 +42,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const storedToken = await AsyncStorage.getItem('@Auth:token');
 
             if (storedUser && storedToken) {
-                setUser(JSON.parse(storedUser));
+                const parsed = JSON.parse(storedUser);
+                setUser(parsed);
+                const guardada = await AsyncStorage.getItem('@Auth:vista');
+                if (puedePrevisualizar(parsed?.email) && esVista(guardada)) {
+                    setVistaState(guardada);
+                }
             }
         } catch (error) {
             console.error('Failed to load auth data', error);
@@ -80,9 +90,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     async function logout() {
         setUser(null);
+        setVistaState(null);
         await AsyncStorage.removeItem('@Auth:token');
         await AsyncStorage.removeItem('@Auth:refresh');
         await AsyncStorage.removeItem('@Auth:user');
+        await AsyncStorage.removeItem('@Auth:vista');
+    }
+
+    async function setVista(next: Vista | null) {
+        if (!puedePrevisualizar(user?.email)) return;
+        setVistaState(next);
+        if (next) await AsyncStorage.setItem('@Auth:vista', next);
+        else await AsyncStorage.removeItem('@Auth:vista');
     }
 
     async function updateUser(next: User) {
@@ -91,7 +110,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     return (
-        <AuthContext.Provider value={{ user, role: user?.role || null, login, logout, updateUser, isLoading }}>
+        <AuthContext.Provider value={{
+            user,
+            role: (puedePrevisualizar(user?.email) && vista) ? rolDeVista(vista) : (user?.role || null),
+            vista: puedePrevisualizar(user?.email) ? vista : null,
+            puedeCambiarVista: puedePrevisualizar(user?.email),
+            login,
+            logout,
+            updateUser,
+            setVista,
+            isLoading,
+        }}>
             {children}
         </AuthContext.Provider>
     );

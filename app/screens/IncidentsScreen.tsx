@@ -390,11 +390,15 @@ export default function IncidentsScreen() {
                 <Text style={styles.cardDescription}>
                     Clave {item.dispatch_code || 'sin definir'} · {item.requested_units || 1} {Number(item.requested_units || 1) === 1 ? 'carro' : 'carros'}
                 </Text>
-                <Text style={styles.cardDescription}>
-                    {[item.geographic_type_display, item.comuna, item.address].filter(Boolean).join(' · ') || 'Sin lugar'}
-                    {Array.isArray(item.centrales) && item.centrales.length
-                        ? ` · ${item.centrales.map((c: any) => `${c.central} (${c.role === 'PROTAGONISTA' ? 'protagonista' : 'apoyo'})`).join(', ')}`
-                        : ''}
+                <Text style={styles.cardDescription} numberOfLines={2}>
+                    {[
+                        item.geographic_type_display,
+                        item.comuna,
+                        item.centrales?.find((c: any) => c.role === 'PROTAGONISTA')?.central,
+                        (item.centrales?.filter((c: any) => c.role === 'APOYO').length
+                            ? `${item.centrales.filter((c: any) => c.role === 'APOYO').length} en apoyo`
+                            : ''),
+                    ].filter(Boolean).join(' · ') || 'Sin lugar'}
                 </Text>
                 {item.description ? (
                     <Text style={styles.cardDescription} numberOfLines={2}>{item.description}</Text>
