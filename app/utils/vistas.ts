@@ -13,9 +13,8 @@ export function esVista(value: string | null): value is Vista {
   return VISTAS.some(vista => vista.id === value);
 }
 
-export function puedePrevisualizar(email?: string | null) {
-  const local = (email || '').toLowerCase().split('@')[0];
-  return local.includes('sanjay') || local.includes('francis');
+export function puedePrevisualizar(role?: string | null) {
+  return role === 'SUPER_ADMIN';
 }
 
 export function rolDeVista(vista: Vista): UserRole {
