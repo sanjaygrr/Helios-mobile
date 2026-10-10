@@ -74,7 +74,7 @@ const config = {
         "expo-notifications",
         {
           "icon": "./assets/icon.png",
-          "color": "#E8B17A",
+          "color": "#B82E0A",
           "defaultChannel": "despachos"
         }
       ],
