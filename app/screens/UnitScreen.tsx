@@ -15,8 +15,16 @@ import PersonnelForm from '../components/PersonnelForm';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius, shadows, typography } from '../theme/colors';
 import { useAuth } from '../context/AuthContext';
-import api from '../services/api';
+import api, { asList } from '../services/api';
 import { etiquetaCarro } from '../utils/claves';
+
+const ESTADOS_CARRO = [
+  { id: 'AVAILABLE', label: 'Disponible' },
+  { id: 'STANDBY', label: 'En espera' },
+  { id: 'DEPLOYED', label: 'Desplegado' },
+  { id: 'MAINTENANCE', label: 'Mantención' },
+  { id: 'RECONDITIONING', label: 'Reacondicionamiento' },
+];
 
 type UnitStatus = 'available' | 'en_route' | 'on_scene' | 'returning';
 
@@ -28,8 +36,12 @@ interface TeamMember {
 }
 
 export default function UnitScreen() {
-  const { user, role } = useAuth();
+  const { user, role, vista } = useAuth();
+  const esJefeDeCarro = vista === 'CARRO';
   const [assignment, setAssignment] = useState<any>(null);
+  const [carros, setCarros] = useState<any[]>([]);
+  const [carroId, setCarroId] = useState<number | null>(null);
+  const [despachos, setDespachos] = useState<any[]>([]);
   const [assignments, setAssignments] = useState<any[]>([]);
   const [allAssignments, setAllAssignments] = useState<any[]>([]);
   const [incidentDetails, setIncidentDetails] = useState<any>(null);
@@ -46,6 +58,35 @@ export default function UnitScreen() {
   const fetchUserUnit = async () => {
     try {
       setLoading(true);
+
+      if (esJefeDeCarro) {
+        const [uRes, aRes] = await Promise.all([
+          api.get('/units/'),
+          api.get('/assignments/').catch(() => ({ data: [] })),
+        ]);
+        const lista = asList(uRes.data);
+        const activas = asList(aRes.data).filter((a: any) => a.is_active !== false && a.status !== 'RELEASED');
+        setCarros(lista);
+        setDespachos(activas);
+        const preferido = lista.find((u: any) => u.commander === user?.id || u.team_leader === user?.id)
+          || lista.find((u: any) => user?.company && u.company === user.company)
+          || lista[0];
+        const elegido = lista.find((u: any) => u.id === carroId) || preferido || null;
+        setCarroId(elegido?.id ?? null);
+        const despacho = activas.find((a: any) => a.unit === elegido?.id) || null;
+        setAssignment(despacho);
+        if (despacho) {
+          const mapToLocal: Record<string, UnitStatus> = {
+            DISPATCHED: 'available',
+            EN_ROUTE: 'en_route',
+            ON_SCENE: 'on_scene',
+            RETURNING: 'returning',
+            RELEASED: 'available',
+          };
+          setStatus(mapToLocal[despacho.status] || 'available');
+        }
+        return;
+      }
 
       // 1. Check for specific unit assignment (Physical Unit)
       let foundAssignment = null;
@@ -192,7 +233,19 @@ export default function UnitScreen() {
     }
   }, [assignment]);
 
-  if (!loading && role === 'SUPER_ADMIN' && !viewedUnit) {
+  const carro = carros.find(c => c.id === carroId) || null;
+
+  const cambiarEstadoCarro = async (nuevo: string) => {
+    if (!carro) return;
+    try {
+      await api.patch(`/units/${carro.id}/`, { status: nuevo });
+      setCarros(lista => lista.map(c => c.id === carro.id ? { ...c, status: nuevo } : c));
+    } catch {
+      Alert.alert('Error', 'No se pudo actualizar el estado del carro.');
+    }
+  };
+
+  if (!loading && role === 'SUPER_ADMIN' && !viewedUnit && !esJefeDeCarro) {
     return (
       <View style={styles.container}>
         <View style={[styles.headerCard, { backgroundColor: colors.surfaceRaised }]}>
@@ -281,7 +334,7 @@ export default function UnitScreen() {
   }
 
   // --- COMMANDER DASHBOARD (For Incident Commanders) ---
-  if (myCommand && !assignment && !viewedUnit) {
+  if (myCommand && !assignment && !viewedUnit && !esJefeDeCarro) {
     return (
       <ScrollView style={styles.container} refreshControl={<RefreshControl refreshing={loading} onRefresh={fetchUserUnit} />}>
         <View style={[styles.headerCard, { backgroundColor: colors.danger }]}>
@@ -372,15 +425,17 @@ export default function UnitScreen() {
   }
 
   // --- EMPTY STATE VIEW ---
-  if (!assignment) {
+  if (!assignment && !(esJefeDeCarro && carro)) {
     return (
       <View style={styles.emptyContainer}>
         <View style={styles.emptyIconContainer}>
           <Ionicons name="shield-checkmark-outline" size={72} color={colors.primary} />
         </View>
-        <Text style={styles.emptyTitle}>Sin Asignación Activa</Text>
+        <Text style={styles.emptyTitle}>{esJefeDeCarro ? 'Sin carro' : 'Sin Asignación Activa'}</Text>
         <Text style={styles.emptySubtitle}>
-          No tienes una unidad asignada ni estás al mando de una emergencia.
+          {esJefeDeCarro
+            ? 'No hay un carro para mostrar en esta vista.'
+            : 'No tienes una unidad asignada ni estás al mando de una emergencia.'}
         </Text>
         <Text style={styles.emptyHint}>
           Cuando se despache una emergencia, verás los detalles aquí.
@@ -394,7 +449,10 @@ export default function UnitScreen() {
   }
 
   const statusConfig = getStatusConfig(status);
-  const unit = assignment.unit_details || {};
+  const unit = { ...(assignment?.unit_details || {}), ...(carro || {}) };
+  const etiquetaEstado = esJefeDeCarro
+    ? (ESTADOS_CARRO.find(opcion => opcion.id === unit.status)?.label || unit.status_display || statusConfig.label)
+    : statusConfig.label;
   // --- ACTIVE UNIT VIEW (For Unit Chiefs & Super Admin Detail View) ---
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={loading} onRefresh={fetchUserUnit} />}>
@@ -406,6 +464,32 @@ export default function UnitScreen() {
         </TouchableOpacity>
       )}
 
+      {esJefeDeCarro && carros.length > 1 && (
+        <View style={[styles.sectionCard, { marginTop: spacing.lg }]}>
+          <Text style={{ fontSize: 12, color: colors.gray[600], marginBottom: 8 }}>El carro</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {carros.map(item => (
+              <TouchableOpacity
+                key={item.id}
+                style={[styles.unitChip, carroId === item.id && styles.unitChipSelected]}
+                onPress={() => {
+                  setCarroId(item.id);
+                  const despacho = despachos.find(a => a.unit === item.id) || null;
+                  setAssignment(despacho);
+                  if (despacho) {
+                    const mapToLocal: Record<string, UnitStatus> = {
+                      DISPATCHED: 'available', EN_ROUTE: 'en_route', ON_SCENE: 'on_scene', RETURNING: 'returning', RELEASED: 'available',
+                    };
+                    setStatus(mapToLocal[despacho.status] || 'available');
+                  }
+                }}
+              >
+                <Text style={[styles.unitChipText, carroId === item.id && { color: colors.white }]}>{item.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      )}
       {/* If multiple assignments, let chief select by unit name */}
       {assignments.length > 1 && (
         <View style={[styles.sectionCard, { marginTop: spacing.lg }]}>
@@ -452,7 +536,7 @@ export default function UnitScreen() {
         <View style={[styles.statusBadge, { backgroundColor: statusConfig.bgColor }]}>
           <Ionicons name={statusConfig.icon} size={18} color={statusConfig.color} />
           <Text style={[styles.statusText, { color: statusConfig.color }]}>
-            {statusConfig.label}
+            {etiquetaEstado}
           </Text>
         </View>
       </View>
@@ -470,8 +554,31 @@ export default function UnitScreen() {
         </View>
       )}
 
+      {esJefeDeCarro && (
+        <View style={styles.sectionCard}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="speedometer" size={20} color={colors.primary} />
+            <Text style={styles.sectionTitle}>Estado del carro</Text>
+          </View>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {ESTADOS_CARRO.map(opcion => (
+              <TouchableOpacity
+                key={opcion.id}
+                style={[styles.unitChip, unit.status === opcion.id && styles.unitChipSelected]}
+                onPress={() => cambiarEstadoCarro(opcion.id)}
+              >
+                <Text style={[styles.unitChipText, unit.status === opcion.id && { color: colors.white }]}>{opcion.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          {!!unit.observations && (
+            <Text style={{ color: colors.textMuted, marginTop: 10 }}>{unit.observations}</Text>
+          )}
+        </View>
+      )}
+
       {/* Incident Boarding Pass Style */}
-      <View style={styles.ticketContainer}>
+      {assignment && <View style={styles.ticketContainer}>
         <View style={styles.ticketHeader}>
           <Ionicons name="alert-circle" size={24} color={colors.white} />
           <Text style={styles.ticketTitle}>DESPACHO ACTIVO</Text>
@@ -540,7 +647,7 @@ export default function UnitScreen() {
         <View style={styles.ticketFooter}>
           <Text style={styles.ticketFooterText}>Sistema Lumbre • {new Date().toLocaleDateString()}</Text>
         </View>
-      </View>
+      </View>}
 
       {/* Quick Stats */}
       <View style={styles.statsContainer}>
@@ -555,15 +662,15 @@ export default function UnitScreen() {
           <View style={[styles.statIcon, { backgroundColor: colors.surfaceRaised }]}>
             <Ionicons name="water" size={20} color={colors.secondary} />
           </View>
-          <Text style={styles.statValue}>{unit.capacity || 'N/A'}</Text>
-          <Text style={styles.statLabel}>Capacidad</Text>
+          <Text style={styles.statValue}>{unit.water_level ?? '—'}%</Text>
+          <Text style={styles.statLabel}>Agua</Text>
         </View>
         <View style={styles.statCard}>
           <View style={[styles.statIcon, { backgroundColor: colors.surfaceRaised }]}>
             <Ionicons name="speedometer" size={20} color={colors.highlight} />
           </View>
-          <Text style={styles.statValue}>100%</Text>
-          <Text style={styles.statLabel}>Operativo</Text>
+          <Text style={styles.statValue}>{unit.fuel_level ?? '—'}%</Text>
+          <Text style={styles.statLabel}>Combustible</Text>
         </View>
       </View>
 
@@ -574,22 +681,22 @@ export default function UnitScreen() {
           <Text style={styles.sectionTitle}>Vehiculo</Text>
         </View>
         <View style={styles.vehicleInfo}>
-          <Text style={styles.vehicleName}>{unit.vehicle || 'Sin Vehículo'}</Text>
+          <Text style={styles.vehicleName}>{unit.name || 'Sin carro'}</Text>
           <View style={styles.vehicleDetails}>
             <View style={styles.vehicleDetail}>
               <Ionicons name="water-outline" size={18} color={colors.textLight} />
-              <Text style={styles.vehicleDetailText}>{unit.capacity || 'N/A'} agua</Text>
+              <Text style={styles.vehicleDetailText}>{unit.water_level ?? '—'}% agua</Text>
             </View>
             <View style={styles.vehicleDetail}>
-              <Ionicons name="checkmark-circle-outline" size={18} color={colors.success} />
-              <Text style={styles.vehicleDetailText}>Operativo</Text>
+              <Ionicons name={unit.equipment_ready === false ? 'alert-circle-outline' : 'checkmark-circle-outline'} size={18} color={unit.equipment_ready === false ? colors.warning : colors.success} />
+              <Text style={styles.vehicleDetailText}>{unit.equipment_ready === false ? 'Equipo incompleto' : 'Equipo listo'}</Text>
             </View>
           </View>
         </View>
       </View>
 
       {/* Status Actions */}
-      <View style={styles.sectionCard}>
+      {assignment && <View style={styles.sectionCard}>
         <View style={styles.sectionHeader}>
           <Ionicons name="radio" size={20} color={colors.primary} />
           <Text style={styles.sectionTitle}>Reportar Estado</Text>
@@ -690,7 +797,7 @@ export default function UnitScreen() {
             </Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </View>}
 
       {/* Bottom spacing */}
       <View style={{ height: spacing.xl }} />
