@@ -33,7 +33,7 @@ export default function CustomDrawer(props: CustomDrawerProps) {
     switch (r) {
       case 'SUPER_ADMIN': return 'Administrador Total';
       case 'COMPANY_ADMIN': return 'Comandante';
-      case 'COMPANY_CHIEF': return 'Jefe de Compañía';
+      case 'COMPANY_CHIEF': return 'Comandante';
       case 'FIREFIGHTER': return 'Bombero';
       default: return 'Usuario';
     }

@@ -4,7 +4,7 @@ export type Vista = 'CUERPO' | 'COMPANIA' | 'CARRO' | 'BOMBERO';
 
 export const VISTAS: { id: Vista; label: string; detalle: string }[] = [
   { id: 'CUERPO', label: 'Cuerpo de bomberos', detalle: 'Mapa, recursos y gestión del cuerpo' },
-  { id: 'COMPANIA', label: 'Jefe de compañía', detalle: 'Emergencias y carros de la compañía' },
+  { id: 'COMPANIA', label: 'Comandante', detalle: 'La compañía: emergencias, carros y gente' },
   { id: 'CARRO', label: 'Jefe de carro', detalle: 'El carro y quién va en él' },
   { id: 'BOMBERO', label: 'Bombero', detalle: 'Solo el despacho que le llega' },
 ];
@@ -18,7 +18,8 @@ export function puedePrevisualizar(role?: string | null) {
 }
 
 export function rolDeVista(vista: Vista): UserRole {
-  if (vista === 'CUERPO') return 'COMPANY_ADMIN';
+  if (vista === 'CUERPO') return 'SUPER_ADMIN';
+  if (vista === 'COMPANIA') return 'COMPANY_ADMIN';
   if (vista === 'BOMBERO') return 'FIREFIGHTER';
   return 'COMPANY_CHIEF';
 }

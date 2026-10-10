@@ -410,7 +410,7 @@ export default function MapScreen() {
                   {selectedItem.brightness ? 'Emergencia' :
                     selectedItem.role === 'COMPANIA' ? 'Compañía' :
                     selectedItem.role === 'CARRO' ? 'Carro' :
-                    (selectedItem.role === 'COMPANY_CHIEF' || selectedItem.role?.includes('ADMIN') ? 'Jefe de Compañía' : 'Voluntario')}
+                    (selectedItem.role === 'COMPANY_CHIEF' || selectedItem.role?.includes('ADMIN') ? 'Comandante' : 'Voluntario')}
                 </Text>
                 <Text style={styles.infoSubtitle}>
                   {selectedItem.brightness

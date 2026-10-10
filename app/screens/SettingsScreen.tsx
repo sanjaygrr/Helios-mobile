@@ -9,7 +9,7 @@ import { isBackgroundTrackingEnabled, setBackgroundTrackingEnabled, supportsBack
 const ROLES: Record<string, string> = {
   SUPER_ADMIN: 'Administrador',
   COMPANY_ADMIN: 'Comandante',
-  COMPANY_CHIEF: 'Jefe de compañía',
+  COMPANY_CHIEF: 'Comandante',
   FIREFIGHTER: 'Bombero',
 };
 
