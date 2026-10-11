@@ -14,6 +14,7 @@ export interface FirePoint {
     dispatch_code?: string;
     commander?: number | null;
     commander_name?: string;
+    recursos?: { id: number; carro: string; compania?: string; estado?: string }[];
     central_name?: string;
     tipo?: MarkerKind;
     status?: string;
