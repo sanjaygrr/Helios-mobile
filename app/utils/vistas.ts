@@ -3,9 +3,9 @@ import type { UserRole } from '../navigation/types';
 export type Vista = 'CUERPO' | 'COMPANIA' | 'CARRO' | 'BOMBERO';
 
 export const VISTAS: { id: Vista; label: string; detalle: string }[] = [
-  { id: 'CUERPO', label: 'Central regional', detalle: 'Vista general de la región, sus comunas y emergencias' },
+  { id: 'CUERPO', label: 'Central comunal', detalle: 'La central del cuerpo, en su comuna' },
   { id: 'COMPANIA', label: 'Comandante comunal', detalle: 'Mando de la comuna: compañías, carros y personas' },
-  { id: 'CARRO', label: 'Jefe de carro', detalle: 'El carro y quién va en él' },
+  { id: 'CARRO', label: 'Jefe de carro', detalle: 'El carro, el mapa y quién va en él' },
   { id: 'BOMBERO', label: 'Bombero', detalle: 'Solo el despacho que le llega' },
 ];
 

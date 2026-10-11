@@ -408,7 +408,7 @@ export default function ReportarEmergencia({
       <Text style={estilos.seccion}>Central que tiene el problema</Text>
       <TouchableOpacity style={estilos.input} onPress={() => setSelector('central')}>
         <Text style={estilos.carroNombre}>
-          {protagonista ? nombreCentral(cuerpoDe(protagonista)) : 'Elegir central de esta región'}
+          {protagonista ? nombreCentral(cuerpoDe(protagonista)) : 'Elegir central comunal'}
         </Text>
       </TouchableOpacity>
       <Text style={estilos.especialidad}>Solo aparecen los cuerpos de {region || 'la región que elijas'}.</Text>
