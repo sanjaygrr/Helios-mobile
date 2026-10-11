@@ -12,6 +12,7 @@ export interface FirePoint {
     address?: string;
     description?: string;
     dispatch_code?: string;
+    commander?: number | null;
     commander_name?: string;
     central_name?: string;
     tipo?: MarkerKind;
