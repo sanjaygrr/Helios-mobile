@@ -3,6 +3,7 @@
 //
 // La clave de Google Maps NO se escribe acá: vive como variable sensible en
 // EAS (GOOGLE_MAPS_API_KEY) y se inyecta en tiempo de build.
+// En la web el export copia esa clave a EXPO_PUBLIC_GOOGLE_MAPS_API_KEY.
 // Para correr local: GOOGLE_MAPS_API_KEY=... npx expo start
 //
 // MapWidget usa Google Maps en Android, iOS y en la web (SDK de JavaScript).
@@ -91,9 +92,7 @@ const config = {
     "extra": {
       "eas": {
         "projectId": "cb991a4c-af05-4b98-bbe8-e318cc62feb0"
-      },
-      // La misma clave de EAS. El mapa web la necesita en el bundle; no va al repo.
-      "googleMapsApiKey": process.env.GOOGLE_MAPS_API_KEY || ""
+      }
     },
     "runtimeVersion": {
       "policy": "sdkVersion"
