@@ -7,7 +7,6 @@ import {
   ActivityIndicator,
   Platform,
   ScrollView,
-  Alert
 } from 'react-native';
 import { CommonActions, useNavigation } from '@react-navigation/native';
 import * as Location from 'expo-location';
@@ -79,6 +78,8 @@ export default function MapScreen() {
 
   const [currentRegion, setCurrentRegion] = useState<any>(null); // Type 'any' for Region compat
   const [asumiendo, setAsumiendo] = useState(false);
+  const [errorAsumir, setErrorAsumir] = useState('');
+  const envioAsumir = useRef(false);
   const [otherUsers, setOtherUsers] = useState<{ [key: string]: OtherUser }>({});
   const [fijos, setFijos] = useState<OtherUser[]>([]);
   const [sinPunto, setSinPunto] = useState({ companias: 0, carros: 0 });
@@ -608,6 +609,9 @@ export default function MapScreen() {
                   abrir();
                   return;
                 }
+                if (envioAsumir.current) return;
+                envioAsumir.current = true;
+                setErrorAsumir('');
                 setAsumiendo(true);
                 api.post(`/incidents/${selectedItem.id}/take_command/`)
                   .then((respuesta) => {
@@ -622,9 +626,14 @@ export default function MapScreen() {
                     abrir();
                   })
                   .catch((error: any) => {
-                    Alert.alert('No se pudo asumir', error.response?.data?.error || 'Intenta de nuevo.');
+                    const data = error.response?.data;
+                    const mensaje = data?.error || data?.detail || 'No se pudo asumir. Intenta de nuevo.';
+                    setErrorAsumir(typeof mensaje === 'string' ? mensaje : 'No se pudo asumir. Intenta de nuevo.');
                   })
-                  .finally(() => setAsumiendo(false));
+                  .finally(() => {
+                    setAsumiendo(false);
+                    setTimeout(() => { envioAsumir.current = false; }, 700);
+                  });
               }}
             >
               <Text style={styles.infoActionText}>
@@ -634,6 +643,7 @@ export default function MapScreen() {
                     ? 'Asumir'
                     : 'Ver en vivo'}
               </Text>
+              {errorAsumir ? <Text style={styles.recursosVacio}>{errorAsumir}</Text> : null}
             </TouchableOpacity>
           ) : null}
         </View>
