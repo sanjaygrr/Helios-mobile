@@ -42,6 +42,7 @@ export type BomberoTabParamList = {
   MiEstado: undefined;
 };
 
-export type CarroStackParamList = {
+export type CarroTabParamList = {
   MiCarro: undefined;
+  Mapa: undefined;
 };

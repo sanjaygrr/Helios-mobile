@@ -292,7 +292,7 @@ export default function IncidentsScreen() {
             }
 
             // 3. Auto-Take Command (if Chief/Admin)
-            if ((role === 'COMPANY_CHIEF' || role === 'SUPER_ADMIN') && !newIncident.commander) {
+            if ((role === 'COMPANY_ADMIN' || role === 'COMPANY_CHIEF') && !newIncident.commander) {
                 await api.post(`/incidents/${incidentId}/take_command/`);
             }
 
@@ -450,7 +450,7 @@ export default function IncidentsScreen() {
                         </TouchableOpacity>
                     )}
 
-                    {(role === 'COMPANY_CHIEF' || role === 'SUPER_ADMIN') && !item.commander && item.is_active && (
+                    {(role === 'COMPANY_ADMIN' || role === 'COMPANY_CHIEF') && !item.commander && item.is_active && (
                         <TouchableOpacity
                             style={[styles.actionBtn, { backgroundColor: colors.surfaceRaised }]}
                             onPress={() => handleTakeCommand(item.id)}

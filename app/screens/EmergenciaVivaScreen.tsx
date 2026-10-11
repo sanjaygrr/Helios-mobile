@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -579,8 +580,10 @@ export default function EmergenciaVivaScreen({ navigation, route }: Props) {
         onRefresh={() => loadLiveData().catch(() => undefined)}
       />
       <ScrollView
+        style={styles.scroll}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
+        nestedScrollEnabled
       >
         <View style={styles.incidentCard}>
           <View style={styles.incidentTopRow}>
@@ -790,6 +793,12 @@ const styles = StyleSheet.create({
   safeArea: {
     backgroundColor: colors.background,
     flex: 1,
+    minHeight: 0,
+  },
+  scroll: {
+    flex: 1,
+    minHeight: 0,
+    ...(Platform.OS === 'web' ? { overflowY: 'auto' as const } : null),
   },
   header: {
     alignItems: 'center',

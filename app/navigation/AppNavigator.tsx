@@ -46,7 +46,7 @@ import api from '../services/api';
 import { VISTAS, type Vista } from '../utils/vistas';
 import type {
   BomberoTabParamList,
-  CarroStackParamList,
+  CarroTabParamList,
   GestionStackParamList,
   MandoRole,
   MandoTabParamList,
@@ -59,7 +59,7 @@ const MandoTabs = createBottomTabNavigator<MandoTabParamList>();
 const RecursosStack = createStackNavigator<RecursosStackParamList>();
 const GestionStack = createStackNavigator<GestionStackParamList>();
 const BomberoTabs = createBottomTabNavigator<BomberoTabParamList>();
-const CarroStack = createStackNavigator<CarroStackParamList>();
+const CarroTabs = createBottomTabNavigator<CarroTabParamList>();
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -471,13 +471,29 @@ function MandoTabsNavigator() {
 function CarroNavigator() {
   const { puedeCambiarVista } = useAuth();
   return (
-    <CarroStack.Navigator screenOptions={getSharedHeaderOptions(puedeCambiarVista)}>
-      <CarroStack.Screen
+    <CarroTabs.Navigator
+      screenOptions={({ route }) => ({
+        ...getSharedHeaderOptions(puedeCambiarVista),
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textMuted,
+        tabBarStyle: styles.tabBar,
+        tabBarItemStyle: styles.tabBarItem,
+        tabBarIcon: ({ color, focused, size }) => {
+          const icons: Record<keyof CarroTabParamList, [IconName, IconName]> = {
+            MiCarro: ['bus-outline', 'bus'],
+            Mapa: ['map-outline', 'map'],
+          };
+          return <Ionicons name={icons[route.name][focused ? 1 : 0]} size={size} color={color} />;
+        },
+      })}
+    >
+      <CarroTabs.Screen
         name="MiCarro"
         component={UnitScreen}
         options={{ title: 'Mi carro' }}
       />
-    </CarroStack.Navigator>
+      <CarroTabs.Screen name="Mapa" component={MapScreen} options={{ title: 'Mapa' }} />
+    </CarroTabs.Navigator>
   );
 }
 
