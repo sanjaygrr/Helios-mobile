@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Logo from '../../assets/logo.svg';
 import {
   StyleSheet,
@@ -42,6 +42,50 @@ export default function LoginScreen({ navigation }: any) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [focusedInput, setFocusedInput] = useState<string | null>(null);
+  const [tecladoAlto, setTecladoAlto] = useState(0);
+  const scrollRef = useRef<ScrollView>(null);
+  const scrollY = useRef(0);
+  const tecladoAltoRef = useRef(0);
+  const correoRef = useRef<View>(null);
+  const claveRef = useRef<View>(null);
+
+  useEffect(() => {
+    const mostrar = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const ocultar = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const alMostrar = Keyboard.addListener(mostrar, (evento) => {
+      tecladoAltoRef.current = evento.endCoordinates.height;
+      setTecladoAlto(evento.endCoordinates.height);
+    });
+    const alOcultar = Keyboard.addListener(ocultar, () => {
+      tecladoAltoRef.current = 0;
+      setTecladoAlto(0);
+    });
+    return () => {
+      alMostrar.remove();
+      alOcultar.remove();
+    };
+  }, []);
+
+  const subirCampo = (nodo: View | null) => {
+    setTimeout(() => {
+      nodo?.measureInWindow((_x, y, _w, h) => {
+        const teclado = tecladoAltoRef.current || 280;
+        const limite = Dimensions.get('window').height - teclado - 20;
+        const fondo = y + h;
+        if (fondo > limite) {
+          scrollRef.current?.scrollTo({
+            y: scrollY.current + (fondo - limite) + 16,
+            animated: true,
+          });
+        }
+      });
+    }, Platform.OS === 'ios' ? 280 : 120);
+  };
+
+  useEffect(() => {
+    if (tecladoAlto === 0) return;
+    subirCampo(focusedInput === 'password' ? claveRef.current : correoRef.current);
+  }, [tecladoAlto, focusedInput]);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -73,8 +117,7 @@ export default function LoginScreen({ navigation }: any) {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
 
@@ -86,25 +129,41 @@ export default function LoginScreen({ navigation }: any) {
 
       {/* Content */}
       <ScrollView
+        ref={scrollRef}
         style={{ flex: 1 }}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[
+          styles.content,
+          tecladoAlto > 0 && styles.contentConTeclado,
+        ]}
         keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets
+        onScroll={(evento) => {
+          scrollY.current = evento.nativeEvent.contentOffset.y;
+        }}
+        scrollEventThrottle={16}
       >
         <DismissKeyboard>
           <View>
             {/* Logo Section */}
-            <View style={styles.logoSection}>
-              <View style={styles.logoContainer}>
-                {/* <Logo width={120} height={120} /> */}
-                <Ionicons name="flame" size={100} color={colors.primary} />
+            {tecladoAlto > 0 ? (
+              <View style={styles.logoCompacto}>
+                <Ionicons name="flame" size={28} color={colors.primary} />
+                <Text style={styles.logoCompactoTexto}>LUMBRE</Text>
               </View>
-              <Text style={styles.logoText}>LUMBRE</Text>
-              <View style={styles.taglineContainer}>
-                <View style={styles.taglineLine} />
-                <Text style={styles.taglineText}>Sistema de Emergencias</Text>
-                <View style={styles.taglineLine} />
+            ) : (
+              <View style={styles.logoSection}>
+                <View style={styles.logoContainer}>
+                  {/* <Logo width={120} height={120} /> */}
+                  <Ionicons name="flame" size={100} color={colors.primary} />
+                </View>
+                <Text style={styles.logoText}>LUMBRE</Text>
+                <View style={styles.taglineContainer}>
+                  <View style={styles.taglineLine} />
+                  <Text style={styles.taglineText}>Sistema de Emergencias</Text>
+                  <View style={styles.taglineLine} />
+                </View>
               </View>
-            </View>
+            )}
 
             {/* Form Card */}
             <View style={styles.formCard}>
@@ -124,7 +183,9 @@ export default function LoginScreen({ navigation }: any) {
               ) : null}
 
               {/* Email Input */}
-              <View style={[
+              <View
+                ref={correoRef}
+                style={[
                 styles.inputContainer,
                 focusedInput === 'email' && styles.inputContainerFocused
               ]}>
@@ -147,7 +208,10 @@ export default function LoginScreen({ navigation }: any) {
                     setEmail(text);
                     setError('');
                   }}
-                  onFocus={() => setFocusedInput('email')}
+                  onFocus={() => {
+                    setFocusedInput('email');
+                    subirCampo(correoRef.current);
+                  }}
                   onBlur={() => setFocusedInput(null)}
                   keyboardType="email-address"
                   autoCapitalize="none"
@@ -156,7 +220,9 @@ export default function LoginScreen({ navigation }: any) {
               </View>
 
               {/* Password Input */}
-              <View style={[
+              <View
+                ref={claveRef}
+                style={[
                 styles.inputContainer,
                 focusedInput === 'password' && styles.inputContainerFocused
               ]}>
@@ -179,7 +245,10 @@ export default function LoginScreen({ navigation }: any) {
                     setPassword(text);
                     setError('');
                   }}
-                  onFocus={() => setFocusedInput('password')}
+                  onFocus={() => {
+                    setFocusedInput('password');
+                    subirCampo(claveRef.current);
+                  }}
                   onBlur={() => setFocusedInput(null)}
                   secureTextEntry={!showPassword}
                 />
@@ -277,6 +346,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingTop: Platform.OS === 'ios' ? 80 : 50,
     paddingBottom: spacing.xl,
+  },
+  contentConTeclado: {
+    paddingTop: Platform.OS === 'ios' ? 16 : 12,
+    justifyContent: 'flex-start',
+  },
+  logoCompacto: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  logoCompactoTexto: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: colors.white,
+    letterSpacing: 4,
   },
   logoSection: {
     alignItems: 'center',
