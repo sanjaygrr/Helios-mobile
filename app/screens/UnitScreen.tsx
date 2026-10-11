@@ -16,7 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius, shadows, typography } from '../theme/colors';
 import { useAuth } from '../context/AuthContext';
 import api, { asList } from '../services/api';
-import { compararCarros, etiquetaCarro, nombreCarroConOrigen, origenCarro } from '../utils/claves';
+import { etiquetaCarro, nombreCarroConOrigen, origenCarro } from '../utils/claves';
 
 const ESTADOS_CARRO = [
   { id: 'AVAILABLE', label: 'Disponible' },
@@ -72,17 +72,22 @@ export default function UnitScreen() {
         ]);
         const lista = asList(uRes.data);
         const activas = asList(aRes.data).filter((a: any) => a.is_active !== false && a.status !== 'RELEASED');
-        const ordenados = [...lista].sort((a: any, b: any) => {
-          const cuerpo = String(a.fire_department_name || '').localeCompare(String(b.fire_department_name || ''), 'es');
-          const compania = String(a.company_name || '').localeCompare(String(b.company_name || ''), 'es', { numeric: true });
-          return cuerpo || compania || compararCarros(a, b);
-        });
-        setCarros(ordenados);
+        const mios = lista.filter((u: any) => u.team_leader === user?.id || u.commander === user?.id);
+        const deMiCompania = user?.company
+          ? lista.filter((u: any) => u.company === user.company)
+          : [];
+        const deLaTercera = lista.filter((u: any) =>
+          String(u.company_number) === '3'
+          && String(u.fire_department_name || '').toLowerCase().includes('chiguayante'));
+        const fijo = mios[0]
+          || deMiCompania.find((u: any) => u.team_leader)
+          || deLaTercera.find((u: any) => u.name === 'BX-3')
+          || deLaTercera[0]
+          || null;
+        setCarros(fijo ? [fijo] : []);
         setDespachos(activas);
-        const preferido = ordenados.find((u: any) => u.commander === user?.id || u.team_leader === user?.id)
-          || ordenados.find((u: any) => user?.company && u.company === user.company)
-          || ordenados[0];
-        const elegido = ordenados.find((u: any) => u.id === carroId) || preferido || null;
+        const preferido = fijo;
+        const elegido = preferido || null;
         setCarroId(elegido?.id ?? null);
         const despacho = activas.find((a: any) => a.unit === elegido?.id) || null;
         setAssignment(despacho);
@@ -519,52 +524,7 @@ export default function UnitScreen() {
         </TouchableOpacity>
       )}
 
-      {esJefeDeCarro && carros.length > 1 && (
-        <View style={[styles.vehiclePicker, { marginTop: spacing.lg }]}>
-          <View style={styles.vehiclePickerHeader}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.vehiclePickerEyebrow}>{role === 'SUPER_ADMIN' ? 'VISTA SUPERADMIN' : 'MI COMPAÑÍA'}</Text>
-              <Text style={styles.vehiclePickerTitle}>Selecciona el carro</Text>
-              <Text style={styles.vehiclePickerHint}>
-                {role === 'SUPER_ADMIN'
-                  ? `${carros.length} carros de todos los cuerpos, identificados por procedencia.`
-                  : `${carros.length} carros disponibles para esta vista.`}
-              </Text>
-            </View>
-            <View style={styles.vehicleCount}><Text style={styles.vehicleCountText}>{carros.length}</Text></View>
-          </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.vehiclePickerList}>
-            {carros.map(item => (
-              <TouchableOpacity
-                key={item.id}
-                style={[styles.vehicleOption, carroId === item.id && styles.vehicleOptionSelected]}
-                onPress={() => {
-                  setCarroId(item.id);
-                  const despacho = despachos.find(a => a.unit === item.id) || null;
-                  setAssignment(despacho);
-                  if (despacho) {
-                    const mapToLocal: Record<string, UnitStatus> = {
-                      DISPATCHED: 'available', EN_ROUTE: 'en_route', ON_SCENE: 'on_scene', RETURNING: 'returning', RELEASED: 'available',
-                    };
-                    setStatus(mapToLocal[despacho.status] || 'available');
-                  }
-                }}
-              >
-                <View style={styles.vehicleOptionTop}>
-                  <Ionicons name="bus" size={18} color={carroId === item.id ? colors.white : colors.primary} />
-                  {carroId === item.id && <Ionicons name="checkmark-circle" size={18} color={colors.white} />}
-                </View>
-                <Text numberOfLines={2} style={[styles.vehicleOptionName, carroId === item.id && styles.vehicleOptionTextSelected]}>
-                  {nombreCarroConOrigen(item)}
-                </Text>
-                <Text numberOfLines={2} style={[styles.vehicleOptionOrigin, carroId === item.id && styles.vehicleOptionOriginSelected]}>
-                  {origenCarro(item) || etiquetaCarro(item.unit_type, item.type_display)}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-      )}
+
       {/* If multiple assignments, let chief select by unit name */}
       {assignments.length > 1 && (
         <View style={[styles.sectionCard, { marginTop: spacing.lg }]}>
