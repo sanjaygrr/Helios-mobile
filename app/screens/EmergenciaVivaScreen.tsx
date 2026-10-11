@@ -430,21 +430,40 @@ export default function EmergenciaVivaScreen({ navigation, route }: Props) {
 
   useEffect(() => {
     if (Platform.OS !== 'web') return;
+    const anteriores = new Map<HTMLElement, string>();
+    const soltar = (el: HTMLElement | null) => {
+      if (!el || anteriores.has(el)) return;
+      anteriores.set(el, el.getAttribute('style') || '');
+      el.style.setProperty('overflow', 'visible', 'important');
+      el.style.setProperty('height', 'auto', 'important');
+      el.style.setProperty('max-height', 'none', 'important');
+      el.style.setProperty('min-height', '0', 'important');
+    };
     const aplicar = () => {
-      const el = document.getElementById('emergencia-viva-scroll');
-      if (!el) return;
-      let nodo: HTMLElement | null = el;
+      const raiz = document.getElementById('root');
+      soltar(document.documentElement);
+      soltar(document.body);
+      soltar(raiz);
+      document.documentElement.style.setProperty('overflow-y', 'auto', 'important');
+      document.body.style.setProperty('overflow-y', 'auto', 'important');
+      const panel = document.getElementById('emergencia-viva-scroll');
+      soltar(panel);
+      if (panel) panel.style.setProperty('flex', 'none', 'important');
+      let nodo = panel?.parentElement || null;
       while (nodo && nodo !== document.body) {
-        if (nodo.scrollHeight > nodo.clientHeight + 24) {
-          nodo.style.overflowY = 'auto';
-          nodo.style.overflowX = 'hidden';
-        }
+        soltar(nodo);
         nodo = nodo.parentElement;
       }
     };
     aplicar();
-    const timer = setTimeout(aplicar, 400);
-    return () => clearTimeout(timer);
+    const timer = setTimeout(aplicar, 300);
+    return () => {
+      clearTimeout(timer);
+      anteriores.forEach((estilo, el) => {
+        if (estilo) el.setAttribute('style', estilo);
+        else el.removeAttribute('style');
+      });
+    };
   }, [snapshot]);
 
   const loadLiveData = useCallback(async () => {
