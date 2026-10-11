@@ -25,6 +25,16 @@ import {
 import type { RootStackParamList } from '../navigation/types';
 
 type Props = StackScreenProps<RootStackParamList, 'EmergenciaViva'>;
+
+function engancharScroll(nodo: ScrollView | null) {
+  if (Platform.OS !== 'web' || !nodo) return;
+  const el = nodo.getScrollableNode?.() as HTMLElement | undefined;
+  if (!el?.style) return;
+  el.style.overflowY = 'auto';
+  el.style.overflowX = 'hidden';
+  el.style.minHeight = '0px';
+  el.style.flex = '1 1 0%';
+}
 type Phase = 'PREPARACION' | 'DESPACHO' | 'COMBATE' | 'REACONDICIONAMIENTO';
 
 interface Incident {
@@ -580,6 +590,7 @@ export default function EmergenciaVivaScreen({ navigation, route }: Props) {
         onRefresh={() => loadLiveData().catch(() => undefined)}
       />
       <ScrollView
+        ref={engancharScroll}
         style={styles.scroll}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
@@ -794,9 +805,16 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     flex: 1,
     minHeight: 0,
+    ...(Platform.OS === 'web' ? {
+      height: '100%',
+      maxHeight: '100%',
+      overflow: 'hidden' as const,
+    } : null),
   },
   scroll: {
-    flex: 1,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 0,
     minHeight: 0,
     ...(Platform.OS === 'web' ? { overflowY: 'auto' as const } : null),
   },

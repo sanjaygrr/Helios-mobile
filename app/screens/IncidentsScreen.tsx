@@ -312,13 +312,12 @@ export default function IncidentsScreen() {
         }
     };
 
-    const handleTakeCommand = async (incidentId: number) => {
+    const asumirYAbrir = async (incidentId: number) => {
         try {
             await api.post(`/incidents/${incidentId}/take_command/`);
-            Alert.alert("Mando Asumido", "Ahora estás a cargo de esta emergencia.");
-            fetchIncidents();
+            navigation.navigate('EmergenciaViva', { incidentId });
         } catch (error: any) {
-            Alert.alert("Error", error.response?.data?.error || "No se pudo asumir el mando.");
+            Alert.alert('No se pudo asumir', error.response?.data?.error || 'Intenta de nuevo.');
         }
     };
 
@@ -440,7 +439,15 @@ export default function IncidentsScreen() {
                         </TouchableOpacity>
                     )}
 
-                    {item.is_active && (
+                    {item.is_active && (role === 'COMPANY_ADMIN' || role === 'COMPANY_CHIEF') && !item.commander ? (
+                        <TouchableOpacity
+                            style={[styles.actionBtn, { backgroundColor: colors.primary }]}
+                            onPress={() => asumirYAbrir(item.id)}
+                        >
+                            <Ionicons name="flag" size={18} color={colors.white} />
+                            <Text style={[styles.actionBtnText, { color: colors.white }]}>Asumir</Text>
+                        </TouchableOpacity>
+                    ) : item.is_active ? (
                         <TouchableOpacity
                             style={[styles.actionBtn, styles.actionBtnOutline]}
                             onPress={() => navigation.navigate('EmergenciaViva', { incidentId: item.id })}
@@ -448,17 +455,7 @@ export default function IncidentsScreen() {
                             <Ionicons name="pulse" size={18} color={colors.accent} />
                             <Text style={[styles.actionBtnText, { color: colors.accent }]}>En vivo</Text>
                         </TouchableOpacity>
-                    )}
-
-                    {(role === 'COMPANY_ADMIN' || role === 'COMPANY_CHIEF') && !item.commander && item.is_active && (
-                        <TouchableOpacity
-                            style={[styles.actionBtn, { backgroundColor: colors.surfaceRaised }]}
-                            onPress={() => handleTakeCommand(item.id)}
-                        >
-                            <Ionicons name="flag" size={18} color="white" />
-                            <Text style={[styles.actionBtnText, { color: colors.white }]}>Tomar Mando</Text>
-                        </TouchableOpacity>
-                    )}
+                    ) : null}
 
                     {isMyCommand && item.is_active && (
                         <TouchableOpacity

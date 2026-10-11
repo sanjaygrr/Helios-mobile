@@ -78,6 +78,7 @@ export default function MapScreen() {
   const [isTracking, setIsTracking] = useState(true);
 
   const [currentRegion, setCurrentRegion] = useState<any>(null); // Type 'any' for Region compat
+  const [asumiendo, setAsumiendo] = useState(false);
   const [otherUsers, setOtherUsers] = useState<{ [key: string]: OtherUser }>({});
   const [fijos, setFijos] = useState<OtherUser[]>([]);
   const [sinPunto, setSinPunto] = useState({ companias: 0, carros: 0 });
@@ -327,6 +328,7 @@ export default function MapScreen() {
               address: [i.address, i.comuna].filter(Boolean).join(', '),
               description: i.description,
               dispatch_code: i.dispatch_code,
+              commander: i.commander ?? null,
               commander_name: i.commander_name,
               central_name: i.centrales?.find((c: any) => c.role === 'PROTAGONISTA')?.central,
               acq_date: (i.reported_at || '').slice(0, 10),
@@ -510,12 +512,6 @@ export default function MapScreen() {
                   <Ionicons name="radio" size={18} color={colors.textMuted} />
                   <Text style={styles.incidentText}>Central: {selectedItem.central_name || 'Sin central'}</Text>
                 </View>
-                <TouchableOpacity
-                  style={styles.infoAction}
-                  onPress={() => navigation.dispatch(CommonActions.navigate('EmergenciaViva', { incidentId: selectedItem.id }))}
-                >
-                  <Text style={styles.infoActionText}>Ver emergencia en vivo</Text>
-                </TouchableOpacity>
               </>
             )}
 
@@ -587,6 +583,45 @@ export default function MapScreen() {
               Loc: {selectedItem.latitude.toFixed(5)}, {selectedItem.longitude.toFixed(5)}
             </Text>
           </ScrollView>
+          {selectedItem.brightness ? (
+            <TouchableOpacity
+              style={styles.infoAction}
+              disabled={asumiendo}
+              onPress={() => {
+                const abrir = () => navigation.dispatch(CommonActions.navigate('EmergenciaViva', { incidentId: selectedItem.id }));
+                const puedeAsumir = (role === 'COMPANY_ADMIN' || role === 'COMPANY_CHIEF') && !selectedItem.commander;
+                if (!puedeAsumir) {
+                  abrir();
+                  return;
+                }
+                setAsumiendo(true);
+                api.post(`/incidents/${selectedItem.id}/take_command/`)
+                  .then((respuesta) => {
+                    const mando = respuesta.data?.commander ?? user?.id;
+                    const nombre = respuesta.data?.commander_name || 'Tú';
+                    setFireData((prev) => prev.map((punto) => (
+                      punto.id === selectedItem.id
+                        ? { ...punto, commander: mando, commander_name: nombre }
+                        : punto
+                    )));
+                    setSelectedItem((prev: any) => prev ? { ...prev, commander: mando, commander_name: nombre } : prev);
+                    abrir();
+                  })
+                  .catch((error: any) => {
+                    Alert.alert('No se pudo asumir', error.response?.data?.error || 'Intenta de nuevo.');
+                  })
+                  .finally(() => setAsumiendo(false));
+              }}
+            >
+              <Text style={styles.infoActionText}>
+                {asumiendo
+                  ? 'Asumiendo…'
+                  : (role === 'COMPANY_ADMIN' || role === 'COMPANY_CHIEF') && !selectedItem.commander
+                    ? 'Asumir'
+                    : 'Ver en vivo'}
+              </Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
       )}
 
@@ -650,6 +685,7 @@ const styles = StyleSheet.create({
     position: 'absolute', bottom: 100, left: 16, right: 16,
     padding: 18, paddingTop: 20, borderRadius: borderRadius.lg,
     maxHeight: 340, overflow: 'hidden',
+    flexDirection: 'column',
     ...overlay,
     borderWidth: 1, borderColor: colors.border,
   },
@@ -673,7 +709,7 @@ const styles = StyleSheet.create({
   infoTitle: { fontSize: 19, lineHeight: 23, fontWeight: '800', color: colors.text },
   infoSubtitle: { fontSize: 12, lineHeight: 17, color: colors.textMuted, marginTop: 3 },
   infoDescription: { fontSize: 14, lineHeight: 20, color: colors.text, marginBottom: 8 },
-  infoGrid: { marginTop: 5 },
+  infoGrid: { marginTop: 5, flexGrow: 1, flexShrink: 1, minHeight: 0 },
   incidentRow: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     marginVertical: 4,
