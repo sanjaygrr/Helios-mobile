@@ -89,10 +89,8 @@ export default function SettingsScreen() {
   };
 
   const salir = () => {
-    Alert.alert('Cerrar sesión', 'Vas a salir de Lumbre en este teléfono.', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Salir', style: 'destructive', onPress: () => { logout().catch(() => undefined); } },
-    ]);
+    // En la web Alert.alert no hace nada, así que el botón cerraba y se quedaba ahí.
+    logout().catch(() => undefined);
   };
 
   const save = async () => {
