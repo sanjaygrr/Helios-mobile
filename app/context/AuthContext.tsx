@@ -53,7 +53,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 const parsed = JSON.parse(storedUser);
                 setUser(parsed);
                 const guardada = await AsyncStorage.getItem('@Auth:vista');
-                if (puedePrevisualizar(parsed?.role) && esVista(guardada)) {
+                if (puedePrevisualizar(parsed) && esVista(guardada)) {
                     setVistaState(guardada);
                 }
                 try {
@@ -114,7 +114,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     async function setVista(next: Vista | null) {
-        if (!puedePrevisualizar(user?.role)) return;
+        if (!puedePrevisualizar(user)) return;
         setVistaState(next);
         if (next) await AsyncStorage.setItem('@Auth:vista', next);
         else await AsyncStorage.removeItem('@Auth:vista');
@@ -128,9 +128,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return (
         <AuthContext.Provider value={{
             user,
-            role: (puedePrevisualizar(user?.role) && vista) ? rolDeVista(vista) : (user?.role || null),
-            vista: puedePrevisualizar(user?.role) ? vista : null,
-            puedeCambiarVista: puedePrevisualizar(user?.role),
+            role: (puedePrevisualizar(user) && vista) ? rolDeVista(vista) : (user?.role || null),
+            vista: puedePrevisualizar(user) ? vista : null,
+            puedeCambiarVista: puedePrevisualizar(user),
             login,
             logout,
             updateUser,

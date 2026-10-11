@@ -13,8 +13,14 @@ export function esVista(value: string | null): value is Vista {
   return VISTAS.some(vista => vista.id === value);
 }
 
-export function puedePrevisualizar(role?: string | null) {
-  return role === 'SUPER_ADMIN';
+const CUENTAS_CON_VISTA = new Set([
+  'sanjaygrr@helios.com',
+  'franciscoo.barriga.d@gmail.com',
+]);
+
+export function puedePrevisualizar(user?: { role?: string | null; email?: string | null } | null) {
+  const email = (user?.email || '').trim().toLowerCase();
+  return user?.role === 'SUPER_ADMIN' && CUENTAS_CON_VISTA.has(email);
 }
 
 export function rolDeVista(vista: Vista): UserRole {
