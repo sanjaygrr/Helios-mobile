@@ -9,7 +9,7 @@ import { colors, spacing, borderRadius } from '../theme/colors';
 import api, { asList } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import ModalSelector from './ModalSelector';
-import { compararCarros, etiquetaCarro } from '../utils/claves';
+import { compararCarros, etiquetaCarro, nombreCarroConOrigen, origenCarro } from '../utils/claves';
 
 const TIPOS = [
   { id: 'FORESTAL', label: 'Forestal' },
@@ -489,7 +489,7 @@ export default function ReportarEmergencia({
                             disabled={!libre}
                           >
                             <View style={{ flex: 1 }}>
-                              <Text style={estilos.carroNombre}>{carro.name}</Text>
+                              <Text style={estilos.carroNombre}>{nombreCarroConOrigen(carro)}</Text>
                               <Text style={estilos.especialidad}>
                                 {etiquetaCarro(carro.unit_type, carro.type_display)}
                                 {deOtro || deOtraCompania
@@ -527,8 +527,8 @@ export default function ReportarEmergencia({
               const disponibles = deCompania.filter(p => !van.includes(p.id) && !ocupados.has(p.id));
               return (
                 <View key={carroId} style={estilos.bloque}>
-                  <Text style={estilos.compania}>{carro?.name}</Text>
-                  <Text style={estilos.especialidad}>{etiquetaCarro(carro?.unit_type, carro?.type_display)} · {carro?.company_name}</Text>
+                  <Text style={estilos.compania}>{nombreCarroConOrigen(carro)}</Text>
+                  <Text style={estilos.especialidad}>{[etiquetaCarro(carro?.unit_type, carro?.type_display), origenCarro(carro)].filter(Boolean).join(' · ')}</Text>
                   <Text style={estilos.seccion}>Va en el carro</Text>
                   {van.length === 0 && <Text style={estilos.vacio}>Nadie marcado. Toca a alguien de disponibles.</Text>}
                   {van.map(pid => {

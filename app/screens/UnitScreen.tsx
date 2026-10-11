@@ -16,7 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius, shadows, typography } from '../theme/colors';
 import { useAuth } from '../context/AuthContext';
 import api, { asList } from '../services/api';
-import { etiquetaCarro } from '../utils/claves';
+import { compararCarros, etiquetaCarro, nombreCarroConOrigen, origenCarro } from '../utils/claves';
 
 const ESTADOS_CARRO = [
   { id: 'AVAILABLE', label: 'Disponible' },
@@ -72,12 +72,17 @@ export default function UnitScreen() {
         ]);
         const lista = asList(uRes.data);
         const activas = asList(aRes.data).filter((a: any) => a.is_active !== false && a.status !== 'RELEASED');
-        setCarros(lista);
+        const ordenados = [...lista].sort((a: any, b: any) => {
+          const cuerpo = String(a.fire_department_name || '').localeCompare(String(b.fire_department_name || ''), 'es');
+          const compania = String(a.company_name || '').localeCompare(String(b.company_name || ''), 'es', { numeric: true });
+          return cuerpo || compania || compararCarros(a, b);
+        });
+        setCarros(ordenados);
         setDespachos(activas);
-        const preferido = lista.find((u: any) => u.commander === user?.id || u.team_leader === user?.id)
-          || lista.find((u: any) => user?.company && u.company === user.company)
-          || lista[0];
-        const elegido = lista.find((u: any) => u.id === carroId) || preferido || null;
+        const preferido = ordenados.find((u: any) => u.commander === user?.id || u.team_leader === user?.id)
+          || ordenados.find((u: any) => user?.company && u.company === user.company)
+          || ordenados[0];
+        const elegido = ordenados.find((u: any) => u.id === carroId) || preferido || null;
         setCarroId(elegido?.id ?? null);
         const despacho = activas.find((a: any) => a.unit === elegido?.id) || null;
         setAssignment(despacho);
@@ -343,8 +348,9 @@ export default function UnitScreen() {
                 <View style={styles.sectionCard}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                     <View>
-                      <Text style={[styles.sectionTitle, { fontSize: 18 }]}>{item.name}</Text>
-                      <Text style={{ color: colors.textLight, fontSize: 12 }}>{activeAssignment?.incident_title || 'Sin emergencia activa'}</Text>
+                      <Text style={[styles.sectionTitle, { fontSize: 18 }]}>{nombreCarroConOrigen(item)}</Text>
+                      <Text style={styles.originText}>{origenCarro(item) || 'Procedencia no informada'}</Text>
+                      <Text style={styles.listIncidentText}>{activeAssignment?.incident_title || 'Sin emergencia activa'}</Text>
                     </View>
                     <View style={[styles.statusBadge, { backgroundColor: statusConf.bgColor }]}>
                       <Ionicons name={statusConf.icon as any} size={18} color={statusConf.color} />
@@ -514,13 +520,24 @@ export default function UnitScreen() {
       )}
 
       {esJefeDeCarro && carros.length > 1 && (
-        <View style={[styles.sectionCard, { marginTop: spacing.lg }]}>
-          <Text style={{ fontSize: 12, color: colors.gray[600], marginBottom: 8 }}>El carro</Text>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+        <View style={[styles.vehiclePicker, { marginTop: spacing.lg }]}>
+          <View style={styles.vehiclePickerHeader}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.vehiclePickerEyebrow}>{role === 'SUPER_ADMIN' ? 'VISTA SUPERADMIN' : 'MI COMPAÑÍA'}</Text>
+              <Text style={styles.vehiclePickerTitle}>Selecciona el carro</Text>
+              <Text style={styles.vehiclePickerHint}>
+                {role === 'SUPER_ADMIN'
+                  ? `${carros.length} carros de todos los cuerpos, identificados por procedencia.`
+                  : `${carros.length} carros disponibles para esta vista.`}
+              </Text>
+            </View>
+            <View style={styles.vehicleCount}><Text style={styles.vehicleCountText}>{carros.length}</Text></View>
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.vehiclePickerList}>
             {carros.map(item => (
               <TouchableOpacity
                 key={item.id}
-                style={[styles.unitChip, carroId === item.id && styles.unitChipSelected]}
+                style={[styles.vehicleOption, carroId === item.id && styles.vehicleOptionSelected]}
                 onPress={() => {
                   setCarroId(item.id);
                   const despacho = despachos.find(a => a.unit === item.id) || null;
@@ -533,10 +550,19 @@ export default function UnitScreen() {
                   }
                 }}
               >
-                <Text style={[styles.unitChipText, carroId === item.id && { color: colors.white }]}>{item.name}</Text>
+                <View style={styles.vehicleOptionTop}>
+                  <Ionicons name="bus" size={18} color={carroId === item.id ? colors.white : colors.primary} />
+                  {carroId === item.id && <Ionicons name="checkmark-circle" size={18} color={colors.white} />}
+                </View>
+                <Text numberOfLines={2} style={[styles.vehicleOptionName, carroId === item.id && styles.vehicleOptionTextSelected]}>
+                  {nombreCarroConOrigen(item)}
+                </Text>
+                <Text numberOfLines={2} style={[styles.vehicleOptionOrigin, carroId === item.id && styles.vehicleOptionOriginSelected]}>
+                  {origenCarro(item) || etiquetaCarro(item.unit_type, item.type_display)}
+                </Text>
               </TouchableOpacity>
             ))}
-          </View>
+          </ScrollView>
         </View>
       )}
       {/* If multiple assignments, let chief select by unit name */}
@@ -579,8 +605,8 @@ export default function UnitScreen() {
           <Ionicons name="bus" size={32} color={colors.white} />
         </View>
         <View style={styles.unitInfo}>
-          <Text style={styles.unitName}>{unit.name}</Text>
-          <Text style={styles.unitType}>{etiquetaCarro(unit.unit_type, unit.type_display)}</Text>
+          <Text style={styles.unitName}>{nombreCarroConOrigen(unit)}</Text>
+          <Text style={styles.unitType}>{[etiquetaCarro(unit.unit_type, unit.type_display), origenCarro(unit)].filter(Boolean).join(' · ')}</Text>
         </View>
         <View style={[styles.statusBadge, { backgroundColor: statusConfig.bgColor }]}>
           <Ionicons name={statusConfig.icon} size={18} color={statusConfig.color} />
@@ -758,13 +784,14 @@ export default function UnitScreen() {
       )}
 
       {/* Vehicle Info */}
-      <View style={styles.sectionCard}>
+      {!esJefeDeCarro && <View style={styles.sectionCard}>
         <View style={styles.sectionHeader}>
           <Ionicons name="car-sport" size={20} color={colors.primary} />
           <Text style={styles.sectionTitle}>Vehiculo</Text>
         </View>
         <View style={styles.vehicleInfo}>
-          <Text style={styles.vehicleName}>{unit.name || 'Sin carro'}</Text>
+          <Text style={styles.vehicleName}>{nombreCarroConOrigen(unit)}</Text>
+          {!!origenCarro(unit) && <Text style={styles.originText}>{origenCarro(unit)}</Text>}
           <View style={styles.vehicleDetails}>
             <View style={styles.vehicleDetail}>
               <Ionicons name="water-outline" size={18} color={colors.textLight} />
@@ -776,7 +803,7 @@ export default function UnitScreen() {
             </View>
           </View>
         </View>
-      </View>
+      </View>}
 
       {/* Status Actions */}
       {assignment && <View style={styles.sectionCard}>
@@ -893,6 +920,38 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+  originText: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
+  listIncidentText: { color: colors.textLight, fontSize: 12, marginTop: 5 },
+  vehiclePicker: {
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.md,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.lg,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadows.sm,
+  },
+  vehiclePickerHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md },
+  vehiclePickerEyebrow: { color: colors.accent, fontSize: 11, fontWeight: '800', letterSpacing: 0.8 },
+  vehiclePickerTitle: { color: colors.text, fontSize: 20, fontWeight: '800', marginTop: 2 },
+  vehiclePickerHint: { color: colors.textMuted, fontSize: 13, lineHeight: 18, marginTop: 3 },
+  vehicleCount: {
+    minWidth: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.border,
+  },
+  vehicleCountText: { color: colors.text, fontSize: 15, fontWeight: '800' },
+  vehiclePickerList: { paddingHorizontal: spacing.md, paddingTop: spacing.md, gap: 10 },
+  vehicleOption: {
+    width: 178, minHeight: 112, padding: 13, borderRadius: borderRadius.md,
+    backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.border,
+  },
+  vehicleOptionSelected: { backgroundColor: colors.primary, borderColor: colors.accent },
+  vehicleOptionTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  vehicleOptionName: { color: colors.text, fontSize: 14, lineHeight: 18, fontWeight: '800' },
+  vehicleOptionTextSelected: { color: colors.white },
+  vehicleOptionOrigin: { color: colors.textMuted, fontSize: 11, lineHeight: 15, marginTop: 5 },
+  vehicleOptionOriginSelected: { color: 'rgba(255,255,255,0.78)' },
   // Empty State Styles
   emptyContainer: {
     flex: 1,

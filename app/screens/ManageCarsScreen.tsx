@@ -6,7 +6,7 @@ import api, { asList } from '../services/api';
 import ModalSelector from '../components/ModalSelector';
 import { useAuth } from '../context/AuthContext';
 import ListaAgrupada from '../components/ListaAgrupada';
-import { compararCarros, etiquetaCarro, ordenEtiqueta, TIPOS_CARRO } from '../utils/claves';
+import { compararCarros, etiquetaCarro, nombreCarroConOrigen, origenCarro, ordenEtiqueta, TIPOS_CARRO } from '../utils/claves';
 
 export default function ManageCarsScreen({ navigation }: any) {
   const { user } = useAuth();
@@ -189,8 +189,10 @@ export default function ManageCarsScreen({ navigation }: any) {
               <Ionicons name={getVehicleIcon(item.unit_type) as any} size={24} color={colors.white} />
             </View>
             <View style={styles.vehicleDetails}>
-              <Text style={styles.cardTitle}>{item.name}</Text>
-              <Text style={styles.cardSubtitle}>{etiquetaCarro(item.unit_type, item.type_display)}</Text>
+              <Text style={styles.cardTitle}>{nombreCarroConOrigen(item)}</Text>
+              <Text style={styles.cardSubtitle}>
+                {[etiquetaCarro(item.unit_type, item.type_display), origenCarro(item)].filter(Boolean).join(' · ')}
+              </Text>
             </View>
           </View>
           <View style={[styles.statusBadge, { backgroundColor: statusInfo.color + '15' }]}>

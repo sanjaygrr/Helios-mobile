@@ -23,7 +23,7 @@ import {
   touch,
 } from '../theme/colors';
 import type { RootStackParamList } from '../navigation/types';
-import { compararCarros, etiquetaCarro } from '../utils/claves';
+import { compararCarros, etiquetaCarro, nombreCarroConOrigen, origenCarro } from '../utils/claves';
 
 type Props = StackScreenProps<RootStackParamList, 'Despacho'>;
 type Step = 1 | 2 | 3 | 4 | 5;
@@ -713,7 +713,7 @@ export default function DespachoScreen({ navigation, route }: Props) {
     <View>
       <Text style={styles.sectionTitle}>Elige al encargado</Text>
       <Text style={styles.sectionText}>
-        Será la persona a cargo de {selectedUnit?.name || 'este carro'}.
+        Será la persona a cargo de {selectedUnit ? nombreCarroConOrigen(selectedUnit) : 'este carro'}.
       </Text>
       {targetBody.name ? <Text style={styles.contextLabel}>Cuerpo: {targetBody.name}</Text> : null}
       <SearchField value={query} onChangeText={setQuery} placeholder="Buscar persona" />
@@ -843,8 +843,8 @@ export default function DespachoScreen({ navigation, route }: Props) {
         />
         <SummaryRow
           label="Carro"
-          value={selectedUnit?.name || 'Sin carro'}
-          detail={selectedUnit ? `${companyName(selectedUnit)} · ${unitType(selectedUnit)}` : undefined}
+          value={nombreCarroConOrigen(selectedUnit)}
+          detail={selectedUnit ? [unitType(selectedUnit), origenCarro(selectedUnit)].filter(Boolean).join(' · ') : undefined}
           targetStep={2}
         />
         <SummaryRow
@@ -912,7 +912,7 @@ export default function DespachoScreen({ navigation, route }: Props) {
           </Text>
           <Text style={styles.successText}>personas quedaron avisadas</Text>
           <View style={styles.successSummary}>
-            <Text style={styles.successSummaryTitle}>{created.unit_name || selectedUnit?.name}</Text>
+            <Text style={styles.successSummaryTitle}>{selectedUnit ? nombreCarroConOrigen(selectedUnit) : created.unit_name}</Text>
             <Text style={styles.successSummaryText}>{created.incident_title || selectedIncident?.title}</Text>
           </View>
           <View style={styles.successActions}>
