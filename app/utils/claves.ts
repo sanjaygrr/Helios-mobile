@@ -17,6 +17,33 @@ export function etiquetaCarro(tipo?: string | null, display?: string | null) {
   return display || tipo || 'Sin especialidad';
 }
 
+type CarroConOrigen = {
+  name?: string | null;
+  company_name?: string | null;
+  company_number?: string | number | null;
+  fire_department_name?: string | null;
+  comuna?: string | null;
+  region?: string | null;
+  company_details?: { name?: string | null; number?: string | number | null } | null;
+};
+
+/** Nombre inequívoco para listas donde se mezclan carros de varias compañías. */
+export function nombreCarroConOrigen(carro?: CarroConOrigen | null) {
+  if (!carro) return 'Sin carro';
+  const nombre = String(carro.name || 'Carro sin nombre').trim();
+  const compania = String(carro.company_name || carro.company_details?.name || '').trim();
+  return compania ? `${nombre} · ${compania}` : nombre;
+}
+
+/** Segunda línea de procedencia, sin repetir la compañía incluida en el nombre. */
+export function origenCarro(carro?: CarroConOrigen | null) {
+  if (!carro) return '';
+  return [carro.fire_department_name, carro.comuna, carro.region]
+    .map(valor => String(valor || '').trim())
+    .filter((valor, indice, lista) => valor && lista.indexOf(valor) === indice)
+    .join(' · ');
+}
+
 export function ordenCarro(tipo?: string | null) {
   const i = CLAVES_CARRO.findIndex(c => c.id === tipo);
   return i === -1 ? CLAVES_CARRO.length : i;

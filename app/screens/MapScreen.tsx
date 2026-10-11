@@ -19,6 +19,7 @@ import { isLocationSharingEnabled, setLocationSharingEnabled } from '../services
 import { getDeviceId } from '../services/deviceIdentity';
 import { resumeBackgroundTracking, stopBackgroundTracking } from '../services/backgroundTracking';
 import { colors, spacing, borderRadius, shadows, overlay, touch } from '../theme/colors';
+import { etiquetaCarro, nombreCarroConOrigen, origenCarro } from '../utils/claves';
 
 // New MapWidget import
 import MapWidget from '../components/MapWidget';
@@ -58,6 +59,15 @@ interface OtherUser {
   es_carro?: boolean;
   status?: string;
   nombre?: string;
+  description?: string;
+  address?: string;
+  company_name?: string;
+  fire_department_name?: string;
+  comuna?: string;
+  region?: string;
+  unit_type?: string;
+  type_display?: string;
+  status_display?: string;
 }
 
 export default function MapScreen() {
@@ -210,6 +220,9 @@ export default function MapScreen() {
             user_first_name: c.name,
             nombre: c.name,
             tipo: 'compania',
+            address: c.address,
+            comuna: c.comuna,
+            description: c.description || `Cuartel de ${c.name}${c.comuna ? ` en ${c.comuna}` : ''}.`,
           });
         });
         const usados = new Map<number, number>();
@@ -229,11 +242,19 @@ export default function MapScreen() {
             latitude: lat0 + Math.cos(ang) * 0.00035,
             longitude: lng0 + Math.sin(ang) * 0.00035,
             role: 'CARRO',
-            user_first_name: u.name,
-            nombre: u.name,
+            user_first_name: nombreCarroConOrigen(u),
+            nombre: nombreCarroConOrigen(u),
             tipo: 'carro',
             es_carro: true,
             status: u.status,
+            status_display: u.status_display,
+            company_name: u.company_name,
+            fire_department_name: u.fire_department_name,
+            comuna: u.comuna,
+            region: u.region,
+            unit_type: u.unit_type,
+            type_display: u.type_display,
+            description: `${etiquetaCarro(u.unit_type, u.type_display)} de ${u.company_name || 'compañía no informada'}.`,
             timestamp: ahora,
           });
         });
@@ -263,6 +284,9 @@ export default function MapScreen() {
               user_first_name: c.name,
               nombre: c.name,
               tipo: 'compania',
+              address: c.address,
+              comuna: c.comuna,
+              description: c.description || `Cuartel de ${c.name}${c.comuna ? ` en ${c.comuna}` : ''}.`,
             });
             companiasSin -= 1;
             setFijos([...puntos]);
@@ -355,6 +379,26 @@ export default function MapScreen() {
   // siempre en Puerto Montt aunque estuvieras en otra region.
   const mapCenter = location?.coords || Object.values(otherUsers)[0] || fireData[0]
     || { latitude: -35.6751, longitude: -71.5430 };
+  const selectedType = selectedItem?.brightness ? 'Emergencia'
+    : selectedItem?.role === 'COMPANIA' ? 'Compañía'
+      : selectedItem?.role === 'CARRO' ? 'Carro'
+        : (selectedItem?.role === 'COMPANY_CHIEF' || selectedItem?.role?.includes('ADMIN') ? 'Comandante' : 'Voluntario');
+  const selectedName = selectedItem?.brightness ? (selectedItem.title || 'Emergencia')
+    : selectedItem?.role === 'CARRO' ? (selectedItem.nombre || selectedItem.user_first_name || 'Carro sin nombre')
+      : (selectedItem?.user_first_name || selectedItem?.user_last_name
+        ? `${selectedItem.user_first_name || ''} ${selectedItem.user_last_name || ''}`.trim()
+        : (selectedItem?.nombre || selectedItem?.email?.split('@')[0] || 'Sin nombre'));
+  const selectedDescription = selectedItem?.brightness
+    ? (selectedItem.description || 'Emergencia activa sin descripción adicional.')
+    : selectedItem?.role === 'CARRO'
+      ? (selectedItem.description || `${etiquetaCarro(selectedItem.unit_type, selectedItem.type_display)} operativo.`)
+      : selectedItem?.role === 'COMPANIA'
+        ? (selectedItem.description || 'Cuartel y punto operativo de la compañía.')
+        : 'Ubicación operativa compartida por esta persona.';
+  const selectedIcon = selectedItem?.brightness ? 'fire'
+    : selectedItem?.role === 'CARRO' ? 'fire-truck'
+      : selectedItem?.role === 'COMPANIA' ? 'home-city'
+        : selectedItem?.role === 'COMPANY_CHIEF' || selectedItem?.role?.includes('ADMIN') ? 'hard-hat' : 'account-hard-hat';
 
   return (
     <View style={styles.container}>
@@ -424,39 +468,33 @@ export default function MapScreen() {
 
       {/* Info Card (Dynamic) */}
       {selectedItem && (
-        <View style={styles.infoCard}>
+        <View style={styles.infoCard} accessibilityViewIsModal>
+          <View style={styles.infoAccent} />
           <View style={styles.infoHeader}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <View style={{ backgroundColor: colors.surfaceRaised, borderRadius: borderRadius.lg, padding: 4 }}>
-                <MaterialCommunityIcons name={
-                  selectedItem.role === 'COMPANY_CHIEF' ? 'fire-truck' :
-                    (selectedItem.brightness ? 'fire' :  // Handle Fire Item
-                      (selectedItem.role?.includes('ADMIN') ? 'hard-hat' : 'account-hard-hat'))
-                } size={20} color="white" />
+            <View style={styles.infoIdentity}>
+              <View style={styles.infoIcon}>
+                <MaterialCommunityIcons name={selectedIcon as any} size={23} color={colors.white} />
               </View>
-              <View>
-                <Text style={styles.infoTitle}>
-                  {selectedItem.brightness ? (selectedItem.title || 'Emergencia') :
-                    selectedItem.role === 'COMPANIA' ? 'Compañía' :
-                    selectedItem.role === 'CARRO' ? 'Carro' :
-                    (selectedItem.role === 'COMPANY_CHIEF' || selectedItem.role?.includes('ADMIN') ? 'Comandante' : 'Voluntario')}
-                </Text>
-                <Text style={styles.infoSubtitle}>
-                  {selectedItem.brightness
-                    ? `Clave ${selectedItem.dispatch_code || 'sin definir'}`
-                    : (selectedItem.user_first_name || selectedItem.user_last_name
-                      ? `${selectedItem.user_first_name || ''} ${selectedItem.user_last_name || ''}`.trim()
-                      : (selectedItem.email ? (selectedItem.email.split('@')[0]) : `ID: ${selectedItem.id}`))}
-                </Text>
-                {selectedItem.rut && <Text style={styles.infoSubtitle}>{selectedItem.rut}</Text>}
+              <View style={{ flex: 1 }}>
+                <Text style={styles.infoEyebrow}>{selectedType.toUpperCase()}</Text>
+                <Text style={styles.infoTitle}>{selectedName}</Text>
+                {selectedItem.role === 'CARRO' && !!origenCarro(selectedItem) && (
+                  <Text style={styles.infoSubtitle}>{origenCarro(selectedItem)}</Text>
+                )}
               </View>
             </View>
-            <TouchableOpacity onPress={() => setSelectedItem(null)}>
-              <Ionicons name="close-circle" size={24} color={colors.textLight} />
+            <TouchableOpacity
+              onPress={() => setSelectedItem(null)}
+              style={styles.infoClose}
+              accessibilityRole="button"
+              accessibilityLabel="Cerrar información"
+            >
+              <Ionicons name="close" size={21} color={colors.text} />
             </TouchableOpacity>
           </View>
 
           <ScrollView style={styles.infoGrid} showsVerticalScrollIndicator={false}>
+            <Text style={styles.infoDescription}>{selectedDescription}</Text>
             {/* Fire Data */}
             {selectedItem.brightness && (
               <>
@@ -472,7 +510,6 @@ export default function MapScreen() {
                   <Ionicons name="radio" size={18} color={colors.textMuted} />
                   <Text style={styles.incidentText}>Central: {selectedItem.central_name || 'Sin central'}</Text>
                 </View>
-                {!!selectedItem.description && <Text style={styles.detailText}>{selectedItem.description}</Text>}
                 <TouchableOpacity
                   style={styles.infoAction}
                   onPress={() => navigation.dispatch(CommonActions.navigate('EmergenciaViva', { incidentId: selectedItem.id }))}
@@ -480,6 +517,30 @@ export default function MapScreen() {
                   <Text style={styles.infoActionText}>Ver emergencia en vivo</Text>
                 </TouchableOpacity>
               </>
+            )}
+
+            {selectedItem.role === 'CARRO' && (
+              <>
+                <View style={styles.incidentRow}>
+                  <MaterialCommunityIcons name="garage" size={18} color={colors.accent} />
+                  <Text style={styles.incidentText}>{selectedItem.company_name || 'Compañía no informada'}</Text>
+                </View>
+                <View style={styles.incidentRow}>
+                  <Ionicons name="shield-outline" size={18} color={colors.textMuted} />
+                  <Text style={styles.incidentText}>{selectedItem.fire_department_name || 'Cuerpo no informado'}</Text>
+                </View>
+                <View style={styles.incidentRow}>
+                  <Ionicons name="pulse-outline" size={18} color={colors.success} />
+                  <Text style={styles.incidentText}>{selectedItem.status_display || selectedItem.status || 'Estado no informado'}</Text>
+                </View>
+              </>
+            )}
+
+            {selectedItem.role === 'COMPANIA' && (
+              <View style={styles.incidentRow}>
+                <Ionicons name="location-outline" size={18} color={colors.accent} />
+                <Text style={styles.incidentText}>{[selectedItem.address, selectedItem.comuna].filter(Boolean).join(', ') || 'Dirección no informada'}</Text>
+              </View>
             )}
 
             {/* Last confirmed position */}
@@ -587,20 +648,37 @@ const styles = StyleSheet.create({
 
   infoCard: {
     position: 'absolute', bottom: 100, left: 16, right: 16,
-    padding: 18, borderRadius: borderRadius.lg,
-    maxHeight: 280,
+    padding: 18, paddingTop: 20, borderRadius: borderRadius.lg,
+    maxHeight: 340, overflow: 'hidden',
     ...overlay,
+    borderWidth: 1, borderColor: colors.border,
+  },
+  infoAccent: {
+    position: 'absolute', top: 0, left: 0, right: 0, height: 4,
+    backgroundColor: colors.primary,
   },
   infoHeader: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10
   },
-  infoTitle: { fontSize: 19, fontWeight: '700', color: colors.text },
-  infoSubtitle: { fontSize: 15, color: colors.textMuted },
+  infoIdentity: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 11, paddingRight: 10 },
+  infoIcon: {
+    width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.primary,
+  },
+  infoClose: {
+    width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.border,
+  },
+  infoEyebrow: { fontSize: 10, fontWeight: '800', letterSpacing: 1, color: colors.accent, marginBottom: 2 },
+  infoTitle: { fontSize: 19, lineHeight: 23, fontWeight: '800', color: colors.text },
+  infoSubtitle: { fontSize: 12, lineHeight: 17, color: colors.textMuted, marginTop: 3 },
+  infoDescription: { fontSize: 14, lineHeight: 20, color: colors.text, marginBottom: 8 },
   infoGrid: { marginTop: 5 },
   incidentRow: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     marginVertical: 4,
-    backgroundColor: colors.gray[50], padding: 6, borderRadius: borderRadius.sm
+    backgroundColor: colors.surfaceRaised, paddingVertical: 8, paddingHorizontal: 10, borderRadius: borderRadius.sm,
+    borderWidth: 1, borderColor: colors.border,
   },
   incidentText: {
     fontSize: 13, fontWeight: '600', color: colors.text
