@@ -36,8 +36,9 @@ export type GestionStackParamList = {
   Emergencias: { crear?: boolean } | undefined;
 };
 
-export type BomberoStackParamList = {
+export type BomberoTabParamList = {
   MiDespacho: undefined;
+  Mapa: undefined;
   MiEstado: undefined;
 };
 

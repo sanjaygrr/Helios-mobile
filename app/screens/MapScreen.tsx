@@ -9,6 +9,7 @@ import {
   ScrollView,
   Alert
 } from 'react-native';
+import { CommonActions, useNavigation } from '@react-navigation/native';
 import * as Location from 'expo-location';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { fetchWeatherData, WeatherData } from '../services/weather';
@@ -60,6 +61,7 @@ interface OtherUser {
 }
 
 export default function MapScreen() {
+  const navigation = useNavigation<any>();
   const { user, role } = useAuth();
   const [location, setLocation] = useState<LocationData | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -89,33 +91,26 @@ export default function MapScreen() {
     }
   };
 
-  // --- Optimization: Filter Fire Data ---
+  // Las emergencias son nacionales: los clusters del mapa manejan la densidad.
   const visibleFires = useMemo(() => {
-    if (!fireData.length) return [];
-    if (!currentRegion) return fireData.slice(0, 60);
+    return fireData.slice(0, 250);
+  }, [fireData]);
 
-    // Broad phase filter
-    const latDelta = currentRegion.latitudeDelta * 2;
-    const lngDelta = currentRegion.longitudeDelta * 2;
-    const minLat = currentRegion.latitude - latDelta;
-    const maxLat = currentRegion.latitude + latDelta;
-    const minLng = currentRegion.longitude - lngDelta;
-    const maxLng = currentRegion.longitude + lngDelta;
-
-    const inViewport = fireData.filter(f =>
-      f.latitude >= minLat && f.latitude <= maxLat &&
-      f.longitude >= minLng && f.longitude <= maxLng
-    );
-
-    // Sort closest
-    inViewport.sort((a, b) => {
-      const distA = Math.pow(a.latitude - currentRegion.latitude, 2) + Math.pow(a.longitude - currentRegion.longitude, 2);
-      const distB = Math.pow(b.latitude - currentRegion.latitude, 2) + Math.pow(b.longitude - currentRegion.longitude, 2);
-      return distA - distB;
-    });
-
-    return inViewport.slice(0, 60);
-  }, [fireData, currentRegion]);
+  const showAllEmergencies = () => {
+    if (!fireData.length || !mapRef.current) return;
+    const lats = fireData.map(point => point.latitude);
+    const lngs = fireData.map(point => point.longitude);
+    const minLat = Math.min(...lats);
+    const maxLat = Math.max(...lats);
+    const minLng = Math.min(...lngs);
+    const maxLng = Math.max(...lngs);
+    mapRef.current.animateToRegion({
+      latitude: (minLat + maxLat) / 2,
+      longitude: (minLng + maxLng) / 2,
+      latitudeDelta: Math.max(0.08, (maxLat - minLat) * 1.35),
+      longitudeDelta: Math.max(0.08, (maxLng - minLng) * 1.35),
+    }, 650);
+  };
 
   // --- Effects ---
 
@@ -294,17 +289,22 @@ export default function MapScreen() {
   useEffect(() => {
     let vivo = true;
     const cargarEmergencias = () => {
-      api.get('/incidents/', { params: { is_active: true } })
+      api.get('/incidents/mapa/')
         .then(res => {
           if (!vivo) return;
           const points: FirePoint[] = asList(res.data)
             .filter((i: any) => Number.isFinite(Number(i.latitude)) && Number.isFinite(Number(i.longitude)))
             .map((i: any) => ({
+              id: i.id,
               latitude: Number(i.latitude),
               longitude: Number(i.longitude),
               brightness: i.severity === 'high' ? 360 : 330,
               title: i.title,
               address: [i.address, i.comuna].filter(Boolean).join(', '),
+              description: i.description,
+              dispatch_code: i.dispatch_code,
+              commander_name: i.commander_name,
+              central_name: i.centrales?.find((c: any) => c.role === 'PROTAGONISTA')?.central,
               acq_date: (i.reported_at || '').slice(0, 10),
               acq_time: '',
             }));
@@ -379,9 +379,11 @@ export default function MapScreen() {
         {visibleFires.length > 0 && (
           <>
             <View style={styles.statusDivider} />
-            <Text style={styles.statusLabel}>
+            <TouchableOpacity onPress={showAllEmergencies}>
+            <Text style={[styles.statusLabel, { color: colors.accent }]}>
               {visibleFires.length === 1 ? '1 emergencia' : `${visibleFires.length} emergencias`}
             </Text>
+            </TouchableOpacity>
           </>
         )}
       </View>
@@ -441,7 +443,7 @@ export default function MapScreen() {
                 </Text>
                 <Text style={styles.infoSubtitle}>
                   {selectedItem.brightness
-                    ? `Intensidad: ${selectedItem.brightness}`
+                    ? `Clave ${selectedItem.dispatch_code || 'sin definir'}`
                     : (selectedItem.user_first_name || selectedItem.user_last_name
                       ? `${selectedItem.user_first_name || ''} ${selectedItem.user_last_name || ''}`.trim()
                       : (selectedItem.email ? (selectedItem.email.split('@')[0]) : `ID: ${selectedItem.id}`))}
@@ -457,12 +459,27 @@ export default function MapScreen() {
           <ScrollView style={styles.infoGrid} showsVerticalScrollIndicator={false}>
             {/* Fire Data */}
             {selectedItem.brightness && (
-              <View style={styles.incidentRow}>
-                <Ionicons name="flame" size={18} color={colors.danger} />
-                <Text style={styles.incidentText}>
-                  {selectedItem.address || selectedItem.title || 'Emergencia activa'}
-                </Text>
-              </View>
+              <>
+                <View style={styles.incidentRow}>
+                  <Ionicons name="location" size={18} color={colors.danger} />
+                  <Text style={styles.incidentText}>{selectedItem.address || 'Dirección no informada'}</Text>
+                </View>
+                <View style={styles.incidentRow}>
+                  <Ionicons name="person" size={18} color={colors.accent} />
+                  <Text style={styles.incidentText}>Mando: {selectedItem.commander_name || 'Sin asumir'}</Text>
+                </View>
+                <View style={styles.incidentRow}>
+                  <Ionicons name="radio" size={18} color={colors.textMuted} />
+                  <Text style={styles.incidentText}>Central: {selectedItem.central_name || 'Sin central'}</Text>
+                </View>
+                {!!selectedItem.description && <Text style={styles.detailText}>{selectedItem.description}</Text>}
+                <TouchableOpacity
+                  style={styles.infoAction}
+                  onPress={() => navigation.dispatch(CommonActions.navigate('EmergenciaViva', { incidentId: selectedItem.id }))}
+                >
+                  <Text style={styles.infoActionText}>Ver emergencia en vivo</Text>
+                </TouchableOpacity>
+              </>
             )}
 
             {/* Last confirmed position */}
@@ -594,6 +611,8 @@ const styles = StyleSheet.create({
   },
   detailText: { fontSize: 16, color: colors.text },
   detailSubText: { fontSize: 15, color: colors.textMuted, marginLeft: 0 },
+  infoAction: { marginTop: 10, backgroundColor: colors.primary, padding: 12, borderRadius: borderRadius.md, alignItems: 'center' },
+  infoActionText: { color: colors.white, fontWeight: '700' },
   coordsText: { fontSize: 12, fontFamily: 'monospace', color: colors.gray[500], marginTop: 8 },
 
   // FABs

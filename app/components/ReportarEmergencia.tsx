@@ -86,6 +86,7 @@ export default function ReportarEmergencia({
   const [comuna, setComuna] = useState('');
   const [lat, setLat] = useState(0);
   const [lng, setLng] = useState(0);
+  const [ubicacionEstado, setUbicacionEstado] = useState<'idle' | 'searching' | 'found' | 'error'>('idle');
   const [showTipo, setShowTipo] = useState(false);
 
   useEffect(() => {
@@ -107,6 +108,7 @@ export default function ReportarEmergencia({
     setComuna(incidente?.comuna || '');
     setLat(Number(incidente?.latitude) || 0);
     setLng(Number(incidente?.longitude) || 0);
+    setUbicacionEstado(incidente?.latitude ? 'found' : 'idle');
     setElegidos([]);
     setVaEn({});
     setEncargado({});
@@ -128,16 +130,6 @@ export default function ReportarEmergencia({
       if (vivo) setErrorCarga('No pude cargar cuerpos ni carros. Cierra sesión y entra de nuevo.');
     }).finally(() => { if (vivo) setCargando(false); });
 
-    if (!incidente?.latitude) {
-      Location.requestForegroundPermissionsAsync()
-        .then(({ status }) => status === 'granted' ? Location.getCurrentPositionAsync({}) : null)
-        .then(pos => {
-          if (!vivo || !pos) return;
-          setLat(pos.coords.latitude);
-          setLng(pos.coords.longitude);
-        })
-        .catch(() => undefined);
-    }
     return () => { vivo = false; };
   }, [visible, incidente?.id]);
 
@@ -183,6 +175,31 @@ export default function ReportarEmergencia({
     () => departamentos.filter(d => !region || d.region === region),
     [departamentos, region],
   );
+
+  useEffect(() => {
+    if (!visible || !region.trim() || !comuna.trim() || !direccion.trim()) return;
+    let vivo = true;
+    setUbicacionEstado('searching');
+    const timer = setTimeout(async () => {
+      try {
+        const consulta = [direccion.trim(), comuna.trim(), region.trim(), 'Chile'].join(', ');
+        const puntos = await Location.geocodeAsync(consulta);
+        if (!vivo) return;
+        if (!puntos[0]) {
+          setLat(0);
+          setLng(0);
+          setUbicacionEstado('error');
+          return;
+        }
+        setLat(puntos[0].latitude);
+        setLng(puntos[0].longitude);
+        setUbicacionEstado('found');
+      } catch {
+        if (vivo) setUbicacionEstado('error');
+      }
+    }, 700);
+    return () => { vivo = false; clearTimeout(timer); };
+  }, [visible, region, comuna, direccion]);
 
   const genteDe = (companyId: number) =>
     personas.filter(p => p.is_active !== false && p.company === companyId);
@@ -284,8 +301,13 @@ export default function ReportarEmergencia({
     try {
       let latitude = lat;
       let longitude = lng;
+      if (!region.trim() || !comuna.trim() || !direccion.trim()) {
+        Alert.alert('Falta la dirección', 'Completa región, comuna, calle y número.');
+        setGuardando(false);
+        return;
+      }
       if (direccion.trim()) {
-        const consulta = [direccion.trim(), comuna.trim(), 'Chile'].filter(Boolean).join(', ');
+        const consulta = [direccion.trim(), comuna.trim(), region.trim(), 'Chile'].join(', ');
         const puntos = await Location.geocodeAsync(consulta);
         if (puntos[0]) {
           latitude = puntos[0].latitude;
@@ -293,7 +315,7 @@ export default function ReportarEmergencia({
         }
       }
       if (!latitude || !longitude) {
-        Alert.alert('Falta el lugar', 'Escribe la dirección y espera un segundo, o activa la ubicación.');
+        Alert.alert('Dirección no encontrada', 'Revisa región, comuna, calle y número.');
         setGuardando(false);
         return;
       }
@@ -369,17 +391,20 @@ export default function ReportarEmergencia({
           );
         })}
       </View>
-      <Text style={estilos.seccion}>Comuna</Text>
-      <TextInput style={estilos.input} value={comuna} onChangeText={setComuna} placeholder="Providencia" placeholderTextColor={colors.textMuted} />
-      <Text style={estilos.seccion}>Dirección</Text>
-      <TextInput style={estilos.input} value={direccion} onChangeText={setDireccion} placeholder="Calle y número" placeholderTextColor={colors.textMuted} />
-      <Text style={estilos.especialidad}>
-        {lat ? `Punto: ${lat.toFixed(5)}, ${lng.toFixed(5)}` : 'Sin punto todavía. Escribe la dirección o espera el GPS.'}
-      </Text>
-      <Text style={estilos.seccion}>Región del cuerpo</Text>
+      <Text style={estilos.seccion}>Región</Text>
       <TouchableOpacity style={estilos.input} onPress={() => setSelector('region')}>
         <Text style={estilos.carroNombre}>{region || 'Elegir región'}</Text>
       </TouchableOpacity>
+      <Text style={estilos.seccion}>Comuna</Text>
+      <TextInput style={estilos.input} value={comuna} onChangeText={texto => { setComuna(texto); setLat(0); setLng(0); }} placeholder="Concepción" placeholderTextColor={colors.textMuted} />
+      <Text style={estilos.seccion}>Calle y número</Text>
+      <TextInput style={estilos.input} value={direccion} onChangeText={texto => { setDireccion(texto); setLat(0); setLng(0); }} placeholder="O'Higgins 525" placeholderTextColor={colors.textMuted} />
+      <Text style={estilos.especialidad}>
+        {ubicacionEstado === 'searching' ? 'Buscando dirección…'
+          : ubicacionEstado === 'found' && lat ? `Ubicación encontrada · ${lat.toFixed(5)}, ${lng.toFixed(5)}`
+          : ubicacionEstado === 'error' ? 'No encontramos esa dirección. Revisa los datos.'
+          : 'Completa los tres campos para ubicar la emergencia.'}
+      </Text>
       <Text style={estilos.seccion}>Central que tiene el problema</Text>
       <TouchableOpacity style={estilos.input} onPress={() => setSelector('central')}>
         <Text style={estilos.carroNombre}>

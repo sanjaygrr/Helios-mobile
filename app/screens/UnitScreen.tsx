@@ -7,11 +7,11 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
+  TextInput,
   Platform,
   FlatList,
   RefreshControl
 } from 'react-native';
-import PersonnelForm from '../components/PersonnelForm';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius, shadows, typography } from '../theme/colors';
 import { useAuth } from '../context/AuthContext';
@@ -47,6 +47,12 @@ export default function UnitScreen() {
   const [incidentDetails, setIncidentDetails] = useState<any>(null);
   const [status, setStatus] = useState<UnitStatus>('available');
   const [loading, setLoading] = useState(true);
+  const [tripulacion, setTripulacion] = useState<any[]>([]);
+  const [waterInput, setWaterInput] = useState('');
+  const [fuelInput, setFuelInput] = useState('');
+  const [equipmentReady, setEquipmentReady] = useState(true);
+  const [observationsInput, setObservationsInput] = useState('');
+  const [savingVehicle, setSavingVehicle] = useState(false);
 
   const [myCommand, setMyCommand] = useState<any>(null);
   const [commandedUnits, setCommandedUnits] = useState<any[]>([]);
@@ -92,8 +98,11 @@ export default function UnitScreen() {
       let foundAssignment = null;
       try {
         if (role === 'SUPER_ADMIN') {
-          const res = await api.get('/assignments/'); // View everything
-          if (Array.isArray(res.data)) setAllAssignments(res.data);
+          const [assignmentRes, unitRes] = await Promise.all([
+            api.get('/assignments/'), api.get('/units/'),
+          ]);
+          setAllAssignments(asList(assignmentRes.data));
+          setCarros(asList(unitRes.data));
         } else {
           // Try fetching my specific unit assignment
           try {
@@ -233,7 +242,46 @@ export default function UnitScreen() {
     }
   }, [assignment]);
 
+  useEffect(() => {
+    if (!assignment?.id) {
+      setTripulacion([]);
+      return;
+    }
+    api.get(`/assignments/${assignment.id}/tripulacion/`)
+      .then(res => setTripulacion(asList(res.data)))
+      .catch(() => setTripulacion([]));
+  }, [assignment?.id]);
+
   const carro = carros.find(c => c.id === carroId) || null;
+
+  useEffect(() => {
+    if (!carro) return;
+    setWaterInput(String(carro.water_level ?? ''));
+    setFuelInput(String(carro.fuel_level ?? ''));
+    setEquipmentReady(carro.equipment_ready !== false);
+    setObservationsInput(carro.observations || '');
+  }, [carro?.id, carro?.water_level, carro?.fuel_level, carro?.equipment_ready, carro?.observations]);
+
+  const guardarFichaCarro = async () => {
+    if (!carro) return;
+    const water = Number(waterInput);
+    const fuel = Number(fuelInput);
+    if (!Number.isFinite(water) || !Number.isFinite(fuel) || water < 0 || water > 100 || fuel < 0 || fuel > 100) {
+      Alert.alert('Revisa los niveles', 'Agua y combustible deben estar entre 0 y 100.');
+      return;
+    }
+    setSavingVehicle(true);
+    try {
+      const payload = { water_level: water, fuel_level: fuel, equipment_ready: equipmentReady, observations: observationsInput.trim() };
+      const res = await api.patch(`/units/${carro.id}/resources/`, payload);
+      setCarros(lista => lista.map(item => item.id === carro.id ? { ...item, ...res.data } : item));
+      Alert.alert('Carro actualizado', 'Los recursos quedaron guardados.');
+    } catch {
+      Alert.alert('Error', 'No se pudo guardar el estado del carro.');
+    } finally {
+      setSavingVehicle(false);
+    }
+  };
 
   const cambiarEstadoCarro = async (nuevo: string) => {
     if (!carro) return;
@@ -256,7 +304,7 @@ export default function UnitScreen() {
           </View>
         </View>
         <FlatList
-          data={allAssignments}
+          data={carros}
           keyExtractor={(item) => item.id.toString()}
           refreshControl={<RefreshControl refreshing={loading} onRefresh={fetchUserUnit} />}
           ListEmptyComponent={
@@ -266,21 +314,22 @@ export default function UnitScreen() {
           }
           contentContainerStyle={{ paddingBottom: 20 }}
           renderItem={({ item }) => {
+            const activeAssignment = allAssignments.find((a: any) => a.unit === item.id && a.is_active !== false);
             const statusConf = getStatusConfig(
-              item.status === 'DISPATCHED' ? 'available' : // Adjust mapping as needed
-                item.status === 'EN_ROUTE' ? 'en_route' :
-                  item.status === 'ON_SCENE' ? 'on_scene' :
-                    item.status === 'RETURNING' ? 'returning' : 'available'
+              activeAssignment?.status === 'EN_ROUTE' ? 'en_route' :
+                activeAssignment?.status === 'ON_SCENE' ? 'on_scene' :
+                  activeAssignment?.status === 'RETURNING' ? 'returning' : 'available'
             ) || { label: item.status, color: colors.gray[500], icon: 'help', bgColor: colors.gray[100] };
 
             return (
               <TouchableOpacity
                 activeOpacity={0.7}
                 onPress={() => {
-                  setAssignment(item); // Set this as the "active" assignment for the shared view logic
+                  setCarroId(item.id);
+                  setAssignment(activeAssignment || null);
                   setViewedUnit(item);
                   // Set status state locally so the view reflects it
-                  const asgStatus = (item.status || 'DISPATCHED') as string;
+                  const asgStatus = (activeAssignment?.status || 'DISPATCHED') as string;
                   const mapToLocal: Record<string, UnitStatus> = {
                     DISPATCHED: 'available',
                     EN_ROUTE: 'en_route',
@@ -294,21 +343,21 @@ export default function UnitScreen() {
                 <View style={styles.sectionCard}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                     <View>
-                      <Text style={[styles.sectionTitle, { fontSize: 18 }]}>{item.unit_name || item.unit_details?.name}</Text>
-                      <Text style={{ color: colors.textLight, fontSize: 12 }}>{item.incident_title || `Incidente #${item.incident}`}</Text>
+                      <Text style={[styles.sectionTitle, { fontSize: 18 }]}>{item.name}</Text>
+                      <Text style={{ color: colors.textLight, fontSize: 12 }}>{activeAssignment?.incident_title || 'Sin emergencia activa'}</Text>
                     </View>
                     <View style={[styles.statusBadge, { backgroundColor: statusConf.bgColor }]}>
                       <Ionicons name={statusConf.icon as any} size={18} color={statusConf.color} />
-                      <Text style={[styles.statusText, { color: statusConf.color }]}>{statusConf.label}</Text>
+                      <Text style={[styles.statusText, { color: statusConf.color }]}>{activeAssignment ? statusConf.label : item.status_display}</Text>
                     </View>
                   </View>
                   {/* Basic details */}
                   <View style={{ marginTop: 8, flexDirection: 'row', gap: 12 }}>
                     <Text style={{ fontSize: 12, color: colors.gray[600] }}>
-                      <Ionicons name="people" /> {item.unit_details?.members_count || 0} Pers.
+                      <Ionicons name="people" /> {item.members_count || 0} Pers.
                     </Text>
                     <Text style={{ fontSize: 12, color: colors.gray[600] }}>
-                      <Ionicons name="car" /> {item.unit_details?.vehicle || 'N/A'}
+                      <Ionicons name="water" /> {item.water_level ?? '—'}% · Combustible {item.fuel_level ?? '—'}%
                     </Text>
                   </View>
                   <View style={{ marginTop: 8, alignItems: 'flex-end' }}>
@@ -425,7 +474,7 @@ export default function UnitScreen() {
   }
 
   // --- EMPTY STATE VIEW ---
-  if (!assignment && !(esJefeDeCarro && carro)) {
+  if (!assignment && !carro) {
     return (
       <View style={styles.emptyContainer}>
         <View style={styles.emptyIconContainer}>
@@ -541,19 +590,6 @@ export default function UnitScreen() {
         </View>
       </View>
 
-      {/* Personnel Form for Chief Logic */}
-      {(role === 'COMPANY_CHIEF' || role === 'COMPANY_ADMIN') && (
-        <View style={{ marginHorizontal: spacing.md, marginBottom: spacing.sm }}>
-          <PersonnelForm
-            initialMembers={[]} // In future, load from API if saved
-            onChange={(members) => {
-              // console.log("Members updated", members);
-              // Autosave logic could go here
-            }}
-          />
-        </View>
-      )}
-
       {esJefeDeCarro && (
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
@@ -608,7 +644,7 @@ export default function UnitScreen() {
               <View style={styles.ticketRow}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.ticketLabel}>UBICACIÓN</Text>
-                  <Text style={styles.ticketValue}>{incidentDetails.latitude.toFixed(4)}, {incidentDetails.longitude.toFixed(4)}</Text>
+                  <Text style={styles.ticketValue}>{[incidentDetails.address, incidentDetails.comuna].filter(Boolean).join(', ') || `${Number(incidentDetails.latitude).toFixed(4)}, ${Number(incidentDetails.longitude).toFixed(4)}`}</Text>
                 </View>
               </View>
               {incidentDetails.description ? (
@@ -673,6 +709,53 @@ export default function UnitScreen() {
           <Text style={styles.statLabel}>Combustible</Text>
         </View>
       </View>
+
+      {carro && (
+        <View style={styles.sectionCard}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="options" size={20} color={colors.primary} />
+            <Text style={styles.sectionTitle}>Recursos del carro</Text>
+          </View>
+          <View style={styles.resourceInputs}>
+            <View style={styles.resourceField}>
+              <Text style={styles.resourceLabel}>Agua %</Text>
+              <TextInput value={waterInput} onChangeText={setWaterInput} keyboardType="number-pad" style={styles.resourceInput} />
+            </View>
+            <View style={styles.resourceField}>
+              <Text style={styles.resourceLabel}>Combustible %</Text>
+              <TextInput value={fuelInput} onChangeText={setFuelInput} keyboardType="number-pad" style={styles.resourceInput} />
+            </View>
+          </View>
+          <TouchableOpacity style={[styles.equipmentToggle, equipmentReady && styles.equipmentToggleOn]} onPress={() => setEquipmentReady(value => !value)}>
+            <Ionicons name={equipmentReady ? 'checkmark-circle' : 'alert-circle'} size={20} color={equipmentReady ? colors.success : colors.warning} />
+            <Text style={styles.resourceLabel}>{equipmentReady ? 'Equipamiento listo' : 'Equipamiento incompleto'}</Text>
+          </TouchableOpacity>
+          <TextInput value={observationsInput} onChangeText={setObservationsInput} multiline placeholder="Observaciones del carro" placeholderTextColor={colors.textMuted} style={[styles.resourceInput, styles.observationsInput]} />
+          <TouchableOpacity style={styles.saveVehicleButton} onPress={guardarFichaCarro} disabled={savingVehicle}>
+            {savingVehicle ? <ActivityIndicator color={colors.white} /> : <Text style={styles.saveVehicleText}>Guardar estado del carro</Text>}
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {assignment && (
+        <View style={styles.sectionCard}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="people" size={20} color={colors.primary} />
+            <Text style={styles.sectionTitle}>Tripulación ({tripulacion.length})</Text>
+          </View>
+          {tripulacion.length === 0 ? <Text style={styles.memberRole}>Sin tripulación informada.</Text> : tripulacion.map(member => (
+            <View key={member.id} style={styles.memberRow}>
+              <View style={[styles.memberAvatar, member.rol === 'LEADER' && styles.memberAvatarLeader]}>
+                <Ionicons name="person" size={18} color={colors.white} />
+              </View>
+              <View style={styles.memberInfo}>
+                <Text style={styles.memberName}>{member.nombre}</Text>
+                <Text style={styles.memberRole}>{member.rol_texto} · {member.estado_texto}</Text>
+              </View>
+            </View>
+          ))}
+        </View>
+      )}
 
       {/* Vehicle Info */}
       <View style={styles.sectionCard}>
@@ -1012,6 +1095,15 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.textLight,
   },
+  resourceInputs: { flexDirection: 'row', gap: spacing.sm },
+  resourceField: { flex: 1 },
+  resourceLabel: { color: colors.text, fontSize: 13, fontWeight: '600', marginBottom: 6 },
+  resourceInput: { minHeight: 48, borderWidth: 1, borderColor: colors.border, borderRadius: borderRadius.md, paddingHorizontal: spacing.md, color: colors.text, backgroundColor: colors.background },
+  observationsInput: { minHeight: 82, textAlignVertical: 'top', paddingTop: 12, marginTop: spacing.md },
+  equipmentToggle: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, marginTop: spacing.md, borderWidth: 1, borderColor: colors.warning, borderRadius: borderRadius.md },
+  equipmentToggleOn: { borderColor: colors.success },
+  saveVehicleButton: { minHeight: 50, marginTop: spacing.md, backgroundColor: colors.primary, borderRadius: borderRadius.md, alignItems: 'center', justifyContent: 'center' },
+  saveVehicleText: { color: colors.white, fontWeight: '700' },
   // Team Members
   memberRow: {
     flexDirection: 'row',
