@@ -158,7 +158,6 @@ function ClusterBubble({
     faded: boolean;
     onPress: () => void;
 }) {
-    const size = marcador.carro.tam;
     const tracking = useTrackChanges(`cluster-${count}-${latitude}-${longitude}-${faded}`);
     return (
         <Marker
@@ -168,11 +167,16 @@ function ClusterBubble({
             onPress={onPress}
             anchor={{ x: 0.5, y: 0.5 }}
         >
-            <View
-                style={[styles.cluster, { minWidth: size, height: size, borderRadius: size / 2, opacity: faded ? marcador.opacidadNoSeleccionado : 1 }]}
-                accessibilityLabel={`${count} marcadores juntos`}
-            >
-                <Text style={styles.clusterText}>{count}</Text>
+            <View style={[styles.clusterWrap, { opacity: faded ? marcador.opacidadNoSeleccionado : 1 }]} accessibilityLabel={`Grupo con ${count} elementos`}>
+                <View style={styles.clusterIcon}>
+                    <MaterialCommunityIcons name="layers-triple" size={22} color={colors.white} />
+                    <View style={styles.clusterCount}>
+                        <Text style={styles.clusterCountText}>{count}</Text>
+                    </View>
+                </View>
+                <View style={styles.clusterCaption}>
+                    <Text style={styles.clusterText}>{count} elementos</Text>
+                </View>
             </View>
         </Marker>
     );
@@ -344,19 +348,27 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         textAlign: 'center',
     },
-    cluster: {
-        paddingHorizontal: spacing.sm,
-        backgroundColor: colors.surface,
-        borderWidth: marcador.anilloAncho,
-        borderColor: marcador.anillo,
-        alignItems: 'center',
-        justifyContent: 'center',
-        ...shadows.md,
+    clusterWrap: { alignItems: 'center', minWidth: 86 },
+    clusterIcon: {
+        width: 40, height: 40, borderRadius: 13, backgroundColor: colors.primary,
+        borderWidth: marcador.anilloAncho, borderColor: marcador.anillo,
+        alignItems: 'center', justifyContent: 'center', ...shadows.md,
+    },
+    clusterCount: {
+        position: 'absolute', top: -7, right: -10, minWidth: 24, height: 24,
+        paddingHorizontal: 5, borderRadius: 12, backgroundColor: colors.accent,
+        borderWidth: 2, borderColor: colors.surface, alignItems: 'center', justifyContent: 'center',
+    },
+    clusterCountText: { color: colors.white, fontSize: 11, fontWeight: '900' },
+    clusterCaption: {
+        marginTop: spacing.xs, paddingHorizontal: 7, paddingVertical: 4,
+        borderRadius: 8, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
+        ...shadows.sm,
     },
     clusterText: {
         color: colors.text,
-        fontSize: 16,
-        fontWeight: '700',
+        fontSize: 11,
+        fontWeight: '800',
         textAlign: 'center',
     },
 });

@@ -91,18 +91,22 @@ function pinIcon(point: MapPoint, selected: boolean, now: number, somethingSelec
 }
 
 function clusterIcon(count: number, faded: boolean): L.DivIcon {
-    const size = marcador.carro.tam;
     const opacity = faded ? marcador.opacidadNoSeleccionado : 1;
     const html = `
-        <div style="box-sizing:border-box;opacity:${opacity};min-width:${size}px;height:${size}px;padding:0 ${spacing.sm}px;border-radius:${size}px;background:${colors.surface};border:${marcador.anilloAncho}px solid ${marcador.anillo};color:${colors.text};display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;">
-            ${count}
+        <div style="opacity:${opacity};width:96px;display:flex;flex-direction:column;align-items:center;">
+            <div style="position:relative;box-sizing:border-box;width:40px;height:40px;border-radius:13px;background:${colors.primary};border:${marcador.anilloAncho}px solid ${marcador.anillo};display:flex;align-items:center;justify-content:center;">
+                <div style="position:absolute;width:18px;height:18px;border:2px solid ${colors.white};border-radius:4px;transform:translate(-4px,4px);"></div>
+                <div style="position:absolute;width:18px;height:18px;border:2px solid ${colors.white};border-radius:4px;transform:translate(4px,-4px);"></div>
+                <div style="position:absolute;top:-8px;right:-12px;min-width:24px;height:24px;padding:0 5px;box-sizing:border-box;border-radius:12px;background:${colors.accent};border:2px solid ${colors.surface};color:${colors.white};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;">${count}</div>
+            </div>
+            <div style="margin-top:${spacing.xs}px;padding:4px 7px;border-radius:8px;background:${colors.surface};border:1px solid ${colors.border};color:${colors.text};font-size:11px;line-height:14px;font-weight:800;white-space:nowrap;">${count} elementos</div>
         </div>
     `;
     return L.divIcon({
         className: 'lumbre-pin',
         html,
-        iconSize: [size + spacing.lg, size],
-        iconAnchor: [(size + spacing.lg) / 2, size / 2],
+        iconSize: [96, 68],
+        iconAnchor: [48, 20],
     });
 }
 
