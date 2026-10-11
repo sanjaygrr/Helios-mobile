@@ -386,7 +386,7 @@ export default function MapScreen() {
   const selectedType = selectedItem?.brightness ? 'Emergencia'
     : selectedItem?.role === 'COMPANIA' ? 'Compañía'
       : selectedItem?.role === 'CARRO' ? 'Carro'
-        : (selectedItem?.role === 'COMPANY_CHIEF' || selectedItem?.role?.includes('ADMIN') ? 'Comandante' : 'Voluntario');
+        : (selectedItem?.role === 'COMPANY_CHIEF' ? 'OBAC' : selectedItem?.role?.includes('ADMIN') ? 'Comandante' : 'Voluntario');
   const selectedName = selectedItem?.brightness ? (selectedItem.title || 'Emergencia')
     : selectedItem?.role === 'CARRO' ? (selectedItem.nombre || selectedItem.user_first_name || 'Carro sin nombre')
       : (selectedItem?.user_first_name || selectedItem?.user_last_name
@@ -514,19 +514,6 @@ export default function MapScreen() {
                   <Ionicons name="radio" size={18} color={colors.textMuted} />
                   <Text style={styles.incidentText}>Central: {selectedItem.central_name || 'Sin central'}</Text>
                 </View>
-                <Text style={styles.recursosTitulo}>Recursos</Text>
-                {(selectedItem.recursos || []).length === 0 ? (
-                  <Text style={styles.recursosVacio}>Sin carros despachados</Text>
-                ) : (selectedItem.recursos || []).map((recurso: { id: number; carro: string; compania?: string; estado?: string }) => (
-                  <View key={recurso.id} style={styles.incidentRow}>
-                    <MaterialCommunityIcons name="fire-truck" size={18} color={colors.accent} />
-                    <Text style={styles.incidentText}>
-                      {recurso.carro}
-                      {recurso.compania ? ` · ${recurso.compania}` : ''}
-                      {recurso.estado ? ` · ${recurso.estado}` : ''}
-                    </Text>
-                  </View>
-                ))}
               </>
             )}
 
@@ -598,6 +585,23 @@ export default function MapScreen() {
               Loc: {selectedItem.latitude.toFixed(5)}, {selectedItem.longitude.toFixed(5)}
             </Text>
           </ScrollView>
+          {selectedItem.brightness ? (
+            <View style={styles.recursosCaja}>
+              <Text style={styles.recursosTitulo}>Recursos</Text>
+              {(selectedItem.recursos || []).length === 0 ? (
+                <Text style={styles.recursosVacio}>Sin carros despachados</Text>
+              ) : (selectedItem.recursos || []).map((recurso: { id: number; carro: string; compania?: string; estado?: string }) => (
+                <View key={recurso.id} style={styles.incidentRow}>
+                  <MaterialCommunityIcons name="fire-truck" size={18} color={colors.accent} />
+                  <Text style={styles.incidentText}>
+                    {recurso.carro}
+                    {recurso.compania ? ` · ${recurso.compania}` : ''}
+                    {recurso.estado ? ` · ${recurso.estado}` : ''}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
           {selectedItem.brightness ? (
             <TouchableOpacity
               style={styles.infoAction}
@@ -708,7 +712,7 @@ const styles = StyleSheet.create({
   infoCard: {
     position: 'absolute', bottom: 100, left: 16, right: 16,
     padding: 18, paddingTop: 20, borderRadius: borderRadius.lg,
-    maxHeight: 340, overflow: 'hidden',
+    maxHeight: 520, overflow: 'hidden',
     flexDirection: 'column',
     ...overlay,
     borderWidth: 1, borderColor: colors.border,
@@ -733,7 +737,8 @@ const styles = StyleSheet.create({
   infoTitle: { fontSize: 19, lineHeight: 23, fontWeight: '800', color: colors.text },
   infoSubtitle: { fontSize: 12, lineHeight: 17, color: colors.textMuted, marginTop: 3 },
   infoDescription: { fontSize: 14, lineHeight: 20, color: colors.text, marginBottom: 8 },
-  recursosTitulo: { fontSize: 12, fontWeight: '800', color: colors.textMuted, marginTop: 8, marginBottom: 2 },
+  recursosCaja: { flexShrink: 0, marginTop: 8 },
+  recursosTitulo: { fontSize: 12, fontWeight: '800', color: colors.textMuted, marginTop: 0, marginBottom: 2 },
   recursosVacio: { fontSize: 14, color: colors.textMuted, marginVertical: 4 },
   infoGrid: { marginTop: 5, flexGrow: 1, flexShrink: 1, minHeight: 0 },
   incidentRow: {
@@ -743,7 +748,7 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: colors.border,
   },
   incidentText: {
-    fontSize: 13, fontWeight: '600', color: colors.text
+    fontSize: 13, fontWeight: '600', color: colors.text, flex: 1,
   },
   detailRow: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
