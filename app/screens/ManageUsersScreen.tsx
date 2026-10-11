@@ -91,7 +91,7 @@ export default function ManageUsersScreen() {
                     { clave: 'rol', etiqueta: 'Rol',
                       grupo: (u: any) => ({
                           SUPER_ADMIN: 'Super Admin', COMPANY_ADMIN: 'Comandante',
-                          COMPANY_CHIEF: 'Comandante', FIREFIGHTER: 'Bombero',
+                          COMPANY_CHIEF: 'OBAC', FIREFIGHTER: 'Bombero',
                       } as any)[u.role] || u.role },
                 ]}
                 claveItem={(u: any) => String(u.id)}
@@ -102,7 +102,7 @@ export default function ManageUsersScreen() {
                         switch (role) {
                             case 'SUPER_ADMIN': return { label: 'Super Admin', color: colors.danger, icon: 'shield' };
                             case 'COMPANY_ADMIN': return { label: 'Administrador', color: colors.secondary, icon: 'settings' };
-                            case 'COMPANY_CHIEF': return { label: 'Comandante', color: colors.accent, icon: 'star' };
+                            case 'COMPANY_CHIEF': return { label: 'OBAC', color: colors.accent, icon: 'star' };
                             case 'FIREFIGHTER': return { label: 'Bombero', color: colors.success, icon: 'flame' };
                             default: return { label: role, color: colors.gray[500], icon: 'person' };
                         }
