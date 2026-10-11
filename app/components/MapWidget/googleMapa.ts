@@ -1,13 +1,12 @@
-import Constants from 'expo-constants';
-
 const SCRIPT_ID = 'lumbre-google-maps';
 const CALLBACK = '__lumbreGoogleMapsReady';
 
 let pending: Promise<void> | null = null;
 
 export function googleMapsKey(): string {
-    const extra = Constants.expoConfig?.extra as { googleMapsApiKey?: string } | undefined;
-    return extra?.googleMapsApiKey || '';
+    // Expo solo incrusta en el bundle web las variables EXPO_PUBLIC_.
+    // El export la copia desde GOOGLE_MAPS_API_KEY. No va escrita en el repo.
+    return process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || '';
 }
 
 /** La misma clave de EAS. En web hace falta el SDK de JavaScript, no el de Android. */
