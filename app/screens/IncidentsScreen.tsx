@@ -29,6 +29,7 @@ export default function IncidentsScreen() {
     const route = useRoute<any>();
     const { user, role } = useAuth();
     const [incidents, setIncidents] = useState<any[]>([]);
+    const [historialAbierto, setHistorialAbierto] = useState<number | null>(null);
 
     // Incident Creation State
     const [isModalVisible, setModalVisible] = useState(false);
@@ -469,8 +470,6 @@ export default function IncidentsScreen() {
                         </TouchableOpacity>
                     )}
 
-                    <View style={{ flex: 1 }} />
-
                     {(role === 'COMPANY_ADMIN' || role === 'SUPER_ADMIN' || isMyCommand || (role === 'COMPANY_CHIEF' && !item.commander)) && (
                         <View style={styles.iconActions}>
                             <TouchableOpacity
@@ -479,15 +478,28 @@ export default function IncidentsScreen() {
                             >
                                 <Ionicons name="create-outline" size={20} color={colors.gray[600]} />
                             </TouchableOpacity>
-                            {(role === 'COMPANY_ADMIN' || role === 'SUPER_ADMIN') && <TouchableOpacity
-                                style={styles.iconBtn}
-                                onPress={() => handleDeleteIncident(item.id)}
-                            >
-                                <Ionicons name="trash-outline" size={20} color={colors.danger} />
-                            </TouchableOpacity>}
                         </View>
                     )}
+                    <TouchableOpacity style={styles.iconBtn} onPress={() => setHistorialAbierto(historialAbierto === item.id ? null : item.id)}>
+                        <Ionicons name="time-outline" size={20} color={colors.accent} />
+                    </TouchableOpacity>
                 </View>
+                {historialAbierto === item.id && (
+                    <View style={styles.historyBox}>
+                        <Text style={styles.historyTitle}>Historial operativo</Text>
+                        {(item.history || []).length === 0 ? (
+                            <Text style={styles.historyText}>Sin movimientos registrados todavía.</Text>
+                        ) : (item.history || []).map((event: any) => (
+                            <View key={event.id} style={styles.historyRow}>
+                                <View style={styles.historyDot} />
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.historyAction}>{event.action.replaceAll('_', ' ')}</Text>
+                                    <Text style={styles.historyText}>{event.detail} · {event.performed_by}</Text>
+                                </View>
+                            </View>
+                        ))}
+                    </View>
+                )}
             </View>
         );
     };
@@ -511,35 +523,18 @@ export default function IncidentsScreen() {
         setEditingIncidentId(incident.id);
     };
 
-    const handleDeleteIncident = async (incidentId: number) => {
-        Alert.alert(
-            "Eliminar Emergencia",
-            "¿Estás seguro? Esta acción no se puede deshacer.",
-            [
-                { text: "Cancelar", style: "cancel" },
-                {
-                    text: "Eliminar",
-                    style: "destructive",
-                    onPress: async () => {
-                        try {
-                            await api.delete(`/incidents/${incidentId}/`);
-                            fetchIncidents();
-                            Alert.alert("Eliminado", "Emergencia eliminada.");
-                        } catch (error: any) {
-                            Alert.alert("Error", error.response?.data?.error || "No se pudo eliminar.");
-                        }
-                    }
-                }
-            ]
-        );
-    };
-
     return (
         <View style={styles.container}>
-            <TouchableOpacity style={styles.crearBarra} onPress={handleOpenModal}>
-                <Ionicons name="add" size={22} color={colors.white} />
-                <Text style={styles.crearBarraTexto}>Crear emergencia</Text>
-            </TouchableOpacity>
+            <View style={styles.topActions}>
+                <TouchableOpacity style={[styles.crearBarra, { flex: 1 }]} onPress={handleOpenModal}>
+                    <Ionicons name="add" size={22} color={colors.white} />
+                    <Text style={styles.crearBarraTexto}>Crear</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.mapaBarra} onPress={() => navigation.getParent()?.navigate('Mapa')}>
+                    <Ionicons name="map" size={21} color={colors.accent} />
+                    <Text style={styles.mapaBarraTexto}>Mapa global</Text>
+                </TouchableOpacity>
+            </View>
             <FlatList
                 data={incidents}
                 keyExtractor={(item: any) => item.id.toString()}
@@ -548,15 +543,6 @@ export default function IncidentsScreen() {
                 ListEmptyComponent={<Text style={styles.emptyText}>No hay emergencias activas.</Text>}
                 ListFooterComponent={<View style={{ height: 80 }} />}
             />
-
-            {user && (
-                <TouchableOpacity
-                    style={styles.fab}
-                    onPress={handleOpenModal}
-                >
-                    <Ionicons name="add" size={24} color={colors.white} />
-                </TouchableOpacity>
-            )}
 
             <ReportarEmergencia
                 visible={isModalVisible}
@@ -788,6 +774,7 @@ const styles = StyleSheet.create({
     actionsContainer: {
         flexDirection: 'row',
         alignItems: 'center',
+        flexWrap: 'wrap',
         gap: 8,
     },
     actionBtn: {
@@ -812,6 +799,12 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         gap: 4,
     },
+    historyBox: { marginTop: spacing.md, padding: spacing.md, borderRadius: borderRadius.md, backgroundColor: colors.surfaceRaised },
+    historyTitle: { color: colors.text, fontSize: 15, fontWeight: '700', marginBottom: spacing.sm },
+    historyRow: { flexDirection: 'row', gap: 9, paddingVertical: 7 },
+    historyDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.accent, marginTop: 5 },
+    historyAction: { color: colors.text, fontSize: 13, fontWeight: '700' },
+    historyText: { color: colors.textMuted, fontSize: 12, lineHeight: 17 },
     iconBtn: {
         padding: 8,
         borderRadius: borderRadius.sm,
@@ -826,12 +819,15 @@ const styles = StyleSheet.create({
     statusBadge: { padding: spacing.xs },
     dot: { width: 8, height: 8, borderRadius: borderRadius.sm },
     emptyText: { textAlign: 'center', marginTop: spacing.xl, color: colors.textMuted },
+    topActions: { flexDirection: 'row', gap: spacing.sm, margin: spacing.md },
     crearBarra: {
         flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-        margin: spacing.md, minHeight: 56, borderRadius: borderRadius.md,
+        minHeight: 56, borderRadius: borderRadius.md,
         backgroundColor: colors.primary,
     },
     crearBarraTexto: { color: colors.white, fontSize: 18, fontWeight: '700' },
+    mapaBarra: { flex: 1.2, minHeight: 56, borderRadius: borderRadius.md, borderWidth: 1, borderColor: colors.accent, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+    mapaBarraTexto: { color: colors.accent, fontSize: 16, fontWeight: '700' },
     fab: {
         position: 'absolute', bottom: spacing.xl, right: spacing.md, width: 60, height: 60, borderRadius: borderRadius.full,
         backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center',

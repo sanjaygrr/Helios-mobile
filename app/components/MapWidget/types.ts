@@ -1,6 +1,7 @@
 import { marcador, unitStatus } from '../../theme/colors';
 
 export interface FirePoint {
+    id: number;
     latitude: number;
     longitude: number;
     brightness: number;
@@ -9,6 +10,10 @@ export interface FirePoint {
     timestamp?: number;
     title?: string;
     address?: string;
+    description?: string;
+    dispatch_code?: string;
+    commander_name?: string;
+    central_name?: string;
     tipo?: MarkerKind;
     status?: string;
     unit_status?: string;

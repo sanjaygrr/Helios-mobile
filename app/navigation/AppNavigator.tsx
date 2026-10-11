@@ -45,7 +45,7 @@ import {
 import api from '../services/api';
 import { VISTAS, type Vista } from '../utils/vistas';
 import type {
-  BomberoStackParamList,
+  BomberoTabParamList,
   CarroStackParamList,
   GestionStackParamList,
   MandoRole,
@@ -58,7 +58,7 @@ const RootStack = createStackNavigator<RootStackParamList>();
 const MandoTabs = createBottomTabNavigator<MandoTabParamList>();
 const RecursosStack = createStackNavigator<RecursosStackParamList>();
 const GestionStack = createStackNavigator<GestionStackParamList>();
-const BomberoStack = createStackNavigator<BomberoStackParamList>();
+const BomberoTabs = createBottomTabNavigator<BomberoTabParamList>();
 const CarroStack = createStackNavigator<CarroStackParamList>();
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
@@ -525,21 +525,37 @@ function SelectorVista() {
 
 function BomberoNavigator() {
   const { puedeCambiarVista } = useAuth();
-  // Abre en Mi despacho: cuando a un bombero lo mandan a una emergencia, eso es
-  // lo unico que tiene que ver al desbloquear el telefono.
   return (
-    <BomberoStack.Navigator screenOptions={getSharedHeaderOptions(puedeCambiarVista)}>
-      <BomberoStack.Screen
+    <BomberoTabs.Navigator
+      initialRouteName="MiDespacho"
+      screenOptions={({ route }) => ({
+        ...getSharedHeaderOptions(puedeCambiarVista),
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textMuted,
+        tabBarStyle: styles.tabBar,
+        tabBarItemStyle: styles.tabBarItem,
+        tabBarIcon: ({ color, focused, size }) => {
+          const icons: Record<keyof BomberoTabParamList, [IconName, IconName]> = {
+            MiDespacho: ['notifications-outline', 'notifications'],
+            Mapa: ['map-outline', 'map'],
+            MiEstado: ['person-outline', 'person'],
+          };
+          return <Ionicons name={icons[route.name][focused ? 1 : 0]} size={size} color={color} />;
+        },
+      })}
+    >
+      <BomberoTabs.Screen
         name="MiDespacho"
         component={MiDespachoScreen}
         options={{ title: 'Mi despacho' }}
       />
-      <BomberoStack.Screen
+      <BomberoTabs.Screen name="Mapa" component={MapScreen} options={{ title: 'Mapa' }} />
+      <BomberoTabs.Screen
         name="MiEstado"
         component={MiEstadoScreen}
         options={{ title: 'Mi estado' }}
       />
-    </BomberoStack.Navigator>
+    </BomberoTabs.Navigator>
   );
 }
 
