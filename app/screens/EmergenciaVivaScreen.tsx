@@ -26,15 +26,6 @@ import type { RootStackParamList } from '../navigation/types';
 
 type Props = StackScreenProps<RootStackParamList, 'EmergenciaViva'>;
 
-function engancharScroll(nodo: ScrollView | null) {
-  if (Platform.OS !== 'web' || !nodo) return;
-  const el = nodo.getScrollableNode?.() as HTMLElement | undefined;
-  if (!el?.style) return;
-  el.style.overflowY = 'auto';
-  el.style.overflowX = 'hidden';
-  el.style.minHeight = '0px';
-  el.style.flex = '1 1 0%';
-}
 type Phase = 'PREPARACION' | 'DESPACHO' | 'COMBATE' | 'REACONDICIONAMIENTO';
 
 interface Incident {
@@ -437,6 +428,25 @@ export default function EmergenciaVivaScreen({ navigation, route }: Props) {
     return () => clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const aplicar = () => {
+      const el = document.getElementById('emergencia-viva-scroll');
+      if (!el) return;
+      let nodo: HTMLElement | null = el;
+      while (nodo && nodo !== document.body) {
+        if (nodo.scrollHeight > nodo.clientHeight + 24) {
+          nodo.style.overflowY = 'auto';
+          nodo.style.overflowX = 'hidden';
+        }
+        nodo = nodo.parentElement;
+      }
+    };
+    aplicar();
+    const timer = setTimeout(aplicar, 400);
+    return () => clearTimeout(timer);
+  }, [snapshot]);
+
   const loadLiveData = useCallback(async () => {
     if (inFlightRef.current) return;
     inFlightRef.current = true;
@@ -590,7 +600,7 @@ export default function EmergenciaVivaScreen({ navigation, route }: Props) {
         onRefresh={() => loadLiveData().catch(() => undefined)}
       />
       <ScrollView
-        ref={engancharScroll}
+        nativeID="emergencia-viva-scroll"
         style={styles.scroll}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
