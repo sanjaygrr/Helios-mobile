@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   ActivityIndicator,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -607,8 +608,24 @@ function RoleNavigator() {
   );
 }
 
+function restaurarPaginaWeb() {
+  if (Platform.OS !== 'web' || typeof document === 'undefined') return;
+  const raiz = document.getElementById('root');
+  for (const el of [document.documentElement, document.body, raiz]) {
+    if (!el) continue;
+    el.style.setProperty('height', '100%', 'important');
+    el.style.setProperty('min-height', '100%', 'important');
+    el.style.setProperty('max-height', 'none', 'important');
+    el.style.setProperty('overflow', 'hidden', 'important');
+  }
+}
+
 function RootNavigator() {
   const { user, role, isLoading } = useAuth();
+
+  useEffect(() => {
+    if (!user) restaurarPaginaWeb();
+  }, [user]);
 
   if (isLoading) {
     return (
@@ -622,31 +639,35 @@ function RootNavigator() {
   return (
     <RootStack.Navigator
       key={user ? 'authenticated' : 'anonymous'}
-      initialRouteName={user ? 'Main' : 'Login'}
       screenOptions={{ headerShown: false }}
     >
-      <RootStack.Screen name="Login" component={LoginScreen} />
-      <RootStack.Screen name="Main" component={RoleNavigator} />
-      {isMandoRole(role) ? (
+      {user ? (
         <>
-          <RootStack.Screen name="Despacho" component={DespachoScreen} />
-          <RootStack.Screen name="EmergenciaViva" component={EmergenciaVivaScreen} />
+          <RootStack.Screen name="Main" component={RoleNavigator} />
+          {isMandoRole(role) ? (
+            <>
+              <RootStack.Screen name="Despacho" component={DespachoScreen} />
+              <RootStack.Screen name="EmergenciaViva" component={EmergenciaVivaScreen} />
+            </>
+          ) : null}
+          <RootStack.Screen
+            name="Ajustes"
+            component={SettingsScreen}
+            options={({ navigation }) => ({
+              headerShown: true,
+              headerStyle: styles.header,
+              headerTintColor: colors.white,
+              title: 'Mi perfil',
+              headerLeft: () => <BackButton onPress={() => navigation.goBack()} />,
+              headerLeftContainerStyle: styles.headerLeft,
+              headerRight: () => <LogoutButton />,
+              headerRightContainerStyle: styles.headerRight,
+            })}
+          />
         </>
-      ) : null}
-      <RootStack.Screen
-        name="Ajustes"
-        component={SettingsScreen}
-        options={({ navigation }) => ({
-          headerShown: true,
-          headerStyle: styles.header,
-          headerTintColor: colors.white,
-          title: 'Mi perfil',
-          headerLeft: () => <BackButton onPress={() => navigation.goBack()} />,
-          headerLeftContainerStyle: styles.headerLeft,
-          headerRight: () => <LogoutButton />,
-          headerRightContainerStyle: styles.headerRight,
-        })}
-      />
+      ) : (
+        <RootStack.Screen name="Login" component={LoginScreen} />
+      )}
     </RootStack.Navigator>
   );
 }
