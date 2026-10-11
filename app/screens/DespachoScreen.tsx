@@ -373,6 +373,7 @@ export default function DespachoScreen({ navigation, route }: Props) {
   const [unitRefreshError, setUnitRefreshError] = useState<string | null>(null);
   const [parameterNotice, setParameterNotice] = useState<string | null>(null);
   const [created, setCreated] = useState<AssignmentCreated | null>(null);
+  const [companiasAbiertas, setCompaniasAbiertas] = useState<Record<string, boolean>>({});
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -672,10 +673,20 @@ export default function DespachoScreen({ navigation, route }: Props) {
             texto={query ? 'No encontramos coincidencias.' : 'Todos los carros están asignados o fuera de servicio.'}
           />
         </View>
-      ) : groupedUnits.map((group) => (
+      ) : groupedUnits.map((group) => {
+        const abierta = normalizedQuery.length > 0 || !!companiasAbiertas[group.company];
+        return (
         <View key={group.company} style={styles.group}>
-          <Text style={styles.groupTitle}>{group.company}</Text>
-          {group.units.map((unit) => {
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => setCompaniasAbiertas(prev => ({ ...prev, [group.company]: !prev[group.company] }))}
+            style={styles.groupHeader}
+          >
+            <Ionicons name={abierta ? 'chevron-down' : 'chevron-forward'} size={18} color={colors.textMuted} />
+            <Text style={styles.groupTitle}>{group.company}</Text>
+            <Text style={styles.groupCount}>{group.units.length}</Text>
+          </Pressable>
+          {abierta && group.units.map((unit) => {
             const selected = unit.id === selectedUnitId;
             return (
               <Pressable
@@ -705,7 +716,8 @@ export default function DespachoScreen({ navigation, route }: Props) {
             );
           })}
         </View>
-      ))}
+        );
+      })}
     </View>
   );
 
@@ -1246,12 +1258,23 @@ const styles = StyleSheet.create({
   group: {
     marginBottom: spacing.md,
   },
-  groupTitle: {
-    color: colors.text,
-    fontSize: 18,
-    fontWeight: '800',
+  groupHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: spacing.sm,
     marginBottom: spacing.sm,
     marginTop: spacing.sm,
+  },
+  groupTitle: {
+    color: colors.text,
+    flex: 1,
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  groupCount: {
+    color: colors.accent,
+    fontSize: 16,
+    fontWeight: '800',
   },
   refreshButton: {
     alignItems: 'center',

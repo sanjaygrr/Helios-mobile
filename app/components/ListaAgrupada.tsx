@@ -32,7 +32,7 @@ type Props<T> = {
  *
  * El super admin ve los 44 carros y las 27 compañías de cuatro cuerpos: una
  * lista plana es inservible. Agrupa por ciudad, por compañía o por cuerpo,
- * y cada encabezado se puede plegar.
+ * Los grupos parten cerrados y se abre solo el que se necesita.
  */
 export default function ListaAgrupada<T>({
   datos,
@@ -44,13 +44,14 @@ export default function ListaAgrupada<T>({
 }: Props<T>) {
   const [criterio, setCriterio] = useState(criterios[0]?.clave);
   const [busqueda, setBusqueda] = useState('');
-  const [plegados, setPlegados] = useState<Record<string, boolean>>({});
+  const [abiertos, setAbiertos] = useState<Record<string, boolean>>({});
 
   const activo = criterios.find(c => c.clave === criterio) || criterios[0];
   const lista = Array.isArray(datos) ? datos : [];
 
   const secciones = useMemo(() => {
     const texto = busqueda.trim().toLowerCase();
+    const buscando = texto.length > 0;
     const filtrados = texto && buscarEn
       ? lista.filter(d => buscarEn(d).toLowerCase().includes(texto))
       : lista;
@@ -73,19 +74,16 @@ export default function ListaAgrupada<T>({
       .map(([titulo, items]) => ({
         titulo,
         total: items.length,
-        data: plegados[titulo] ? [] : items,
+        data: buscando || abiertos[titulo] ? items : [],
       }));
-  }, [lista, activo, busqueda, plegados, buscarEn]);
+  }, [lista, activo, busqueda, abiertos, buscarEn]);
 
   const totalVisible = secciones.reduce((n, s) => n + s.total, 0);
-  const todosPlegados = secciones.length > 0 && secciones.every(s => plegados[s.titulo]);
+  const todosAbiertos = secciones.length > 0 && secciones.every(s => abiertos[s.titulo]);
 
   const alternarTodos = () => {
-    if (todosPlegados) {
-      setPlegados({});
-    } else {
-      setPlegados(Object.fromEntries(secciones.map(s => [s.titulo, true])));
-    }
+    if (todosAbiertos) setAbiertos({});
+    else setAbiertos(Object.fromEntries(secciones.map(s => [s.titulo, true])));
   };
 
   return (
@@ -119,7 +117,7 @@ export default function ListaAgrupada<T>({
               return (
                 <TouchableOpacity
                   key={c.clave}
-                  onPress={() => { setCriterio(c.clave); setPlegados({}); }}
+                  onPress={() => { setCriterio(c.clave); setAbiertos({}); }}
                   activeOpacity={0.7}
                   style={[estilos.chip, sel && estilos.chipActivo]}
                 >
@@ -139,17 +137,17 @@ export default function ListaAgrupada<T>({
         renderItem={({ item }) => render(item)}
         stickySectionHeadersEnabled
         renderSectionHeader={({ section }: any) => {
-          const plegado = !!plegados[section.titulo];
+          const abierto = busqueda.trim().length > 0 || !!abiertos[section.titulo];
           return (
             <TouchableOpacity
               activeOpacity={0.7}
               onPress={() =>
-                setPlegados(p => ({ ...p, [section.titulo]: !p[section.titulo] }))
+                setAbiertos(p => ({ ...p, [section.titulo]: !p[section.titulo] }))
               }
               style={estilos.encabezado}
             >
               <Ionicons
-                name={plegado ? 'chevron-forward' : 'chevron-down'}
+                name={abierto ? 'chevron-down' : 'chevron-forward'}
                 size={18}
                 color={colors.textMuted}
               />
@@ -175,12 +173,12 @@ export default function ListaAgrupada<T>({
                   style={estilos.alternar}
                 >
                   <Ionicons
-                    name={todosPlegados ? 'chevron-down' : 'chevron-up'}
+                    name={todosAbiertos ? 'chevron-up' : 'chevron-down'}
                     size={18}
                     color={colors.accent}
                   />
                   <Text style={estilos.alternarTexto}>
-                    {todosPlegados ? 'Abrir todo' : 'Cerrar todo'}
+                    {todosAbiertos ? 'Cerrar todo' : 'Abrir todo'}
                   </Text>
                 </TouchableOpacity>
               )}
