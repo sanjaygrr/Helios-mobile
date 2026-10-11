@@ -330,6 +330,7 @@ export default function MapScreen() {
               dispatch_code: i.dispatch_code,
               commander: i.commander ?? null,
               commander_name: i.commander_name,
+              recursos: Array.isArray(i.recursos) ? i.recursos : [],
               central_name: i.centrales?.find((c: any) => c.role === 'PROTAGONISTA')?.central,
               acq_date: (i.reported_at || '').slice(0, 10),
               acq_time: '',
@@ -512,6 +513,19 @@ export default function MapScreen() {
                   <Ionicons name="radio" size={18} color={colors.textMuted} />
                   <Text style={styles.incidentText}>Central: {selectedItem.central_name || 'Sin central'}</Text>
                 </View>
+                <Text style={styles.recursosTitulo}>Recursos</Text>
+                {(selectedItem.recursos || []).length === 0 ? (
+                  <Text style={styles.recursosVacio}>Sin carros despachados</Text>
+                ) : (selectedItem.recursos || []).map((recurso: { id: number; carro: string; compania?: string; estado?: string }) => (
+                  <View key={recurso.id} style={styles.incidentRow}>
+                    <MaterialCommunityIcons name="fire-truck" size={18} color={colors.accent} />
+                    <Text style={styles.incidentText}>
+                      {recurso.carro}
+                      {recurso.compania ? ` · ${recurso.compania}` : ''}
+                      {recurso.estado ? ` · ${recurso.estado}` : ''}
+                    </Text>
+                  </View>
+                ))}
               </>
             )}
 
@@ -709,6 +723,8 @@ const styles = StyleSheet.create({
   infoTitle: { fontSize: 19, lineHeight: 23, fontWeight: '800', color: colors.text },
   infoSubtitle: { fontSize: 12, lineHeight: 17, color: colors.textMuted, marginTop: 3 },
   infoDescription: { fontSize: 14, lineHeight: 20, color: colors.text, marginBottom: 8 },
+  recursosTitulo: { fontSize: 12, fontWeight: '800', color: colors.textMuted, marginTop: 8, marginBottom: 2 },
+  recursosVacio: { fontSize: 14, color: colors.textMuted, marginVertical: 4 },
   infoGrid: { marginTop: 5, flexGrow: 1, flexShrink: 1, minHeight: 0 },
   incidentRow: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
